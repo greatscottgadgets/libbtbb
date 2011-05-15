@@ -30,12 +30,19 @@
 /* search a symbol stream to find a packet, return index */
 int sniff_ac(char *stream, int stream_length)
 {
+	/* Find any/all LAPs (LAP = =-1) */
+	return find_ac(stream, stream_length, -1);
+}
+
+/* only search for known LAP if we have one */
+int find_ac(char *stream, int stream_length, uint32_t LAP)
+{
 	/* Looks for an AC in the stream */
 	int count;
 	uint8_t preamble; // start of sync word (includes LSB of LAP)
 	uint16_t trailer; // end of sync word: barker sequence and trailer (includes MSB of LAP)
 	int max_distance = 2; // maximum number of bit errors to tolerate in preamble + trailer
-	uint32_t LAP;
+	uint32_t data_LAP;
 	char *symbols;
 
 	for(count = 0; count < stream_length; count ++)
@@ -45,14 +52,15 @@ int sniff_ac(char *stream, int stream_length)
 		trailer = air_to_host16(&symbols[61], 7);
 		if((PREAMBLE_DISTANCE[preamble] + TRAILER_DISTANCE[trailer]) <= max_distance)
 		{
-			LAP = air_to_host32(&symbols[38], 24);
-			if(check_ac(symbols, LAP))
-			{
-				return count;
-			}
+			data_LAP = air_to_host32(&symbols[38], 24);
+			if ((LAP == -1) || (LAP == data_LAP))
+				if(check_ac(symbols, data_LAP))
+					return count;
+
 		}
 	}
 	return -1;
+	
 }
 
 void init_packet(packet *p, char *syms, int len)

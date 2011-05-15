@@ -150,6 +150,9 @@ int payload_crc(packet* p);
 /* search a symbol stream to find a packet, return index */
 int sniff_ac(char *stream, int stream_length);
 
+/* only search for known LAP if we have one */
+int find_ac(char *stream, int stream_length, uint32_t LAP);
+
 /* Error correction coding for Access Code */
 uint8_t *lfsr(uint8_t *data, int length, int k, uint8_t *g);
 
