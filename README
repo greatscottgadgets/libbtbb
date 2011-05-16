@@ -9,6 +9,9 @@ This code is incomplete, it is still under active development.  Patches and
 bug reports should be sent to Dominic Spill (dominicgs@gmail.com) or 
 Michael Ossmann (mike@ossmann.com).
 
+This software has been developed and tested on Linux, it should work on other 
+platforms but this has yet to be tested.
+
 
 Build Instructions
 ==================

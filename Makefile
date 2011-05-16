@@ -21,8 +21,8 @@ CC       = gcc
 INSTALL  = /usr/bin/install
 LDCONFIG = /sbin/ldconfig
 
-INSTALL_DIR ?= /usr/lib/
-INCLUDE_DIR ?= /usr/include/
+INSTALL_DIR ?= /usr/lib
+INCLUDE_DIR ?= /usr/include
 
 LIB_NAME = libbtbb.so
 SONAME   = $(LIB_NAME).0
