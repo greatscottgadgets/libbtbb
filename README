@@ -1,0 +1,24 @@
+libbtbb
+=======
+
+This is the Bluetooth baseband decoding library, forked from the GR-Bluetooth 
+project.  It can be used to extract Bluetooth packet and piconet information 
+from Ubertooth devices as well as GR-Bluetooth/USRP.
+
+This code is incomplete, it is still under active development.  Patches and 
+bug reports should be sent to Dominic Spill (dominicgs@gmail.com) or 
+Michael Ossmann (mike@ossmann.com).
+
+
+Build Instructions
+==================
+
+Libbtbb can be built and installed as follows:
+	$ make
+	$ make install
+
+This will install the library to /usr/lib and the headers to /usr/include,
+to install to different locations use:
+	$ make
+	$ INSTALL_DIR=/path/to/install INCLUDE_DIR=/path/to/include make install
+
