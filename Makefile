@@ -35,8 +35,8 @@ HEADER_FILES = $(SOURCE_FILES:%.c=%.h)
 all: libbtbb
 
 libbtbb:
-	$(CC) -g -O2 -Wall -fPIC  -c $(SOURCE_FILES)
-	$(CC) -shared -Wl,-soname,$(SONAME) -o $(LIB_FILE) $(OBJECT_FILES)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -g -O2 -Wall -fPIC  -c $(SOURCE_FILES)
+	$(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(SONAME) -o $(LIB_FILE) $(OBJECT_FILES)
 
 clean:
 	rm -f *.o $(LIB_FILE)
