@@ -253,9 +253,10 @@ char *unfec23(char *input, int length)
 		}
 
 		// multiple different bits in the codeword
+		difference = 0;
 		for(count=0;count<5;count++) {
-			difference |= codeword[count] ^ input[iptr+10+count];
 			difference <<= 1;
+			difference |= codeword[count] ^ input[iptr+10+count];
 		}
 		free(codeword);
 
