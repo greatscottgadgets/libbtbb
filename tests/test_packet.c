@@ -24,9 +24,8 @@
 #include "config.h"
 #endif
 
-#include "bluetooth_packet.h"
+#include "../bluetooth_packet.h"
 #include <stdio.h>
-#include <stdint.h>
 
 int test_unfec23() {
     char *optr;
@@ -107,6 +106,8 @@ int test_unfec23() {
         }
     }
 
+	if (ret > 0)
+		printf("%d errors\n", ret);
     printf("\n--------------------\n");
     printf("Done testing unfec23\n");
     return ret;
