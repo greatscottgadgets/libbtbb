@@ -51,6 +51,11 @@ static const char *TYPE_NAMES[] = {
 	"DV/3-DH1", "AUX1", "DM3/2-DH3", "DH3/3-DH3", "EV4/2-EV5", "EV5/3-EV5", "DM5/2-DH5", "DH5/3-DH5"
 };
 
+// pseudo-random sequence to XOR with LAP and syncword
+static const uint8_t ac_pn[] = {0x03,0xF2,0xA3,0x3D,0xD6,0x9B,0x12,0x1C,0x10};
+// generator polynomial for the access code
+static const uint8_t ac_g[] = {1,0,0,1,0,1,0,1,1,0,1,1,1,1,0,0,1,0,0,0,1,1,1,0,1,0,1,0,0,0,0,1,1,0,1};
+
 typedef struct packet {
 	/* the raw symbol stream, one bit per char */
 	//FIXME maybe this should be a vector so we can grow it only to the size
@@ -160,10 +165,7 @@ uint8_t *lfsr(uint8_t *data, int length, int k, uint8_t *g);
 uint8_t reverse(char byte);
 
 /* Generate Access Code from an LAP */
-uint8_t *acgen(int LAP);
-
-/* Convert from normal bytes to one-LSB-per-byte format */
-void convert_to_grformat(uint8_t input, uint8_t *output);
+void acgen(int LAP, uint8_t *ac);
 
 /* Decode 1/3 rate FEC, three like symbols in a row */
 int unfec13(char *input, char *output, int length);

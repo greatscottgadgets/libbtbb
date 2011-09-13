@@ -43,7 +43,11 @@ int find_ac(char *stream, int stream_length, uint32_t LAP)
 	uint16_t trailer; // end of sync word: barker sequence and trailer (includes MSB of LAP)
 	int max_distance = 2; // maximum number of bit errors to tolerate in preamble + trailer
 	uint32_t data_LAP;
+	uint8_t ac[9];
 	char *symbols;
+
+	if (LAP!=-1)
+		acgen(LAP, ac);
 
 	for(count = 0; count < stream_length; count ++)
 	{
@@ -53,9 +57,12 @@ int find_ac(char *stream, int stream_length, uint32_t LAP)
 		if((PREAMBLE_DISTANCE[preamble] + TRAILER_DISTANCE[trailer]) <= max_distance)
 		{
 			data_LAP = air_to_host32(&symbols[38], 24);
-			if ((LAP == -1) || (LAP == data_LAP))
-				if(check_ac(symbols, data_LAP))
-					return count;
+
+			if (LAP == -1) 
+				acgen(data_LAP, ac);
+
+			if(check_ac(symbols, ac))
+				return count;
 
 		}
 	}
@@ -118,72 +125,66 @@ uint8_t reverse(char byte)
 }
 
 /* Generate Access Code from an LAP */
-uint8_t *acgen(int LAP)
+void acgen(int LAP, uint8_t *ac)
 {
 	/* Endianness - Assume LAP is MSB first, rest done LSB first */
-	uint8_t *retval, count, *cw, *data;
-	retval = (uint8_t *) calloc(9,1);
-	data = (uint8_t *) malloc(30);
-	// pseudo-random sequence to XOR with LAP and syncword
-	uint8_t pn[] = {0x03,0xF2,0xA3,0x3D,0xD6,0x9B,0x12,0x1C,0x10};
-	// generator polynomial for the access code
-	uint8_t g[] = {1,0,0,1,0,1,0,1,1,0,1,1,1,1,0,0,1,0,0,0,1,1,1,0,1,0,1,0,0,0,0,1,1,0,1};
+	uint8_t count, *cw;
+	uint8_t data[30];
 
 	LAP = reverse((LAP & 0xff0000)>>16) | (reverse((LAP & 0x00ff00)>>8)<<8) | (reverse(LAP & 0x0000ff)<<16);
 
-	retval[4] = (LAP & 0xc00000)>>22;
-	retval[5] = (LAP & 0x3fc000)>>14;
-	retval[6] = (LAP & 0x003fc0)>>6;
-	retval[7] = (LAP & 0x00003f)<<2;
+	ac[4] = (LAP & 0xc00000)>>22;
+	ac[5] = (LAP & 0x3fc000)>>14;
+	ac[6] = (LAP & 0x003fc0)>>6;
+	ac[7] = (LAP & 0x00003f)<<2;
 
 	/* Trailer */
 	if(LAP & 0x1)
-	{	retval[7] |= 0x03;
-		retval[8] = 0x2a;
+	{	ac[7] |= 0x03;
+		ac[8] = 0x2a;
 	} else
-		retval[8] = 0xd5;
+		ac[8] = 0xd5;
 
 	for(count = 4; count < 9; count++)
-		retval[count] ^= pn[count];
+		ac[count] ^= ac_pn[count];
 
-	data[0] = (retval[4] & 0x02) >> 1;
-	data[1] = (retval[4] & 0x01);
-	host_to_air(reverse(retval[5]), (char *) data+2, 8);
-	host_to_air(reverse(retval[6]), (char *) data+10, 8);
-	host_to_air(reverse(retval[7]), (char *) data+18, 8);
-	host_to_air(reverse(retval[8]), (char *) data+26, 4);
+	data[0] = (ac[4] & 0x02) >> 1;
+	data[1] = (ac[4] & 0x01);
+	host_to_air(reverse(ac[5]), (char *) data+2, 8);
+	host_to_air(reverse(ac[6]), (char *) data+10, 8);
+	host_to_air(reverse(ac[7]), (char *) data+18, 8);
+	host_to_air(reverse(ac[8]), (char *) data+26, 4);
 
-	cw = lfsr(data, 64, 30, g);
-	free(data);
+	cw = lfsr(data, 64, 30, ac_g);
 
-	retval[0] = cw[0] << 3 | cw[1] << 2 | cw[2] << 1 | cw[3];
-	retval[1] = cw[4] << 7 | cw[5] << 6 | cw[6] << 5 | cw[7] << 4 | cw[8] << 3 | cw[9] << 2 | cw[10] << 1 | cw[11];
-	retval[2] = cw[12] << 7 | cw[13] << 6 | cw[14] << 5 | cw[15] << 4 | cw[16] << 3 | cw[17] << 2 | cw[18] << 1 | cw[19];
-	retval[3] = cw[20] << 7 | cw[21] << 6 | cw[22] << 5 | cw[23] << 4 | cw[24] << 3 | cw[25] << 2 | cw[26] << 1 | cw[27];
-	retval[4] = cw[28] << 7 | cw[29] << 6 | cw[30] << 5 | cw[31] << 4 | cw[32] << 3 | cw[33] << 2 | (retval[4] & 0x3);
+	ac[0] = cw[0] << 3 | cw[1] << 2 | cw[2] << 1 | cw[3];
+	ac[1] = cw[4] << 7 | cw[5] << 6 | cw[6] << 5 | cw[7] << 4 | cw[8] << 3 | cw[9] << 2 | cw[10] << 1 | cw[11];
+	ac[2] = cw[12] << 7 | cw[13] << 6 | cw[14] << 5 | cw[15] << 4 | cw[16] << 3 | cw[17] << 2 | cw[18] << 1 | cw[19];
+	ac[3] = cw[20] << 7 | cw[21] << 6 | cw[22] << 5 | cw[23] << 4 | cw[24] << 3 | cw[25] << 2 | cw[26] << 1 | cw[27];
+	ac[4] = cw[28] << 7 | cw[29] << 6 | cw[30] << 5 | cw[31] << 4 | cw[32] << 3 | cw[33] << 2 | (ac[4] & 0x3);
 	free(cw);
 
 	for(count = 0; count < 9; count++)
-		retval[count] ^= pn[count];
+		ac[count] ^= ac_pn[count];
 
 	/* Preamble */
-	if(retval[0] & 0x08)
-		retval[0] |= 0xa0;
+	if(ac[0] & 0x08)
+		ac[0] |= 0xa0;
 	else
-		retval[0] |= 0x50;
+		ac[0] |= 0x50;
 
-	return retval;
 }
 
-/* Convert from normal bytes to one-LSB-per-byte format */
-void convert_to_grformat(uint8_t input, uint8_t *output)
+/* Error correct and extract LAP from syncword */
+int decode_syncword(uint8_t *syncword)
 {
-	int count;
-	for(count = 0; count < 8; count++)
-	{
-		output[count] = (input & 0x80) >> 7;
-		input <<= 1;
-	}
+	int i;
+	uint8_t cw[9];
+
+	for(i = 0; i < 9; i++)
+		cw[i] = syncword[i] ^= ac_pn[i];
+
+	return -1;
 }
 
 /* Decode 1/3 rate FEC, three like symbols in a row */
@@ -247,7 +248,7 @@ char *unfec23(char *input, int length)
 
 		/* no errors or single bit errors (errors in the parity bit):
 		 * (a strong hint it's a real packet) */
-		if((0==difference) || (1==difference)) {
+		if(difference<=1) {
 		    free(codeword);
 		    continue;
 		}
@@ -292,23 +293,15 @@ char *unfec23(char *input, int length)
 }
 
 /* Create an Access Code from LAP and check it against stream */
-int check_ac(char *stream, int LAP)
+int check_ac(char *stream, uint8_t *ac)
 {
-	int count, aclength, biterrors;
-	uint8_t *ac, *grdata;
-	aclength = 72;
+	int count, biterrors;
+	uint8_t grdata[72];
 	biterrors = 0;
 
-	/* Generate AC */
-	ac = acgen(LAP);
-
 	/* Check AC */
-	/* Convert it to grformat, 1 bit per byte, in the LSB */
-	grdata = (uint8_t *) malloc(aclength);
-
 	for(count = 0; count < 9; count++)
-		convert_to_grformat(ac[count], &grdata[count*8]);
-	free(ac);
+		host_to_air(ac[count], &grdata[count*8], 8);
 
 	for(count = 0; count < 68; count++)
 	{
@@ -317,19 +310,15 @@ int check_ac(char *stream, int LAP)
 			//FIXME do error correction instead of detection
 		if(biterrors>=7)
 		{
-			free(grdata);
 			return 0;
 		}
 	}
 	if(biterrors)
 	{
 		//printf("POSSIBLE PACKET, LAP = %06x with %d errors\n", LAP, biterrors);
-		free(grdata);
-		//return 0;
 		return 1;
 	}
 
-	free(grdata);
 	return 1;
 }
 
