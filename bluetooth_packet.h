@@ -72,7 +72,7 @@ typedef struct packet {
 	uint8_t UAP;
 	
 	/* non-significant address part */
-	uint8_t NAP;
+	uint16_t NAP;
 	
 	/* number of symbols */
 	int length;
