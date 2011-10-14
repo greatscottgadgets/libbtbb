@@ -88,7 +88,7 @@ void init_packet(packet *p, char *syms, int len)
 }
 
 /* A linear feedback shift register */
-uint8_t *lfsr(uint8_t *data, int length, int k, uint8_t *g)
+uint8_t *lfsr(uint8_t *data, int length, int k, const uint8_t *g)
 /*
  * A linear feedback shift register
  * used for the syncword in the access code
@@ -292,7 +292,7 @@ char *unfec23(char *input, int length)
 	return output;
 }
 
-/* Create an Access Code from LAP and check it against stream */
+/* Compare stream with access code */
 int check_ac(char *stream, uint8_t *ac)
 {
 	int count, biterrors;
@@ -301,7 +301,7 @@ int check_ac(char *stream, uint8_t *ac)
 
 	/* Check AC */
 	for(count = 0; count < 9; count++)
-		host_to_air(ac[count], &grdata[count*8], 8);
+		host_to_air(ac[count], (char *) &grdata[count*8], 8);
 
 	for(count = 0; count < 68; count++)
 	{

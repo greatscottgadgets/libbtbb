@@ -159,7 +159,7 @@ int sniff_ac(char *stream, int stream_length);
 int find_ac(char *stream, int stream_length, uint32_t LAP);
 
 /* Error correction coding for Access Code */
-uint8_t *lfsr(uint8_t *data, int length, int k, uint8_t *g);
+uint8_t *lfsr(uint8_t *data, int length, int k, const uint8_t *g);
 
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte);
@@ -176,8 +176,8 @@ char *unfec23(char *input, int length);
 /* When passed 10 bits of data this returns a pointer to a 5 bit hamming code */
 //char *fec23gen(char *data);
 
-/* Create an Access Code from LAP and check it against stream */
-int check_ac(char *stream, int LAP);
+/* Compare stream with access code */
+int check_ac(char *stream, uint8_t *ac);
 
 /* Convert some number of bits of an air order array to a host order integer */
 uint8_t air_to_host8(char *air_order, int bits);
