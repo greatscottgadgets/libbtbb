@@ -49,7 +49,8 @@ int find_ac(char *stream, int stream_length, uint32_t LAP)
 	if (LAP!=-1)
 		acgen(LAP, ac);
 
-	for(count = 0; count < stream_length; count ++)
+	// If we search past length-72 we'll run off the end looking for the trailer
+	for(count = 0; count < stream_length - 72; count ++)
 	{
 		symbols = &stream[count];
 		preamble = air_to_host8(&symbols[0], 5);
