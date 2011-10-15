@@ -27,15 +27,21 @@
 
 #include "bluetooth_packet.h"
 
-/* search a symbol stream to find a packet, return index */
-int sniff_ac(char *stream, int stream_length)
+/*
+ * Search a symbol stream to find a packet with arbitrary LAP, return index.
+ * The length of the stream must be at least search_length + 72.
+ */
+int sniff_ac(char *stream, int search_length)
 {
 	/* Find any/all LAPs (LAP = =-1) */
-	return find_ac(stream, stream_length, -1);
+	return find_ac(stream, search_length, -1);
 }
 
-/* only search for known LAP if we have one */
-int find_ac(char *stream, int stream_length, uint32_t LAP)
+/*
+ * Search for known LAP and return the index.  The length of the stream must be
+ * at least search_length + 72.
+ */
+int find_ac(char *stream, int search_length, uint32_t LAP)
 {
 	/* Looks for an AC in the stream */
 	int count;
@@ -49,8 +55,8 @@ int find_ac(char *stream, int stream_length, uint32_t LAP)
 	if (LAP!=-1)
 		acgen(LAP, ac);
 
-	// If we search past length-72 we'll run off the end looking for the trailer
-	for(count = 0; count < stream_length - 72; count ++)
+	// The stream length must be 72 symbols longer than search_length.
+	for(count = 0; count < search_length; count ++)
 	{
 		symbols = &stream[count];
 		preamble = air_to_host8(&symbols[0], 5);

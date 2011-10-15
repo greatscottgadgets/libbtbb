@@ -152,11 +152,17 @@ void unwhiten(char* input, char* output, int clock, int length, int skip, packet
 /* verify the payload CRC */
 int payload_crc(packet* p);
 
-/* search a symbol stream to find a packet, return index */
-int sniff_ac(char *stream, int stream_length);
+/*
+ * Search a symbol stream to find a packet with arbitrary LAP, return index.
+ * The length of the stream must be at least search_length + 72.
+ */
+int sniff_ac(char *stream, int search_length);
 
-/* only search for known LAP if we have one */
-int find_ac(char *stream, int stream_length, uint32_t LAP);
+/*
+ * Search for known LAP and return the index.  The length of the stream must be
+ * at least search_length + 72.
+ */
+int find_ac(char *stream, int search_length, uint32_t LAP);
 
 /* Error correction coding for Access Code */
 uint8_t *lfsr(uint8_t *data, int length, int k, const uint8_t *g);
