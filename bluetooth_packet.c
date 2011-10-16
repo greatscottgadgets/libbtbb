@@ -132,6 +132,7 @@ uint8_t reverse(char byte)
 uint64_t gen_syncword(int LAP)
 {
 	int i;
+	/* default codeword modified for PN sequence and barker code */
 	uint64_t codeword = 0xb0000002c7820e7e;
 	
 	/* the sync word generated is in host order, not air order */
