@@ -46,4 +46,4 @@ install:
 	$(INSTALL) -m 0644 $(HEADER_FILES) $(INCLUDE_DIR)
 	$(LDCONFIG)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(LIB_NAME)
-
+	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(SONAME)
