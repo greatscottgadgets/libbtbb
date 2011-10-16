@@ -46,35 +46,33 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 	/* Looks for an AC in the stream */
 	int count;
 	uint8_t preamble; // start of sync word (includes LSB of LAP)
-	uint16_t trailer; // end of sync word: barker sequence and trailer (includes MSB of LAP)
+	uint8_t trailer; // end of sync word: barker sequence and trailer (includes MSB of LAP)
 	int max_distance = 2; // maximum number of bit errors to tolerate in preamble + trailer
 	uint32_t data_LAP;
-	uint8_t ac[9];
+	uint64_t syncword;
 	char *symbols;
 
 	if (LAP!=-1)
-		acgen(LAP, ac);
+		syncword = gen_syncword(LAP);
 
 	// The stream length must be 72 symbols longer than search_length.
 	for(count = 0; count < search_length; count ++)
 	{
 		symbols = &stream[count];
 		preamble = air_to_host8(&symbols[0], 5);
-		trailer = air_to_host16(&symbols[61], 7);
+		trailer = air_to_host8(&symbols[61], 7);
 		if((PREAMBLE_DISTANCE[preamble] + TRAILER_DISTANCE[trailer]) <= max_distance)
 		{
 			data_LAP = air_to_host32(&symbols[38], 24);
 
 			if (LAP == -1) 
-				acgen(data_LAP, ac);
+				syncword = gen_syncword(data_LAP);
 
-			if(check_ac(symbols, ac))
+			if (check_syncword(&symbols[4], syncword))
 				return count;
-
 		}
 	}
 	return -1;
-	
 }
 
 void init_packet(packet *p, char *syms, int len)
@@ -98,8 +96,7 @@ void init_packet(packet *p, char *syms, int len)
 uint8_t *lfsr(uint8_t *data, int length, int k, const uint8_t *g)
 /*
  * A linear feedback shift register
- * used for the syncword in the access code
- * and the fec2/3 encoding (could also be used for the HEC/CRC)
+ * used for fec2/3 encoding (could also be used for the HEC/CRC)
  * Although I'm not sure how to run it backwards for HEC->UAP
  */
 {
@@ -131,67 +128,19 @@ uint8_t reverse(char byte)
 	return (byte & 0x80) >> 7 | (byte & 0x40) >> 5 | (byte & 0x20) >> 3 | (byte & 0x10) >> 1 | (byte & 0x08) << 1 | (byte & 0x04) << 3 | (byte & 0x02) << 5 | (byte & 0x01) << 7;
 }
 
-/* Generate Access Code from an LAP */
-void acgen(int LAP, uint8_t *ac)
-{
-	/* Endianness - Assume LAP is MSB first, rest done LSB first */
-	uint8_t count, *cw;
-	uint8_t data[30];
-
-	LAP = reverse((LAP & 0xff0000)>>16) | (reverse((LAP & 0x00ff00)>>8)<<8) | (reverse(LAP & 0x0000ff)<<16);
-
-	ac[4] = (LAP & 0xc00000)>>22;
-	ac[5] = (LAP & 0x3fc000)>>14;
-	ac[6] = (LAP & 0x003fc0)>>6;
-	ac[7] = (LAP & 0x00003f)<<2;
-
-	/* Trailer */
-	if(LAP & 0x1)
-	{	ac[7] |= 0x03;
-		ac[8] = 0x2a;
-	} else
-		ac[8] = 0xd5;
-
-	for(count = 4; count < 9; count++)
-		ac[count] ^= ac_pn[count];
-
-	data[0] = (ac[4] & 0x02) >> 1;
-	data[1] = (ac[4] & 0x01);
-	host_to_air(reverse(ac[5]), (char *) data+2, 8);
-	host_to_air(reverse(ac[6]), (char *) data+10, 8);
-	host_to_air(reverse(ac[7]), (char *) data+18, 8);
-	host_to_air(reverse(ac[8]), (char *) data+26, 4);
-
-	cw = lfsr(data, 64, 30, ac_g);
-
-	ac[0] = cw[0] << 3 | cw[1] << 2 | cw[2] << 1 | cw[3];
-	ac[1] = cw[4] << 7 | cw[5] << 6 | cw[6] << 5 | cw[7] << 4 | cw[8] << 3 | cw[9] << 2 | cw[10] << 1 | cw[11];
-	ac[2] = cw[12] << 7 | cw[13] << 6 | cw[14] << 5 | cw[15] << 4 | cw[16] << 3 | cw[17] << 2 | cw[18] << 1 | cw[19];
-	ac[3] = cw[20] << 7 | cw[21] << 6 | cw[22] << 5 | cw[23] << 4 | cw[24] << 3 | cw[25] << 2 | cw[26] << 1 | cw[27];
-	ac[4] = cw[28] << 7 | cw[29] << 6 | cw[30] << 5 | cw[31] << 4 | cw[32] << 3 | cw[33] << 2 | (ac[4] & 0x3);
-	free(cw);
-
-	for(count = 0; count < 9; count++)
-		ac[count] ^= ac_pn[count];
-
-	/* Preamble */
-	if(ac[0] & 0x08)
-		ac[0] |= 0xa0;
-	else
-		ac[0] |= 0x50;
-
-}
-
-/* Error correct and extract LAP from syncword */
-int decode_syncword(uint8_t *syncword)
+/* Generate Sync Word from an LAP */
+uint64_t gen_syncword(int LAP)
 {
 	int i;
-	uint8_t cw[9];
+	uint64_t codeword = 0xb0000002c7820e7e;
+	
+	/* the sync word generated is in host order, not air order */
 
-	for(i = 0; i < 9; i++)
-		cw[i] = syncword[i] ^= ac_pn[i];
-
-	return -1;
+	for (i = 0; i < 24; i++)
+		if (LAP & (0x800000 >> i))
+			codeword ^= sw_matrix[i];
+	
+	return codeword;
 }
 
 /* Decode 1/3 rate FEC, three like symbols in a row */
@@ -299,32 +248,22 @@ char *unfec23(char *input, int length)
 	return output;
 }
 
-/* Compare stream with access code */
-int check_ac(char *stream, uint8_t *ac)
+/* Compare stream with sync word */
+int check_syncword(char *stream, uint64_t syncword)
 {
-	int count, biterrors;
-	uint8_t grdata[72];
-	biterrors = 0;
+	int biterrors;
+	uint64_t streamword;
 
-	/* Check AC */
-	for(count = 0; count < 9; count++)
-		host_to_air(ac[count], (char *) &grdata[count*8], 8);
+	streamword = air_to_host64(stream, 64);
 
-	for(count = 0; count < 68; count++)
-	{
-		if(grdata[count] != stream[count])
-			biterrors++;
-			//FIXME do error correction instead of detection
-		if(biterrors>=7)
-		{
-			return 0;
-		}
-	}
-	if(biterrors)
-	{
+	//FIXME do error correction instead of detection
+	biterrors = count_bits(streamword ^ syncword);
+
+	if (biterrors >= 7)
+		return 0;
+
+	//if (biterrors)
 		//printf("POSSIBLE PACKET, LAP = %06x with %d errors\n", LAP, biterrors);
-		return 1;
-	}
 
 	return 1;
 }
@@ -335,7 +274,7 @@ uint8_t air_to_host8(char *air_order, int bits)
 	int i;
 	uint8_t host_order = 0;
 	for (i = 0; i < bits; i++)
-		host_order |= (air_order[i] << i);
+		host_order |= ((uint8_t)air_order[i] << i);
 	return host_order;
 }
 uint16_t air_to_host16(char *air_order, int bits)
@@ -343,7 +282,7 @@ uint16_t air_to_host16(char *air_order, int bits)
 	int i;
 	uint16_t host_order = 0;
 	for (i = 0; i < bits; i++)
-		host_order |= (air_order[i] << i);
+		host_order |= ((uint16_t)air_order[i] << i);
 	return host_order;
 }
 uint32_t air_to_host32(char *air_order, int bits)
@@ -351,7 +290,15 @@ uint32_t air_to_host32(char *air_order, int bits)
 	int i;
 	uint32_t host_order = 0;
 	for (i = 0; i < bits; i++)
-		host_order |= (air_order[i] << i);
+		host_order |= ((uint32_t)air_order[i] << i);
+	return host_order;
+}
+uint64_t air_to_host64(char *air_order, int bits)
+{
+	int i;
+	uint64_t host_order = 0;
+	for (i = 0; i < bits; i++)
+		host_order |= ((uint64_t)air_order[i] << i);
 	return host_order;
 }
 
@@ -1102,4 +1049,13 @@ uint32_t clock_from_fhs(packet* p)
 	 * CLK0 and CLK1 are implicitly zero.
 	 */
 	return air_to_host32(&p->payload[115], 26);
+}
+
+/* count the number of 1 bits in a uint64_t */
+int count_bits(uint64_t n)
+{
+	int i = 0;
+	for (i = 0; n != 0; i++)
+		n &= n - 1;
+	return i;
 }

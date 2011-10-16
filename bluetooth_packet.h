@@ -51,10 +51,37 @@ static const char *TYPE_NAMES[] = {
 	"DV/3-DH1", "AUX1", "DM3/2-DH3", "DH3/3-DH3", "EV4/2-EV5", "EV5/3-EV5", "DM5/2-DH5", "DH5/3-DH5"
 };
 
-// pseudo-random sequence to XOR with LAP and syncword
-static const uint8_t ac_pn[] = {0x03,0xF2,0xA3,0x3D,0xD6,0x9B,0x12,0x1C,0x10};
-// generator polynomial for the access code
-static const uint8_t ac_g[] = {1,0,0,1,0,1,0,1,1,0,1,1,1,1,0,0,1,0,0,0,1,1,1,0,1,0,1,0,0,0,0,1,1,0,1};
+/*
+ * generator matrix for sync word (64,30) linear block code
+ * based on polynomial 0260534236651
+ * thanks to http://www.ee.unb.ca/cgi-bin/tervo/polygen.pl
+ * modified for barker code
+ */
+static const uint64_t sw_matrix[] = {
+	0xfe000002a0d1c014,
+	0x01000003f0b9201f,
+	0x008000033ae40edb,
+	0x004000035fca99b9,
+	0x002000036d5dd208,
+	0x00100001b6aee904,
+	0x00080000db577482,
+	0x000400006dabba41,
+	0x00020002f46d43f4,
+	0x000100017a36a1fa,
+	0x00008000bd1b50fd,
+	0x000040029c3536aa,
+	0x000020014e1a9b55,
+	0x0000100265b5d37e,
+	0x0000080132dae9bf,
+	0x000004025bd5ea0b,
+	0x00000203ef526bd1,
+	0x000001033511ab3c,
+	0x000000819a88d59e,
+	0x00000040cd446acf,
+	0x00000022a41aabb3,
+	0x0000001390b5cb0d,
+	0x0000000b0ae27b52,
+	0x0000000585713da9};
 
 typedef struct packet {
 	/* the raw symbol stream, one bit per char */
@@ -170,8 +197,8 @@ uint8_t *lfsr(uint8_t *data, int length, int k, const uint8_t *g);
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte);
 
-/* Generate Access Code from an LAP */
-void acgen(int LAP, uint8_t *ac);
+/* Generate Sync Word from an LAP */
+uint64_t gen_syncword(int LAP);
 
 /* Decode 1/3 rate FEC, three like symbols in a row */
 int unfec13(char *input, char *output, int length);
@@ -182,13 +209,14 @@ char *unfec23(char *input, int length);
 /* When passed 10 bits of data this returns a pointer to a 5 bit hamming code */
 //char *fec23gen(char *data);
 
-/* Compare stream with access code */
-int check_ac(char *stream, uint8_t *ac);
+/* Compare stream with sync word */
+int check_syncword(char *stream, uint64_t syncword);
 
 /* Convert some number of bits of an air order array to a host order integer */
 uint8_t air_to_host8(char *air_order, int bits);
 uint16_t air_to_host16(char *air_order, int bits);
 uint32_t air_to_host32(char *air_order, int bits);
+uint64_t air_to_host64(char *air_order, int bits);
 // hmmm, maybe these should have pointer output so they can be overloaded
 
 /* Convert some number of bits in a host order integer to an air order array */
@@ -239,5 +267,8 @@ uint16_t nap_from_fhs(packet* p);
 uint32_t clock_from_fhs(packet* p);
 
 void init_packet(packet *p, char *syms, int len);
+
+/* count the number of 1 bits in a uint64_t */
+int count_bits(uint64_t n);
 
 #endif /* INCLUDED_BLUETOOTH_PACKET_H */
