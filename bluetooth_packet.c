@@ -251,14 +251,19 @@ char *unfec23(char *input, int length)
 int check_syncword(char *stream, uint64_t syncword)
 {
 	int biterrors;
-	uint64_t streamword;
+	uint64_t streamword; /* candidate sync word extracted from rx symbols */
+	uint64_t barker;     /* corrected barker code */
 
 	streamword = air_to_host64(stream, 64);
+
+	/* correct the barker code with a simple comparison */
+	barker = barker_correct[(uint8_t)(streamword >> 57)];
+	streamword = (streamword & 0x01ffffffffffffff) | barker;
 
 	//FIXME do error correction instead of detection
 	biterrors = count_bits(streamword ^ syncword);
 
-	if (biterrors >= 7)
+	if (biterrors >= 5)
 		return 0;
 
 	//if (biterrors)
