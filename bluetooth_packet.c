@@ -45,9 +45,9 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 {
 	/* Looks for an AC in the stream */
 	int count;
-	uint8_t preamble; // start of sync word (includes LSB of LAP)
-	uint8_t trailer; // end of sync word: barker sequence and trailer (includes MSB of LAP)
-	int max_distance = 2; // maximum number of bit errors to tolerate in preamble + trailer
+	uint8_t preamble; // preamble at start of access code (includes LSB of sync word)
+	uint8_t barker; // barker code at end of sync word (includes MSB of LAP)
+	int max_distance = 2; // maximum number of bit errors to tolerate in preamble + barker
 	uint32_t data_LAP;
 	uint64_t syncword;
 	char *symbols;
@@ -60,8 +60,8 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 	{
 		symbols = &stream[count];
 		preamble = air_to_host8(&symbols[0], 5);
-		trailer = air_to_host8(&symbols[61], 7);
-		if((PREAMBLE_DISTANCE[preamble] + TRAILER_DISTANCE[trailer]) <= max_distance)
+		barker = air_to_host8(&symbols[61], 7);
+		if((PREAMBLE_DISTANCE[preamble] + BARKER_DISTANCE[barker]) <= max_distance)
 		{
 			data_LAP = air_to_host32(&symbols[38], 24);
 
