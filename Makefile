@@ -34,16 +34,19 @@ HEADER_FILES = $(SOURCE_FILES:%.c=%.h)
 
 all: libbtbb
 
-libbtbb:
+libbtbb: $(LIB_FILE)
+$(LIB_FILE):
 	$(CC) $(CFLAGS) $(CPPFLAGS) -g -O2 -Wall -fPIC  -c $(SOURCE_FILES)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(SONAME) -o $(LIB_FILE) $(OBJECT_FILES)
 
 clean:
 	rm -f *.o $(LIB_FILE)
 
-install:
+install: $(LIB_FILE)
 	$(INSTALL) -m 0644 $(LIB_FILE) $(INSTALL_DIR)
 	$(INSTALL) -m 0644 $(HEADER_FILES) $(INCLUDE_DIR)
 	$(LDCONFIG)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(LIB_NAME)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(SONAME)
+
+.PHONY: all clean install libbtbb
