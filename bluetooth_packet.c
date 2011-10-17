@@ -172,7 +172,7 @@ uint16_t fec23(uint16_t data)
 
 	/* host order, not air order */
 	for (i = 0; i < 10; i++)
-		if (data & (0x4000 >> i))
+		if (data & (0x200 >> i))
 			codeword ^= fec23_gen_matrix[i];
 
 	return codeword;
