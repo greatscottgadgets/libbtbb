@@ -114,6 +114,10 @@ static const uint64_t barker_correct[] = {
 	0xb000000000000000, 0xb000000000000000, 0xb000000000000000, 0xb000000000000000,
 	0xb000000000000000, 0xb000000000000000, 0xb000000000000000, 0x4e00000000000000};
 
+static const uint16_t fec23_gen_matrix[] = {
+	0x401a, 0x200d, 0x101c, 0x080e, 0x0407,
+	0x0219, 0x0116, 0x008b, 0x005f, 0x0035};
+
 typedef struct packet {
 	/* the raw symbol stream, one bit per char */
 	//FIXME maybe this should be a vector so we can grow it only to the size
@@ -233,6 +237,9 @@ uint64_t gen_syncword(int LAP);
 
 /* Decode 1/3 rate FEC, three like symbols in a row */
 int unfec13(char *input, char *output, int length);
+
+/* encode 10 bits with 2/3 rate FEC code, a (15,10) shortened Hamming code */
+uint16_t fec23(uint16_t data);
 
 /* Decode 2/3 rate FEC, a (15,10) shortened Hamming code */
 char *unfec23(char *input, int length);

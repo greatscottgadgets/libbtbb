@@ -164,6 +164,20 @@ int unfec13(char *input, char *output, int length)
 	return (be < (length / 4));
 }
 
+/* encode 10 bits with 2/3 rate FEC code, a (15,10) shortened Hamming code */
+uint16_t fec23(uint16_t data)
+{
+	int i;
+	uint16_t codeword = 0;
+
+	/* host order, not air order */
+	for (i = 0; i < 10; i++)
+		if (data & (0x4000 >> i))
+			codeword ^= fec23_gen_matrix[i];
+
+	return codeword;
+}
+
 /* Decode 2/3 rate FEC, a (15,10) shortened Hamming code */
 char *unfec23(char *input, int length)
 {
