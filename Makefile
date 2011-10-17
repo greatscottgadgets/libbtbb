@@ -36,7 +36,7 @@ all: libbtbb
 
 libbtbb: $(LIB_FILE)
 
-$(LIB_FILE):
+$(LIB_FILE): $(OBJECT_FILES)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -g -O2 -Wall -fPIC  -c $(SOURCE_FILES)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(SONAME) -o $(LIB_FILE) $(OBJECT_FILES)
 
