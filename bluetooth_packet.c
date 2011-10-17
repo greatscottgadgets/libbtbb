@@ -142,7 +142,7 @@ uint16_t fec23(uint16_t data)
 
 	/* host order, not air order */
 	for (i = 0; i < 10; i++)
-		if (data & (0x200 >> i))
+		if (data & (1 << i))
 			codeword ^= fec23_gen_matrix[i];
 
 	return codeword;
@@ -184,7 +184,7 @@ char *unfec23(char *input, int length)
 
 		// call fec23 on data to generate the codeword
 		codeword = fec23(data);
-		diff = check ^ (codeword & 0x1f);
+		diff = check ^ (codeword >> 10);
 
 		/* no errors or single bit errors (errors in the parity bit):
 		 * (a strong hint it's a real packet)
