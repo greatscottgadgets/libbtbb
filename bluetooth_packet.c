@@ -154,26 +154,21 @@ char *unfec23(char *input, int length)
 	/* input points to the input data
 	 * length is length in bits of the data
 	 * before it was encoded with fec2/3 */
-	int iptr, optr, blocks;
+	int iptr, optr, count;
 	char* output;
-	uint8_t diff, count, check;
+	uint8_t diff, check;
 	uint16_t data, codeword;
 
-	iptr = -15;
-	optr = -10;
+	iptr = 0;
+	optr = 0;
 	diff = length % 10;
 	// padding at end of data
 	if(0!=diff)
 		length += (10 - diff);
 
-	blocks = length/10;
 	output = (char *) malloc(length);
 
-	while(blocks) {
-		iptr += 15;
-		optr += 10;
-		blocks--;
-
+	while(optr<length) {
 		// copy data to output
 		for(count=0;count<10;count++)
 			output[optr+count] = input[iptr+count];
@@ -192,7 +187,7 @@ char *unfec23(char *input, int length)
 		if (diff & (diff - 1)) {
 			switch (diff) {
 			/* comments are the bit that's wrong and the value
-			* of diff in binary, from the BT spec */
+			* of diff in air order, from the BT spec */
 				// 1000000000 11010
 				case 0x0b: output[optr] ^= 1; break;
 				// 0100000000 01101
@@ -218,6 +213,8 @@ char *unfec23(char *input, int length)
 				default: free(output); return 0;
 			}
 		}
+		iptr += 15;
+		optr += 10;
 	}
 	return output;
 }
