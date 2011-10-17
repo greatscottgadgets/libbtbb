@@ -93,36 +93,6 @@ void init_packet(packet *p, char *syms, int len)
 	p->payload_length = 0;
 }
 
-/* A linear feedback shift register */
-uint8_t *lfsr(uint8_t *data, int length, int k, const uint8_t *g)
-/*
- * A linear feedback shift register
- * used for fec2/3 encoding (could also be used for the HEC/CRC)
- * Although I'm not sure how to run it backwards for HEC->UAP
- */
-{
-	int    i, j;
-	uint8_t *cw, feedback;
-	cw = (uint8_t *) calloc(length - k, 1);
-
-	for (i = k - 1; i >= 0; i--) {
-		feedback = data[i] ^ cw[length - k - 1];
-		if (feedback != 0) {
-			for (j = length - k - 1; j > 0; j--)
-				if (g[j] != 0)
-					cw[j] = cw[j - 1] ^ feedback;
-				else
-					cw[j] = cw[j - 1];
-			cw[0] = g[0] && feedback;
-		} else {
-			for (j = length - k - 1; j > 0; j--)
-				cw[j] = cw[j - 1];
-			cw[0] = 0;
-		}
-	}
-	return cw;
-}
-
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte)
 {
@@ -186,15 +156,15 @@ char *unfec23(char *input, int length)
 	 * before it was encoded with fec2/3 */
 	int iptr, optr, blocks;
 	char* output;
-	uint8_t difference, count, *codeword;
-	uint8_t fecgen[] = {1,1,0,1,0,1};
+	uint8_t diff, count, check;
+	uint16_t data, codeword;
 
 	iptr = -15;
 	optr = -10;
-	difference = length % 10;
+	diff = length % 10;
 	// padding at end of data
-	if(0!=difference)
-		length += (10 - difference);
+	if(0!=diff)
+		length += (10 - diff);
 
 	blocks = length/10;
 	output = (char *) malloc(length);
@@ -208,57 +178,45 @@ char *unfec23(char *input, int length)
 		for(count=0;count<10;count++)
 			output[optr+count] = input[iptr+count];
 
-		// call fec23gen on data to generate the codeword
-		//codeword = fec23gen(input+iptr);
-		codeword = lfsr((uint8_t *) input+iptr, 15, 10, fecgen);
+		// grab data and error check in host format
+		data = air_to_host16(input+iptr, 10);
+		check = air_to_host8(input+iptr+10, 5);
 
-		// compare codeword to the 5 received bits
-		difference = 0;
-		for(count=0;count<5;count++)
-			if(codeword[count]!=input[iptr+10+count])
-				difference++;
+		// call fec23 on data to generate the codeword
+		codeword = fec23(data);
+		diff = check ^ (codeword & 0x1f);
 
 		/* no errors or single bit errors (errors in the parity bit):
-		 * (a strong hint it's a real packet) */
-		if(difference<=1) {
-		    free(codeword);
-		    continue;
-		}
-
-		// multiple different bits in the codeword
-		difference = 0;
-		for(count=0;count<5;count++) {
-			difference <<= 1;
-			difference |= codeword[count] ^ input[iptr+10+count];
-		}
-		free(codeword);
-
-		switch (difference) {
-		/* comments are the bit that's wrong and the value
-		 * of difference in binary, from the BT spec */
-			// 1000000000 11010
-			case 26: output[optr] ^= 1; break;
-			// 0100000000 01101
-			case 13: output[optr+1] ^= 1; break;
-			// 0010000000 11100
-			case 28: output[optr+2] ^= 1; break;
-			// 0001000000 01110
-			case 14: output[optr+3] ^= 1; break;
-			// 0000100000 00111
-			case 7: output[optr+4] ^= 1; break;
-			// 0000010000 11001
-			case 25: output[optr+5] ^= 1; break;
-			// 0000001000 10110
-			case 22: output[optr+6] ^= 1; break;
-			// 0000000100 01011
-			case 11: output[optr+7] ^= 1; break;
-			// 0000000010 11111
-			case 31: output[optr+8] ^= 1; break;
-			// 0000000001 10101
-			case 21: output[optr+9] ^= 1; break;
-			/* not one of these errors, probably multiple bit errors
-			 * or maybe not a real packet, safe to drop it? */
-			default: free(output); return 0;
+		 * (a strong hint it's a real packet)
+		 * Otherwise we need to corret the output*/
+		if (diff & (diff - 1)) {
+			switch (diff) {
+			/* comments are the bit that's wrong and the value
+			* of diff in binary, from the BT spec */
+				// 1000000000 11010
+				case 0x0b: output[optr] ^= 1; break;
+				// 0100000000 01101
+				case 0x16: output[optr+1] ^= 1; break;
+				// 0010000000 11100
+				case 0x07: output[optr+2] ^= 1; break;
+				// 0001000000 01110
+				case 0x0e: output[optr+3] ^= 1; break;
+				// 0000100000 00111
+				case 0x1c: output[optr+4] ^= 1; break;
+				// 0000010000 11001
+				case 0x13: output[optr+5] ^= 1; break;
+				// 0000001000 10110
+				case 0x0d: output[optr+6] ^= 1; break;
+				// 0000000100 01011
+				case 0x1a: output[optr+7] ^= 1; break;
+				// 0000000010 11111
+				case 0x1f: output[optr+8] ^= 1; break;
+				// 0000000001 10101
+				case 0x15: output[optr+9] ^= 1; break;
+				/* not one of these errors, probably multiple bit errors
+				* or maybe not a real packet, safe to drop it? */
+				default: free(output); return 0;
+			}
 		}
 	}
 	return output;

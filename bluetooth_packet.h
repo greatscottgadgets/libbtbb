@@ -115,8 +115,8 @@ static const uint64_t barker_correct[] = {
 	0xb000000000000000, 0xb000000000000000, 0xb000000000000000, 0x4e00000000000000};
 
 static const uint16_t fec23_gen_matrix[] = {
-	0x401a, 0x200d, 0x101c, 0x080e, 0x0407,
-	0x0219, 0x0116, 0x008b, 0x005f, 0x0035};
+	0x4015, 0x201f, 0x101a, 0x080d, 0x0413,
+	0x021c, 0x010e, 0x0087, 0x0056, 0x002b};
 
 typedef struct packet {
 	/* the raw symbol stream, one bit per char */
@@ -225,9 +225,6 @@ int sniff_ac(char *stream, int search_length);
  * at least search_length + 72.
  */
 int find_ac(char *stream, int search_length, uint32_t LAP);
-
-/* Error correction coding for Access Code */
-uint8_t *lfsr(uint8_t *data, int length, int k, const uint8_t *g);
 
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte);
