@@ -60,7 +60,6 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 	for(count = 0; count < search_length; count ++)
 	{
 		symbols = &stream[count];
-		barker >>= 1;
 		barker |= (symbols[67] << 6);
 		if(BARKER_DISTANCE[barker] <= max_distance)
 		{
@@ -72,6 +71,7 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 			if (check_syncword(&symbols[4], syncword))
 				return count;
 		}
+		barker >>= 1;
 	}
 	return -1;
 }
