@@ -54,12 +54,14 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 	if (LAP!=-1)
 		syncword = gen_syncword(LAP);
 
-	barker = air_to_host8(&stream[61], 7);
+	barker = air_to_host8(&stream[61], 6);
 
 	// The stream length must be 72 symbols longer than search_length.
 	for(count = 0; count < search_length; count ++)
 	{
 		symbols = &stream[count];
+		barker >>= 1;
+		barker |= (symbols[67] << 6);
 		if(BARKER_DISTANCE[barker] <= max_distance)
 		{
 			data_LAP = air_to_host32(&symbols[38], 24);
@@ -70,8 +72,6 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 			if (check_syncword(&symbols[4], syncword))
 				return count;
 		}
-		barker >>= 1;
-		barker |= (symbols[68] << 6);
 	}
 	return -1;
 }
