@@ -159,8 +159,6 @@ char *unfec23(char *input, int length)
 	uint8_t diff, check;
 	uint16_t data, codeword;
 
-	iptr = 0;
-	optr = 0;
 	diff = length % 10;
 	// padding at end of data
 	if(0!=diff)
@@ -168,7 +166,7 @@ char *unfec23(char *input, int length)
 
 	output = (char *) malloc(length);
 
-	while(optr<length) {
+	for (iptr = 0, optr = 0; optr<length; iptr += 15, optr += 10) {
 		// copy data to output
 		for(count=0;count<10;count++)
 			output[optr+count] = input[iptr+count];
@@ -213,8 +211,6 @@ char *unfec23(char *input, int length)
 				default: free(output); return 0;
 			}
 		}
-		iptr += 15;
-		optr += 10;
 	}
 	return output;
 }
