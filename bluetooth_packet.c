@@ -76,6 +76,122 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 	return -1;
 }
 
+/*  */
+uint64_t decode_syncword(uint64_t syncword)
+{
+	uint64_t codeword, syndrome;
+	syndrome_struct *errors;
+	codeword = syncword ^ pn;
+	syndrome = gen_syndrome(codeword);
+	if (syndrome) {
+		errors = find_syndrome(syndrome);
+		syncword ^= errors->error;
+	}
+	return syncword;
+}
+
+
+uint64_t gen_syndrome(uint64_t codeword)
+{
+	uint64_t syndrome;
+	int i;
+	syndrome = 0;
+	// look for a faster GF(2) matrix multiplication algorithm
+	for (i = 0; i < 34; i++)
+	{
+		syndrome <<= 1;
+		syndrome |= (count_bits(codeword & syndrome_matrix[i]) % 2);
+	}
+	return syndrome;
+}
+
+void gen_syndrome_map()
+{
+	int i;
+	for(i = 1; i < 3; i++)
+		cycle(0, 0, i, 0xcc7b7268ff614e1b);
+}
+
+void cycle(uint64_t error, int start, int depth, uint64_t codeword)
+{
+	uint64_t new_error, syndrome, base;
+	int i;
+	base = 1;
+	depth -= 1;
+	for (i = start; i < 58; i++)
+	{
+		new_error = (base << i);
+		new_error |= error;
+		if (depth)
+			cycle(new_error, i + 1, depth, codeword);
+		else {
+			syndrome = gen_syndrome(codeword ^ new_error);
+			add_syndrome(syndrome, new_error);
+		}
+	}
+}
+
+static syndrome_struct *syndrome_map = NULL;
+
+void add_syndrome(uint64_t syndrome, uint64_t error)
+{
+	syndrome_struct *s;
+	s = malloc(sizeof(syndrome_struct));
+	s->syndrome = syndrome;
+	s->error = error;
+	
+    HASH_ADD(hh, syndrome_map, syndrome, 8, s);
+}
+
+syndrome_struct *find_syndrome(uint64_t syndrome)
+{
+    syndrome_struct *s;
+
+    HASH_FIND(hh, syndrome_map, &syndrome, 8, s);  
+    return s;
+}
+
+/* Generate Sync Word from an LAP */
+uint64_t gen_syncword(int LAP)
+{
+	int i;
+	/* default codeword modified for PN sequence and barker code */
+	uint64_t codeword = 0xb0000002c7820e7e;
+	
+	/* the sync word generated is in host order, not air order */
+
+	for (i = 0; i < 24; i++)
+		if (LAP & (0x800000 >> i))
+			codeword ^= sw_matrix[i];
+	
+	return codeword;
+}
+
+/* Compare stream with sync word */
+int check_syncword(char *stream, uint64_t syncword)
+{
+	int biterrors;
+	uint64_t streamword; /* candidate sync word extracted from rx symbols */
+	uint64_t barker;     /* corrected barker code */
+
+	streamword = air_to_host64(stream, 64);
+
+	/* correct the barker code with a simple comparison */
+	barker = barker_correct[(uint8_t)(streamword >> 57)];
+	streamword = (streamword & 0x01ffffffffffffff) | barker;
+
+	//FIXME do error correction instead of detection
+	biterrors = count_bits(streamword ^ syncword);
+
+	if (biterrors >= 5)
+		return 0;
+
+	//if (biterrors)
+		//printf("POSSIBLE PACKET, LAP = %06x with %d errors\n", LAP, biterrors);
+
+	return 1;
+}
+
 void init_packet(packet *p, char *syms, int len)
 {
 	int i;
@@ -99,21 +215,6 @@ uint8_t reverse(char byte)
 	return (byte & 0x80) >> 7 | (byte & 0x40) >> 5 | (byte & 0x20) >> 3 | (byte & 0x10) >> 1 | (byte & 0x08) << 1 | (byte & 0x04) << 3 | (byte & 0x02) << 5 | (byte & 0x01) << 7;
 }
 
-/* Generate Sync Word from an LAP */
-uint64_t gen_syncword(int LAP)
-{
-	int i;
-	/* default codeword modified for PN sequence and barker code */
-	uint64_t codeword = 0xb0000002c7820e7e;
-	
-	/* the sync word generated is in host order, not air order */
-
-	for (i = 0; i < 24; i++)
-		if (LAP & (0x800000 >> i))
-			codeword ^= sw_matrix[i];
-	
-	return codeword;
-}
 
 /* Decode 1/3 rate FEC, three like symbols in a row */
 int unfec13(char *input, char *output, int length)
@@ -215,30 +316,6 @@ char *unfec23(char *input, int length)
 	return output;
 }
 
-/* Compare stream with sync word */
-int check_syncword(char *stream, uint64_t syncword)
-{
-	int biterrors;
-	uint64_t streamword; /* candidate sync word extracted from rx symbols */
-	uint64_t barker;     /* corrected barker code */
-
-	streamword = air_to_host64(stream, 64);
-
-	/* correct the barker code with a simple comparison */
-	barker = barker_correct[(uint8_t)(streamword >> 57)];
-	streamword = (streamword & 0x01ffffffffffffff) | barker;
-
-	//FIXME do error correction instead of detection
-	biterrors = count_bits(streamword ^ syncword);
-
-	if (biterrors >= 5)
-		return 0;
-
-	//if (biterrors)
-		//printf("POSSIBLE PACKET, LAP = %06x with %d errors\n", LAP, biterrors);
-
-	return 1;
-}
 
 /* Convert some number of bits of an air order array to a host order integer */
 uint8_t air_to_host8(char *air_order, int bits)

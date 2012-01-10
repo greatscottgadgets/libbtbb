@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "uthash.h"
 
 /* maximum number of symbols */
 #define MAX_SYMBOLS 3125
@@ -55,30 +56,23 @@ static const char *TYPE_NAMES[] = {
  * modified for barker code
  */
 static const uint64_t sw_matrix[] = {
-	0xfe000002a0d1c014,
-	0x01000003f0b9201f,
-	0x008000033ae40edb,
-	0x004000035fca99b9,
-	0x002000036d5dd208,
-	0x00100001b6aee904,
-	0x00080000db577482,
-	0x000400006dabba41,
-	0x00020002f46d43f4,
-	0x000100017a36a1fa,
-	0x00008000bd1b50fd,
-	0x000040029c3536aa,
-	0x000020014e1a9b55,
-	0x0000100265b5d37e,
-	0x0000080132dae9bf,
-	0x000004025bd5ea0b,
-	0x00000203ef526bd1,
-	0x000001033511ab3c,
-	0x000000819a88d59e,
-	0x00000040cd446acf,
-	0x00000022a41aabb3,
-	0x0000001390b5cb0d,
-	0x0000000b0ae27b52,
-	0x0000000585713da9};
+	0xfe000002a0d1c014, 0x01000003f0b9201f, 0x008000033ae40edb, 0x004000035fca99b9,
+	0x002000036d5dd208, 0x00100001b6aee904, 0x00080000db577482, 0x000400006dabba41,
+	0x00020002f46d43f4, 0x000100017a36a1fa, 0x00008000bd1b50fd, 0x000040029c3536aa,
+	0x000020014e1a9b55, 0x0000100265b5d37e, 0x0000080132dae9bf, 0x000004025bd5ea0b,
+	0x00000203ef526bd1, 0x000001033511ab3c, 0x000000819a88d59e, 0x00000040cd446acf,
+	0x00000022a41aabb3, 0x0000001390b5cb0d, 0x0000000b0ae27b52, 0x0000000585713da9};
+
+static const uint64_t syndrome_matrix[] = {
+   0x4be2573a00000000, 0x25f12b9d00000000, 0x591ac2f480000000, 0x676f364040000000,
+   0x33b79b2020000000, 0x19dbcd9010000000, 0x0cede6c808000000, 0x0676f36404000000,
+   0x48d92e8802000000, 0x246c974401000000, 0x59d41c9800800000, 0x2cea0e4c00400000,
+   0x5d97501c00200000, 0x6529ff3400100000, 0x7976a8a000080000, 0x3cbb545000040000,
+   0x1e5daa2800020000, 0x0f2ed51400010000, 0x4c753db000008000, 0x263a9ed800004000,
+   0x131d4f6c00002000, 0x426cf08c00001000, 0x6ad42f7c00000800, 0x7e88408400000400,
+   0x74a6777800000200, 0x3a533bbc00000100, 0x56cbcae400000080, 0x6087b24800000040,
+   0x3043d92400000020, 0x53c3bba800000010, 0x29e1ddd400000008, 0x5f12b9d000000004,
+   0x2f895ce800000002, 0x97c4ae7400000001};
 
 static const uint64_t barker_correct[] = {
 	0xb000000000000000, 0x4e00000000000000, 0x4e00000000000000, 0x4e00000000000000,
@@ -113,6 +107,8 @@ static const uint64_t barker_correct[] = {
 	0xb000000000000000, 0x4e00000000000000, 0x4e00000000000000, 0x4e00000000000000,
 	0xb000000000000000, 0xb000000000000000, 0xb000000000000000, 0xb000000000000000,
 	0xb000000000000000, 0xb000000000000000, 0xb000000000000000, 0x4e00000000000000};
+
+static const uint64_t pn = 0x83848D96BBCC54FC;
 
 static const uint16_t fec23_gen_matrix[] = {
 	0x2c01, 0x5802, 0x1c04, 0x3808, 0x7010,
@@ -229,8 +225,30 @@ int find_ac(char *stream, int search_length, uint32_t LAP);
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte);
 
+/*  */
+uint64_t decode_syncword(uint64_t syncword);
+
+/* Generate syndrome from the  */
+uint64_t gen_syndrome(uint64_t codeword);
+
 /* Generate Sync Word from an LAP */
 uint64_t gen_syncword(int LAP);
+
+void gen_syndrome_map();
+
+void cycle(uint64_t error, int start, int depth, uint64_t codeword);
+
+typedef struct {
+    uint64_t syndrome; /* key */
+    uint64_t error;             
+    UT_hash_handle hh;
+} syndrome_struct;
+
+/* Add syndrome/error to syndrome hash table */
+void add_syndrome(uint64_t syndrome, uint64_t error);
+
+/* Find syndrome/error in syndrome hash table */
+syndrome_struct *find_syndrome(uint64_t syndrome);
 
 /* Decode 1/3 rate FEC, three like symbols in a row */
 int unfec13(char *input, char *output, int length);
@@ -240,9 +258,6 @@ uint16_t fec23(uint16_t data);
 
 /* Decode 2/3 rate FEC, a (15,10) shortened Hamming code */
 char *unfec23(char *input, int length);
-
-/* When passed 10 bits of data this returns a pointer to a 5 bit hamming code */
-//char *fec23gen(char *data);
 
 /* Compare stream with sync word */
 int check_syncword(char *stream, uint64_t syncword);
