@@ -19,10 +19,12 @@
 
 CC = gcc
 
-SOURCE_FILES = test_packet.c
+SOURCE_FILES = test_syndromes.c
 LIBRARY_SOURCE = ../bluetooth_packet.c
-BINARY_FILES = test_packet
+BINARY_FILES = test_syndromes
 HEADER_FILES = ../bluetooth_packet.h
+
+CFLAGS += -DHASH_FUNCTION=HASH_FNV -DHASH_EMIT_KEYS=3
 
 all: test_packet
 
