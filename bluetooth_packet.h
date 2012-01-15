@@ -26,7 +26,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "uthash.h"
 
 /* maximum number of symbols */
 #define MAX_SYMBOLS 3125
@@ -225,9 +224,6 @@ int find_ac(char *stream, int search_length, uint32_t LAP);
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte);
 
-/*  */
-uint64_t decode_syncword(uint64_t syncword);
-
 /* Generate syndrome from the  */
 uint64_t gen_syndrome(uint64_t codeword);
 
@@ -235,20 +231,6 @@ uint64_t gen_syndrome(uint64_t codeword);
 uint64_t gen_syncword(int LAP);
 
 void gen_syndrome_map();
-
-void cycle(uint64_t error, int start, int depth, uint64_t codeword);
-
-typedef struct {
-    uint64_t syndrome; /* key */
-    uint64_t error;             
-    UT_hash_handle hh;
-} syndrome_struct;
-
-/* Add syndrome/error to syndrome hash table */
-void add_syndrome(uint64_t syndrome, uint64_t error);
-
-/* Find syndrome/error in syndrome hash table */
-syndrome_struct *find_syndrome(uint64_t syndrome);
 
 /* Decode 1/3 rate FEC, three like symbols in a row */
 int unfec13(char *input, char *output, int length);

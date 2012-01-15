@@ -26,6 +26,73 @@
 #endif
 
 #include "bluetooth_packet.h"
+#include "uthash.h"
+
+typedef struct {
+    uint64_t syndrome; /* key */
+    uint64_t error;             
+    UT_hash_handle hh;
+} syndrome_struct;
+
+static syndrome_struct *syndrome_map = NULL;
+
+void add_syndrome(uint64_t syndrome, uint64_t error)
+{
+	syndrome_struct *s;
+	s = malloc(sizeof(syndrome_struct));
+	s->syndrome = syndrome;
+	s->error = error;
+	
+    HASH_ADD(hh, syndrome_map, syndrome, 8, s);
+}
+
+syndrome_struct *find_syndrome(uint64_t syndrome)
+{
+    syndrome_struct *s;
+
+    HASH_FIND(hh, syndrome_map, &syndrome, 8, s);  
+    return s;
+}
+
+uint64_t gen_syndrome(uint64_t codeword)
+{
+	uint64_t syndrome;
+	int i;
+	syndrome = 0;
+	// look for a faster GF(2) matrix multiplication algorithm
+	for (i = 0; i < 34; i++)
+	{
+		syndrome <<= 1;
+		syndrome |= (count_bits(codeword & syndrome_matrix[i]) % 2);
+	}
+	return syndrome;
+}
+
+void cycle(uint64_t error, int start, int depth, uint64_t codeword)
+{
+	uint64_t new_error, syndrome, base;
+	int i;
+	base = 1;
+	depth -= 1;
+	for (i = start; i < 58; i++)
+	{
+		new_error = (base << i);
+		new_error |= error;
+		if (depth)
+			cycle(new_error, i + 1, depth, codeword);
+		else {
+			syndrome = gen_syndrome(codeword ^ new_error);
+			add_syndrome(syndrome, new_error);
+		}
+	}
+}
+
+void gen_syndrome_map()
+{
+	int i;
+	for(i = 1; i < 3; i++)
+		cycle(0, 0, i, 0xcc7b7268ff614e1b);
+}
 
 /*
  * Search a symbol stream to find a packet with arbitrary LAP, return index.
@@ -48,11 +115,12 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 	uint8_t barker; // barker code at end of sync word (includes MSB of LAP)
 	int max_distance = 1; // maximum number of bit errors to tolerate in barker
 	uint32_t data_LAP;
-	uint64_t syncword;
+	uint64_t syncword, codeword, syndrome;
+	syndrome_struct *errors;
 	char *symbols;
 
-	if (LAP!=-1)
-		syncword = gen_syncword(LAP);
+	if (syndrome_map == NULL)
+		gen_syndrome_map();
 
 	barker = air_to_host8(&stream[61], 6);
 
@@ -63,92 +131,23 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 		barker |= (symbols[67] << 6);
 		if(BARKER_DISTANCE[barker] <= max_distance)
 		{
-			data_LAP = air_to_host32(&symbols[38], 24);
+			syncword = air_to_host64(&symbols[38], 57);
+			syncword = syncword & 0x01ffffffffffffff;
+			codeword = syncword ^ pn;
+			syndrome = gen_syndrome(codeword);
+			if (syndrome) {
+				errors = find_syndrome(syndrome);
+				syncword ^= errors->error;
+			}
 
-			if (LAP == -1) 
-				syncword = gen_syncword(data_LAP);
-
-			if (check_syncword(&symbols[4], syncword))
+			data_LAP = (syncword >> 33) & 0xffffff;
+			if (LAP != -1 || data_LAP == LAP)
 				return count;
+
 		}
 		barker >>= 1;
 	}
 	return -1;
-}
-
-/*  */
-uint64_t decode_syncword(uint64_t syncword)
-{
-	uint64_t codeword, syndrome;
-	syndrome_struct *errors;
-	codeword = syncword ^ pn;
-	syndrome = gen_syndrome(codeword);
-	if (syndrome) {
-		errors = find_syndrome(syndrome);
-		syncword ^= errors->error;
-	}
-	return syncword;
-}
-
-
-uint64_t gen_syndrome(uint64_t codeword)
-{
-	uint64_t syndrome;
-	int i;
-	syndrome = 0;
-	// look for a faster GF(2) matrix multiplication algorithm
-	for (i = 0; i < 34; i++)
-	{
-		syndrome <<= 1;
-		syndrome |= (count_bits(codeword & syndrome_matrix[i]) % 2);
-	}
-	return syndrome;
-}
-
-void gen_syndrome_map()
-{
-	int i;
-	for(i = 1; i < 3; i++)
-		cycle(0, 0, i, 0xcc7b7268ff614e1b);
-}
-
-void cycle(uint64_t error, int start, int depth, uint64_t codeword)
-{
-	uint64_t new_error, syndrome, base;
-	int i;
-	base = 1;
-	depth -= 1;
-	for (i = start; i < 58; i++)
-	{
-		new_error = (base << i);
-		new_error |= error;
-		if (depth)
-			cycle(new_error, i + 1, depth, codeword);
-		else {
-			syndrome = gen_syndrome(codeword ^ new_error);
-			add_syndrome(syndrome, new_error);
-		}
-	}
-}
-
-static syndrome_struct *syndrome_map = NULL;
-
-void add_syndrome(uint64_t syndrome, uint64_t error)
-{
-	syndrome_struct *s;
-	s = malloc(sizeof(syndrome_struct));
-	s->syndrome = syndrome;
-	s->error = error;
-	
-    HASH_ADD(hh, syndrome_map, syndrome, 8, s);
-}
-
-syndrome_struct *find_syndrome(uint64_t syndrome)
-{
-    syndrome_struct *s;
-
-    HASH_FIND(hh, syndrome_map, &syndrome, 8, s);  
-    return s;
 }
 
 /* Generate Sync Word from an LAP */
@@ -167,7 +166,9 @@ uint64_t gen_syncword(int LAP)
 	return codeword;
 }
 
-/* Compare stream with sync word */
+/* Compare stream with sync word
+ * Unused, but useful to correct >3 bit errors with known LAP
+ */
 int check_syncword(char *stream, uint64_t syncword)
 {
 	int biterrors;
@@ -175,10 +176,7 @@ int check_syncword(char *stream, uint64_t syncword)
 	uint64_t barker;     /* corrected barker code */
 
 	streamword = air_to_host64(stream, 64);
-
-	/* correct the barker code with a simple comparison */
-	barker = barker_correct[(uint8_t)(streamword >> 57)];
-	streamword = (streamword & 0x01ffffffffffffff) | barker;
+	streamword = streamword & 0x01ffffffffffffff;
 
 	//FIXME do error correction instead of detection
 	biterrors = count_bits(streamword ^ syncword);

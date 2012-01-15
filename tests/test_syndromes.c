@@ -33,16 +33,16 @@ int test_syndromes() {
     ret = 0;
 
     printf("Testing syndromes\n");
-    printf("---------------\n");
+    printf("-----------------\n");
 
-    uint64_t input[2] = {
+    uint64_t syndrome_input[2] = {
         /* No errors */
         0xcc7b7268ff614e1b,
         /* Errors */
         0xcc7d7268ff614e1b
     };
 
-    uint64_t output[2] = {
+    uint64_t syndrome_output[2] = {
         /* No errors */
         0,
         /* Errors */
@@ -50,9 +50,8 @@ int test_syndromes() {
     };
 
     for(i = 0; i < 2; i++) {
-        syndrome = gen_syndrome(input[i]);
-        printf("0x%016llx\n", syndrome);
-        if (syndrome == output[i]) {
+        syndrome = gen_syndrome(syndrome_input[i]);
+        if (syndrome == syndrome_output[i]) {
             printf(".");
         } else {
             printf("F");
@@ -60,15 +59,34 @@ int test_syndromes() {
         }
     }
 
+    uint64_t syncword_input[2] = {
+        /* No errors */
+        0xcc7b7268ff614e1b,
+        /* Errors */
+        0xcc7b7268ff514e1b
+    };
+
+    uint64_t syncword_output[2] = {
+        /* No errors */
+        0x4ffffffe44ad1ae7,
+        /* Errors */
+        0x4ffffffe44ad1ae7
+    };
+
     gen_syndrome_map();
-    syncword = decode_syncword(0xcc7b7268ff614e1b ^ pn);
-    printf("Syncword 0x%016llx\n", syncword);
-    syncword = decode_syncword(0xcc7b7268ff514e1b ^ pn);
-    printf("Syncword 0x%016llx\n", syncword);
+    for(i = 0; i < 2; i++) {
+        syncword = decode_syncword(syncword_input[i] ^ pn);
+        if (syncword == syncword_output[i]) {
+            printf(".");
+        } else {
+            printf("F");
+            ret++;
+        }
+    }
 
 	if (ret > 0)
 		printf("%d errors\n", ret);
-    printf("\n--------------------\n");
+    printf("\n-----------------\n");
     printf("Done testing syndrome generation\n");
     return ret;
 }
