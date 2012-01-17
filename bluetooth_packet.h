@@ -230,8 +230,6 @@ uint64_t gen_syndrome(uint64_t codeword);
 /* Generate Sync Word from an LAP */
 uint64_t gen_syncword(int LAP);
 
-void gen_syndrome_map();
-
 /* Decode 1/3 rate FEC, three like symbols in a row */
 int unfec13(char *input, char *output, int length);
 
@@ -242,7 +240,7 @@ uint16_t fec23(uint16_t data);
 char *unfec23(char *input, int length);
 
 /* Compare stream with sync word */
-int check_syncword(char *stream, uint64_t syncword);
+int check_syncword(uint64_t streamword, uint64_t syncword);
 
 /* Convert some number of bits of an air order array to a host order integer */
 uint8_t air_to_host8(char *air_order, int bits);

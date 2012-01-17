@@ -131,17 +131,23 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 		barker |= (symbols[67] << 6);
 		if(BARKER_DISTANCE[barker] <= max_distance)
 		{
-			syncword = air_to_host64(&symbols[38], 57);
-			syncword = syncword & 0x01ffffffffffffff;
+			// Error correction
+			syncword = air_to_host64(&symbols[4], 64);
 			codeword = syncword ^ pn;
 			syndrome = gen_syndrome(codeword);
 			if (syndrome) {
 				errors = find_syndrome(syndrome);
-				syncword ^= errors->error;
+				/* If we have an error, correct it
+				 *it's too big for us to correct
+				 */
+				if (errors != NULL)
+					syncword ^= errors->error;
+				else
+					continue;
 			}
 
-			data_LAP = (syncword >> 33) & 0xffffff;
-			if (LAP != -1 || data_LAP == LAP)
+			data_LAP = (syncword >> 34) & 0xffffff;
+			if (LAP == -1 || data_LAP == LAP)
 				return count;
 
 		}
@@ -169,14 +175,9 @@ uint64_t gen_syncword(int LAP)
 /* Compare stream with sync word
  * Unused, but useful to correct >3 bit errors with known LAP
  */
-int check_syncword(char *stream, uint64_t syncword)
+int check_syncword(uint64_t streamword, uint64_t syncword)
 {
 	int biterrors;
-	uint64_t streamword; /* candidate sync word extracted from rx symbols */
-	uint64_t barker;     /* corrected barker code */
-
-	streamword = air_to_host64(stream, 64);
-	streamword = streamword & 0x01ffffffffffffff;
 
 	//FIXME do error correction instead of detection
 	biterrors = count_bits(streamword ^ syncword);
