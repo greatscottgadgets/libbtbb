@@ -115,7 +115,7 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 	uint8_t barker; // barker code at end of sync word (includes MSB of LAP)
 	int max_distance = 1; // maximum number of bit errors to tolerate in barker
 	uint32_t data_LAP;
-	uint64_t syncword, codeword, syndrome;
+	uint64_t syncword, codeword, syndrome, corrected_barker;
 	syndrome_struct *errors;
 	char *symbols;
 
@@ -133,6 +133,11 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 		{
 			// Error correction
 			syncword = air_to_host64(&symbols[4], 64);
+
+			/* correct the barker code with a simple comparison */
+			corrected_barker = barker_correct[(uint8_t)(syncword >> 57)];
+			syncword = (syncword & 0x01ffffffffffffff) | corrected_barker;
+
 			codeword = syncword ^ pn;
 			syndrome = gen_syndrome(codeword);
 			if (syndrome) {
