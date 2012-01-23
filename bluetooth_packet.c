@@ -27,6 +27,7 @@
 
 #include "bluetooth_packet.h"
 #include "uthash.h"
+#include "sw_check_tables.h"
 
 typedef struct {
     uint64_t syndrome; /* key */
@@ -56,15 +57,15 @@ syndrome_struct *find_syndrome(uint64_t syndrome)
 
 uint64_t gen_syndrome(uint64_t codeword)
 {
-	uint64_t syndrome;
-	int i;
-	syndrome = 0;
-	// look for a faster GF(2) matrix multiplication algorithm
-	for (i = 0; i < 34; i++)
-	{
-		syndrome <<= 1;
-		syndrome |= (count_bits(codeword & syndrome_matrix[i]) % 2);
-	}
+	uint64_t syndrome = codeword & 0xffffffff;
+	codeword >>= 32;
+	syndrome ^= sw_check_table4[codeword & 0xff];
+	codeword >>= 8;
+	syndrome ^= sw_check_table5[codeword & 0xff];
+	codeword >>= 8;
+	syndrome ^= sw_check_table6[codeword & 0xff];
+	codeword >>= 8;
+	syndrome ^= sw_check_table7[codeword & 0xff];
 	return syndrome;
 }
 
