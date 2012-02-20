@@ -113,6 +113,17 @@ static const uint16_t fec23_gen_matrix[] = {
 	0x2c01, 0x5802, 0x1c04, 0x3808, 0x7010,
 	0x4c20, 0x3440, 0x6880, 0x7d00, 0x5600};
 
+/* Need to return more than just the offset,
+ * this allows us to correct the data too
+ */
+typedef struct access_code {
+	/* AC offset from start of data */
+	int offset;
+
+	/* Corrected LAP */
+	uint32_t LAP;
+} access_code;
+
 typedef struct packet {
 	/* the raw symbol stream, one bit per char */
 	//FIXME maybe this should be a vector so we can grow it only to the size
@@ -213,13 +224,13 @@ int payload_crc(packet* p);
  * Search a symbol stream to find a packet with arbitrary LAP, return index.
  * The length of the stream must be at least search_length + 72.
  */
-int sniff_ac(char *stream, int search_length);
+access_code sniff_ac(char *stream, int search_length);
 
 /*
  * Search for known LAP and return the index.  The length of the stream must be
  * at least search_length + 72.
  */
-int find_ac(char *stream, int search_length, uint32_t LAP);
+access_code find_ac(char *stream, int search_length, uint32_t LAP);
 
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte);

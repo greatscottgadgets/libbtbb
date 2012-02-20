@@ -91,7 +91,7 @@ void cycle(uint64_t error, int start, int depth, uint64_t codeword)
 void gen_syndrome_map()
 {
 	int i;
-	for(i = 1; i < 3; i++)
+	for(i = 1; i <= 4; i++)
 		cycle(0, 0, i, 0xcc7b7268ff614e1b);
 }
 
@@ -99,7 +99,7 @@ void gen_syndrome_map()
  * Search a symbol stream to find a packet with arbitrary LAP, return index.
  * The length of the stream must be at least search_length + 72.
  */
-int sniff_ac(char *stream, int search_length)
+access_code sniff_ac(char *stream, int search_length)
 {
 	/* Find any/all LAPs (LAP = =-1) */
 	return find_ac(stream, search_length, -1);
@@ -109,7 +109,7 @@ int sniff_ac(char *stream, int search_length)
  * Search for known LAP and return the index.  The length of the stream must be
  * at least search_length + 72.
  */
-int find_ac(char *stream, int search_length, uint32_t LAP)
+access_code find_ac(char *stream, int search_length, uint32_t LAP)
 {
 	/* Looks for an AC in the stream */
 	int count;
@@ -118,6 +118,7 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 	uint32_t data_LAP;
 	uint64_t syncword, codeword, syndrome, corrected_barker;
 	syndrome_struct *errors;
+	access_code ac;
 	char *symbols;
 
 	if (syndrome_map == NULL)
@@ -153,13 +154,18 @@ int find_ac(char *stream, int search_length, uint32_t LAP)
 			}
 
 			data_LAP = (syncword >> 34) & 0xffffff;
-			if (LAP == -1 || data_LAP == LAP)
-				return count;
+			if (LAP == -1 || data_LAP == LAP) {
+				ac.offset = count;
+				ac.LAP = data_LAP;
+				return ac;
+			}
 
 		}
 		barker >>= 1;
 	}
-	return -1;
+	ac.offset = -1;
+	ac.LAP = -1;
+	return ac;
 }
 
 /* Generate Sync Word from an LAP */
