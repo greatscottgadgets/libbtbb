@@ -122,6 +122,9 @@ typedef struct access_code {
 
 	/* Corrected LAP */
 	uint32_t LAP;
+
+	/* Number of error bits corrected */
+	int error_count;
 } access_code;
 
 typedef struct packet {

@@ -157,6 +157,10 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP)
 			if (LAP == -1 || data_LAP == LAP) {
 				ac.offset = count;
 				ac.LAP = data_LAP;
+				if (errors != NULL)
+					ac.error_count = count_bits(errors->error);
+				else
+					ac.error_count = 0;
 				return ac;
 			}
 
