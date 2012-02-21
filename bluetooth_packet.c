@@ -88,10 +88,10 @@ void cycle(uint64_t error, int start, int depth, uint64_t codeword)
 	}
 }
 
-void gen_syndrome_map()
+void gen_syndrome_map(int bit_errors)
 {
 	int i;
-	for(i = 1; i <= 4; i++)
+	for(i = 1; i <= bit_errors; i++)
 		cycle(0, 0, i, 0xcc7b7268ff614e1b);
 }
 
@@ -112,7 +112,7 @@ access_code sniff_ac(char *stream, int search_length)
 access_code find_ac(char *stream, int search_length, uint32_t LAP)
 {
 	/* Looks for an AC in the stream */
-	int count;
+	int count, bit_errors;
 	uint8_t barker; // barker code at end of sync word (includes MSB of LAP)
 	int max_distance = 1; // maximum number of bit errors to tolerate in barker
 	uint32_t data_LAP;
@@ -122,7 +122,7 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP)
 	char *symbols;
 
 	if (syndrome_map == NULL)
-		gen_syndrome_map();
+		gen_syndrome_map(MAX_AC_ERRORS);
 
 	barker = air_to_host8(&stream[61], 6);
 
@@ -142,13 +142,16 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP)
 
 			codeword = syncword ^ pn;
 			syndrome = gen_syndrome(codeword);
+			bit_errors = 0;
 			if (syndrome) {
 				errors = find_syndrome(syndrome);
 				/* If we have an error, correct it
 				 *it's too big for us to correct
 				 */
-				if (errors != NULL)
+				if (errors != NULL) {
 					syncword ^= errors->error;
+					bit_errors = count_bits(errors->error);
+				}
 				else
 					continue;
 			}
@@ -157,10 +160,7 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP)
 			if (LAP == -1 || data_LAP == LAP) {
 				ac.offset = count;
 				ac.LAP = data_LAP;
-				if (errors != NULL)
-					ac.error_count = count_bits(errors->error);
-				else
-					ac.error_count = 0;
+				ac.error_count = bit_errors;
 				return ac;
 			}
 

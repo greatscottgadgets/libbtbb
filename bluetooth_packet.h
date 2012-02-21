@@ -30,6 +30,9 @@
 /* maximum number of symbols */
 #define MAX_SYMBOLS 3125
 
+/* Defaut maximum AC bit errors, this can be overridden at runtime */
+#define MAX_AC_ERRORS 4
+
 /* minimum header bit errors to indicate that this is an ID packet */
 static const int ID_THRESHOLD = 5;
 
@@ -238,8 +241,11 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP);
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte);
 
-/* Generate syndrome from the  */
+/* Generate syndrome from the AC codeword */
 uint64_t gen_syndrome(uint64_t codeword);
+
+/* Generate the syndrome map for up to 0 to bit_errors */
+void gen_syndrome_map(int bit_errors);
 
 /* Generate Sync Word from an LAP */
 uint64_t gen_syncword(int LAP);
