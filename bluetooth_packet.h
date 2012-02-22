@@ -31,7 +31,9 @@
 #define MAX_SYMBOLS 3125
 
 /* Defaut maximum AC bit errors, this can be overridden at runtime */
+#ifndef MAX_AC_ERRORS
 #define MAX_AC_ERRORS 4
+#endif /* MAX_AC_ERRORS */
 
 /* minimum header bit errors to indicate that this is an ID packet */
 static const int ID_THRESHOLD = 5;
