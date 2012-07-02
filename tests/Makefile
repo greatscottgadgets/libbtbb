@@ -17,7 +17,7 @@
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
 
-CC = gcc
+CC ?= gcc
 
 SOURCE_FILES = test_syndromes.c
 LIBRARY_SOURCE = ../bluetooth_packet.c
