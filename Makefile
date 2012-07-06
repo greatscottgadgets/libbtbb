@@ -18,6 +18,7 @@
 # Boston, MA 02110-1301, USA.
 
 CC      ?= gcc
+AR      ?= ar
 INSTALL  = /usr/bin/install
 LDCONFIG = /sbin/ldconfig
 
@@ -27,6 +28,7 @@ INCLUDE_DIR ?= /usr/include
 LIB_NAME = libbtbb.so
 SONAME   = $(LIB_NAME).0
 LIB_FILE = $(SONAME).1
+STATIC_LIB_FILE = libbtbb.a
 
 SOURCE_FILES = bluetooth_packet.c bluetooth_piconet.c
 OBJECT_FILES = $(SOURCE_FILES:%.c=%.o)
@@ -40,6 +42,9 @@ $(LIB_FILE): $(OBJECT_FILES)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -g -O2 -Wall -fPIC  -c $(SOURCE_FILES)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(SONAME) -o $(LIB_FILE) $(OBJECT_FILES)
 
+$(STATIC_LIB_FILE): $(OBJECT_FILES)
+	$(AR) rcs $(STATIC_LIB_FILE) $(OBJECT_FILES)
+
 clean:
 	rm -f *.o $(LIB_FILE)
 
@@ -47,6 +52,13 @@ install: $(LIB_FILE)
 	$(INSTALL) -m 0644 $(LIB_FILE) $(INSTALL_DIR)
 	$(INSTALL) -m 0644 $(HEADER_FILES) $(INCLUDE_DIR)
 	$(LDCONFIG)
+	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(LIB_NAME)
+	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(SONAME)
+
+cygwin-install: $(LIB_FILE) $(STATIC_LIB_FILE)
+	$(INSTALL) -m 0644 $(LIB_FILE) $(INSTALL_DIR)
+	$(INSTALL) -m 0644 $(HEADER_FILES) $(INCLUDE_DIR)
+	$(INSTALL) -m 0644 $(STATIC_LIB_FILE) $(INSTALL_DIR)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(LIB_NAME)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(SONAME)
 
