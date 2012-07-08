@@ -129,7 +129,7 @@ typedef struct access_code {
 	uint32_t LAP;
 
 	/* Number of error bits corrected */
-	int error_count;
+	uint8_t error_count;
 } access_code;
 
 typedef struct packet {
@@ -208,6 +208,9 @@ typedef struct packet {
 
 	/* native (local) clock */
 	uint32_t clkn;
+
+	/* Number of bit errors in the AC */
+	uint8_t ac_errors;
 } packet;
 
 /* type-specific CRC checks and decoding */
@@ -321,6 +324,6 @@ uint32_t clock_from_fhs(packet* p);
 void init_packet(packet *p, char *syms, int len);
 
 /* count the number of 1 bits in a uint64_t */
-int count_bits(uint64_t n);
+uint8_t count_bits(uint64_t n);
 
 #endif /* INCLUDED_BLUETOOTH_PACKET_H */

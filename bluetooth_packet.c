@@ -112,8 +112,9 @@ access_code sniff_ac(char *stream, int search_length)
 access_code find_ac(char *stream, int search_length, uint32_t LAP)
 {
 	/* Looks for an AC in the stream */
-	int count, bit_errors;
+	int count;
 	uint8_t barker; // barker code at end of sync word (includes MSB of LAP)
+	uint8_t bit_errors;
 	int max_distance = 1; // maximum number of bit errors to tolerate in barker
 	uint32_t data_LAP;
 	uint64_t syncword, codeword, syndrome, corrected_barker;
@@ -145,9 +146,7 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP)
 			bit_errors = 0;
 			if (syndrome) {
 				errors = find_syndrome(syndrome);
-				/* If we have an error, correct it
-				 *it's too big for us to correct
-				 */
+				/* If we have an error, correct it */
 				if (errors != NULL) {
 					syncword ^= errors->error;
 					bit_errors = count_bits(errors->error);
@@ -193,16 +192,13 @@ uint64_t gen_syncword(int LAP)
  */
 int check_syncword(uint64_t streamword, uint64_t syncword)
 {
-	int biterrors;
+	uint8_t biterrors;
 
 	//FIXME do error correction instead of detection
 	biterrors = count_bits(streamword ^ syncword);
 
 	if (biterrors >= 5)
 		return 0;
-
-	//if (biterrors)
-		//printf("POSSIBLE PACKET, LAP = %06x with %d errors\n", LAP, biterrors);
 
 	return 1;
 }
@@ -1116,9 +1112,9 @@ uint32_t clock_from_fhs(packet* p)
 }
 
 /* count the number of 1 bits in a uint64_t */
-int count_bits(uint64_t n)
+uint8_t count_bits(uint64_t n)
 {
-	int i = 0;
+	uint8_t i = 0;
 	for (i = 0; n != 0; i++)
 		n &= n - 1;
 	return i;
