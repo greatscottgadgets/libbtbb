@@ -62,4 +62,4 @@ cygwin-install: $(LIB_FILE) $(STATIC_LIB_FILE)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(LIB_NAME)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(SONAME)
 
-.PHONY: all clean install libbtbb
+.PHONY: all clean install cygwin-install libbtbb
