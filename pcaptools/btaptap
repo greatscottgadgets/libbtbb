@@ -22,7 +22,7 @@
 import sys
 import struct
 import time
-from pcapdump import *
+from pcapdump.pcapdump import *
 
 DLT_EN10MB = 1
 DLT_BLUETOOTH_HCI_H4 = 187
