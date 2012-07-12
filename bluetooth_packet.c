@@ -125,17 +125,17 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP)
 	if (syndrome_map == NULL)
 		gen_syndrome_map(MAX_AC_ERRORS);
 
-	barker = air_to_host8(&stream[61], 6);
+	barker = air_to_host8(&stream[57], 6);
 
 	// The stream length must be 72 symbols longer than search_length.
-	for(count = 0; count < search_length; count ++)
+	for(count = 0; count < search_length; count++)
 	{
 		symbols = &stream[count];
-		barker |= (symbols[67] << 6);
+		barker |= (symbols[63] << 6);
 		if(BARKER_DISTANCE[barker] <= max_distance)
 		{
 			// Error correction
-			syncword = air_to_host64(&symbols[4], 64);
+			syncword = air_to_host64(symbols, 64);
 
 			/* correct the barker code with a simple comparison */
 			corrected_barker = barker_correct[(uint8_t)(syncword >> 57)];
@@ -179,7 +179,6 @@ uint64_t gen_syncword(int LAP)
 	uint64_t codeword = 0xb0000002c7820e7e;
 	
 	/* the sync word generated is in host order, not air order */
-
 	for (i = 0; i < 24; i++)
 		if (LAP & (0x800000 >> i))
 			codeword ^= sw_matrix[i];
