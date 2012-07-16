@@ -133,7 +133,7 @@ typedef struct access_code {
 } access_code;
 
 typedef struct packet {
-	/* the raw symbol stream, one bit per char */
+	/* the raw symbol stream (less the preamble), one bit per char */
 	//FIXME maybe this should be a vector so we can grow it only to the size
 	//needed and later shrink it if we find we have more symbols than necessary
 	char symbols[MAX_SYMBOLS];

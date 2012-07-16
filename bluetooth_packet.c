@@ -208,7 +208,7 @@ void init_packet(packet *p, char *syms, int len)
 
 	for (i = 0; i < len; i++)
 		p->symbols[i] = syms[i]; 
-	p->LAP = air_to_host32(&p->symbols[38], 24);
+	p->LAP = air_to_host32(&p->symbols[34], 24);
 	p->length = len;
 	p->whitened = 1;
 	p->have_UAP = 0;
@@ -502,9 +502,9 @@ int payload_crc(packet* p)
 int fhs(int clock, packet* p)
 {
 	/* skip the access code and packet header */
-	char *stream = p->symbols + 126;
+	char *stream = p->symbols + 122;
 	/* number of symbols remaining after access code and packet header */
-	int size = p->length - 126;
+	int size = p->length - 122;
 
 	p->payload_length = 20;
 
@@ -588,9 +588,9 @@ int DM(int clock, packet* p)
 	/* maximum payload length */
 	int max_length;
 	/* skip the access code and packet header */
-	char *stream = p->symbols + 126;
+	char *stream = p->symbols + 122;
 	/* number of symbols remaining after access code and packet header */
-	int size = p->length - 126;
+	int size = p->length - 122;
 
 	switch(p->packet_type)
 	{
@@ -652,9 +652,9 @@ int DH(int clock, packet* p)
 	/* maximum payload length */
 	int max_length;
 	/* skip the access code and packet header */
-	char *stream = p->symbols + 126;
+	char *stream = p->symbols + 122;
 	/* number of symbols remaining after access code and packet header */
-	int size = p->length - 126;
+	int size = p->length - 122;
 	
 	switch(p->packet_type)
 	{
@@ -698,10 +698,10 @@ int DH(int clock, packet* p)
 int EV3(int clock, packet* p)
 {
 	/* skip the access code and packet header */
-	char *stream = p->symbols + 126;
+	char *stream = p->symbols + 122;
 
 	/* number of symbols remaining after access code and packet header */
-	int size = p->length - 126;
+	int size = p->length - 122;
 
 	/* maximum payload length is 30 bytes + 2 bytes CRC */
 	int maxlength = 32;
@@ -731,10 +731,10 @@ int EV4(int clock, packet* p)
 	char *corrected;
 
 	/* skip the access code and packet header */
-	char *stream = p->symbols + 126;
+	char *stream = p->symbols + 122;
 
 	/* number of symbols remaining after access code and packet header */
-	int size = p->length - 126;
+	int size = p->length - 122;
 
 	/*
 	 * maximum payload length is 120 bytes + 2 bytes CRC
@@ -784,10 +784,10 @@ int EV4(int clock, packet* p)
 int EV5(int clock, packet* p)
 {
 	/* skip the access code and packet header */
-	char *stream = p->symbols + 126;
+	char *stream = p->symbols + 122;
 
 	/* number of symbols remaining after access code and packet header */
-	int size = p->length - 126;
+	int size = p->length - 122;
 
 	/* maximum payload length is 180 bytes + 2 bytes CRC */
 	int maxlength = 182;
@@ -816,9 +816,9 @@ int EV5(int clock, packet* p)
 int HV(int clock, packet* p)
 {
 	/* skip the access code and packet header */
-	char *stream = p->symbols + 126;
+	char *stream = p->symbols + 122;
 	/* number of symbols remaining after access code and packet header */
-	int size = p->length - 126;
+	int size = p->length - 122;
 
 	if(size < 240) {
 		p->payload_length = 0;
@@ -859,7 +859,7 @@ int HV(int clock, packet* p)
 uint8_t try_clock(int clock, packet* p)
 {
 	/* skip 72 bit access code */
-	char *stream = p->symbols + 72;
+	char *stream = p->symbols + 68;
 	/* 18 bit packet header */
 	char header[18];
 	char unwhitened[18];
@@ -879,7 +879,7 @@ uint8_t try_clock(int clock, packet* p)
 int decode_header(packet* p)
 {
 	/* skip 72 bit access code */
-	char *stream = p->symbols + 72;
+	char *stream = p->symbols + 68;
 	/* 18 bit packet header */
 	char header[18];
 	uint8_t UAP;
@@ -1041,13 +1041,13 @@ int get_type(packet* p)
 int header_present(packet* p)
 {
 	/* skip to last bit of sync word */
-	char *stream = p->symbols + 67;
+	char *stream = p->symbols + 63;
 	int be = 0; /* bit errors */
 	char msb;   /* most significant (last) bit of sync word */
 	int a, b, c;
 
 	/* check that we have enough symbols */
-	if (p->length < 126)
+	if (p->length < 122)
 		return 0;
 
 	/* check that the AC trailer is correct */
