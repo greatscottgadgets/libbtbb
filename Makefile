@@ -34,19 +34,17 @@ SOURCE_FILES = bluetooth_packet.c bluetooth_piconet.c
 OBJECT_FILES = $(SOURCE_FILES:%.c=%.o)
 HEADER_FILES = $(SOURCE_FILES:%.c=%.h)
 
-all: libbtbb
+all: $(LIB_FILE)
 
-libbtbb: $(LIB_FILE)
-
-$(LIB_FILE): $(OBJECT_FILES)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -g -O2 -Wall -fPIC  -c $(SOURCE_FILES)
+$(LIB_FILE): $(SOURCE_FILES)
+	$(CC) $(CFLAGS) -fPIC -c $(SOURCE_FILES)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(SONAME) -o $(LIB_FILE) $(OBJECT_FILES)
 
 $(STATIC_LIB_FILE): $(OBJECT_FILES)
 	$(AR) rcs $(STATIC_LIB_FILE) $(OBJECT_FILES)
 
 clean:
-	rm -f *.o $(LIB_FILE)
+	rm -f *.o $(LIB_FILE) $(STATIC_LIB_FILE)
 
 install: $(LIB_FILE)
 	$(INSTALL) -m 0644 $(LIB_FILE) $(INSTALL_DIR)
@@ -62,4 +60,4 @@ cygwin-install: $(LIB_FILE) $(STATIC_LIB_FILE)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(LIB_NAME)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(SONAME)
 
-.PHONY: all clean install cygwin-install libbtbb
+.PHONY: all clean install cygwin-install
