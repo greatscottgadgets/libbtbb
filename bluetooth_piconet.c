@@ -394,7 +394,7 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 		pnet->clk_offset = (first_clock - (pnet->first_pkt_time & 0x3f)) & 0x3f;
 		if (!pnet->have_UAP)
 			printf("We have a winner! UAP = 0x%x found after %d total packets.\n",
-				pnet->UAP, pnet->total_packets_observed);
+				pnet->clock6_candidates[first_clock], pnet->total_packets_observed);
 		else
 			printf("We have a winner! CLK6 = 0x%x found after %d total packets.\n",
 				pnet->clk_offset, pnet->total_packets_observed);
