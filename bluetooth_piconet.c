@@ -276,7 +276,7 @@ int channel_winnow(int offset, char channel, piconet *pnet)
 	} else if (new_count == 0) {
 		reset(pnet);
 	} else {
-		printf("%d CLK1-27 candidates remaining\n", new_count);
+		printf("%d CLK1-27 candidates remaining (channel=%d)\n", new_count, channel);
 	}
 
 	return new_count;
@@ -304,8 +304,10 @@ int winnow(piconet *pnet)
 			 * there is aliasing.
 			 */
 			if (!pnet->looks_like_afh && (index == last_index + 1)
-					&& (channel == last_channel))
+					&& (channel == last_channel)) {
 				pnet->looks_like_afh = 1;
+				printf("Looks Like AFH\n");
+			}
 		}
 	}
 	
@@ -351,6 +353,8 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 			if (!pnet->got_first_packet || UAP == pnet->clock6_candidates[count])
 				retval = crc_check(clock, pkt);
 
+			if ((pnet->have_UAP) && (UAP != pnet->UAP))
+				retval = -1;
 			// debugging with a particular UAP
 			//if (UAP == 0x61 || pnet->clock6_candidates[count] == 0x61)
 				//printf("%u: UAP %02x, %02x, type %u, clock %u, clkn %u, first %u, result %d\n", count, UAP, pnet->clock6_candidates[count], pkt->packet_type, clock, clkn, pnet->first_pkt_time, retval);
@@ -388,17 +392,23 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 
 	if (remaining == 1) {
 		pnet->clk_offset = (first_clock - (pnet->first_pkt_time & 0x3f)) & 0x3f;
+		if (!pnet->have_UAP)
+			printf("We have a winner! UAP = 0x%x found after %d total packets.\n",
+				pnet->UAP, pnet->total_packets_observed);
+		else
+			printf("We have a winner! CLK6 = 0x%x found after %d total packets.\n",
+				pnet->clk_offset, pnet->total_packets_observed);
 		pnet->UAP = pnet->clock6_candidates[first_clock];
 		pnet->have_clk6 = 1;
 		pnet->have_UAP = 1;
-		printf("We have a winner! UAP = 0x%x found after %d total packets.\n",
-				pnet->UAP, pnet->total_packets_observed);
 		pnet->total_packets_observed = 0;
 		return 1;
 	}
 
-	if (remaining == 0)
+	if (remaining == 0) {
+		printf("Resetting piconet...\n");
 		reset(pnet);
+	}
 
 	return 0;
 }

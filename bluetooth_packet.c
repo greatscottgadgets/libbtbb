@@ -156,7 +156,7 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP)
 			}
 
 			data_LAP = (syncword >> 34) & 0xffffff;
-			if (LAP == -1 || data_LAP == LAP) {
+			if (LAP == 0xffffffff || data_LAP == LAP) {
 				ac.offset = count;
 				ac.LAP = data_LAP;
 				ac.error_count = bit_errors;
