@@ -25,6 +25,7 @@
 #endif
 
 #include "bluetooth_piconet.h"
+#include "uthash.h"
 #include <stdlib.h>
 
 void init_piconet(piconet *pnet)
@@ -41,28 +42,75 @@ void init_piconet(piconet *pnet)
 	pnet->have_clk27 = 0;
 }
 
-/* initialize the hop reversal process */
-int init_hop_reversal(int aliased, piconet *pnet)
+/* Container for hopping pattern */
+typedef struct {
+    uint32_t address; /* key */
+    char *sequence;             
+    UT_hash_handle hh;
+} hopping_struct;
+
+static hopping_struct *hopping_map = NULL;
+
+/* Function to calculate piconet hopping patterns and add to hash map */
+void gen_hop_pattern(piconet *pnet)
 {
-	int max_candidates;
-	uint32_t clock;
-
 	printf("\nCalculating complete hopping sequence.\n");
-
-	if(aliased)
-		max_candidates = (SEQUENCE_LENGTH / ALIASED_CHANNELS) / 32;
-	else
-		max_candidates = (SEQUENCE_LENGTH / CHANNELS) / 32;
-		
-	/* this can hold twice the approximate number of initial candidates */
-	pnet->clock_candidates = (uint32_t*) malloc(sizeof(uint32_t) * max_candidates);
-
 	/* this holds the entire hopping sequence */
 	pnet->sequence = (char*) malloc(SEQUENCE_LENGTH);
 
 	precalc(pnet);
 	address_precalc(((pnet->UAP<<24) | pnet->LAP) & 0xfffffff, pnet);
 	gen_hops(pnet);
+
+	printf("Hopping pattern calculated.\n");
+}
+
+/* Function to fetch piconet hopping patterns */
+void get_hop_pattern(piconet *pnet)
+{
+	hopping_struct *s;
+	uint32_t address;
+	char *src, *dest;
+	int i;
+
+	address = ((pnet->UAP<<24) | pnet->LAP) & 0xfffffff;
+	HASH_FIND(hh, hopping_map, &address, 4, s);
+	
+	if (s == NULL) {
+		gen_hop_pattern(pnet);
+		s = malloc(sizeof(hopping_struct));
+		s->address = address;
+		/* Copy sequence from piconet to hash */
+		s->sequence = (char*) malloc(SEQUENCE_LENGTH);
+		src = pnet->sequence;
+		dest = s->sequence;
+		HASH_ADD(hh, hopping_map, address, 4, s);
+	} else {
+		printf("\nFound complete hopping sequence in cache.\n");
+		/* Copy from hash to piconet */
+		pnet->sequence = (char*) malloc(SEQUENCE_LENGTH);
+		dest = pnet->sequence;
+		src = s->sequence;
+	}
+	for(i=0; i< SEQUENCE_LENGTH; i++)
+		dest[i] = src[i];
+}
+
+/* initialize the hop reversal process */
+int init_hop_reversal(int aliased, piconet *pnet)
+{
+	int max_candidates;
+	uint32_t clock;
+
+	get_hop_pattern(pnet);
+
+	if(aliased)
+		max_candidates = (SEQUENCE_LENGTH / ALIASED_CHANNELS) / 32;
+	else
+		max_candidates = (SEQUENCE_LENGTH / CHANNELS) / 32;
+	/* this can hold twice the approximate number of initial candidates */
+	pnet->clock_candidates = (uint32_t*) malloc(sizeof(uint32_t) * max_candidates);
+
 	clock = (pnet->clk_offset + pnet->first_pkt_time) & 0x3f;
 	pnet->num_candidates = init_candidates(pnet->pattern_channels[0], clock, pnet);
 	pnet->winnowed = 0;
@@ -295,6 +343,7 @@ int winnow(piconet *pnet)
 		new_count = channel_winnow(index, channel, pnet);
 
 		if (pnet->packets_observed > 0) {
+			printf("Processing packet %d\n", pnet->winnowed + 1);
 			last_index = pnet->pattern_indices[pnet->winnowed - 1];
 			last_channel = pnet->pattern_channels[pnet->winnowed - 1];
 			/*
