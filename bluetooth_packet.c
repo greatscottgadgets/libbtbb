@@ -389,15 +389,15 @@ void unwhiten(char* input, char* output, int clock, int length, int skip, packet
 /* Pointer to start of packet, length of packet in bits, UAP */
 uint16_t crcgen(char *payload, int length, int UAP)
 {
-	char byte;
+	char bit;
 	uint16_t reg, count;
 
 	reg = (reverse(UAP) << 8) & 0xff00;
 	for(count = 0; count < length; count++)
 	{
-		byte = payload[count];
+		bit = payload[count];
 
-		reg = (reg >> 1) | (((reg & 0x0001) ^ (byte & 0x01))<<15);
+		reg = (reg >> 1) | (((reg & 0x0001) ^ (bit & 0x01))<<15);
 
 		/*Bit 5*/
 		reg ^= ((reg & 0x8000)>>5);
