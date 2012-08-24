@@ -30,10 +30,11 @@
 /* maximum number of symbols */
 #define MAX_SYMBOLS 3125
 
-/* Defaut maximum AC bit errors, this can be overridden at runtime */
-#ifndef MAX_AC_ERRORS
+/* Defaut maximum AC bit errors for unknown ACs, this can be overridden at runtime */
 #define MAX_AC_ERRORS 4
-#endif /* MAX_AC_ERRORS */
+
+/* maximum number of bit errors for for known syncwords */
+#define MAX_SYNCWORD_ERRS 5
 
 /* minimum header bit errors to indicate that this is an ID packet */
 static const int ID_THRESHOLD = 5;
@@ -236,16 +237,16 @@ void unwhiten(char* input, char* output, int clock, int length, int skip, packet
 int payload_crc(packet* p);
 
 /*
- * Search a symbol stream to find a packet with arbitrary LAP, return index.
- * The length of the stream must be at least search_length + 72.
- */
-access_code sniff_ac(char *stream, int search_length);
-
-/*
  * Search for known LAP and return the index.  The length of the stream must be
  * at least search_length + 72.
  */
 access_code find_ac(char *stream, int search_length, uint32_t LAP);
+
+/*
+ * Search a symbol stream to find a packet with arbitrary LAP, return index.
+ * The length of the stream must be at least search_length + 72.
+ */
+access_code sniff_ac(char *stream, int search_length);
 
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte);

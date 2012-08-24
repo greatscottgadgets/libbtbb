@@ -343,7 +343,6 @@ int winnow(piconet *pnet)
 		new_count = channel_winnow(index, channel, pnet);
 
 		if (pnet->packets_observed > 0) {
-			printf("Processing packet %d\n", pnet->winnowed + 1);
 			last_index = pnet->pattern_indices[pnet->winnowed - 1];
 			last_channel = pnet->pattern_channels[pnet->winnowed - 1];
 			/*
@@ -355,7 +354,7 @@ int winnow(piconet *pnet)
 			if (!pnet->looks_like_afh && (index == last_index + 1)
 					&& (channel == last_channel)) {
 				pnet->looks_like_afh = 1;
-				printf("Looks Like AFH\n");
+				printf("Hopping pattern appears to be AFH\n");
 			}
 		}
 	}
@@ -455,7 +454,6 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 	}
 
 	if (remaining == 0) {
-		printf("Resetting piconet...\n");
 		reset(pnet);
 	}
 

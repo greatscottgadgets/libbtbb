@@ -95,28 +95,51 @@ void gen_syndrome_map(int bit_errors)
 		cycle(0, 0, i, 0xcc7b7268ff614e1b);
 }
 
+uint64_t syncword = 0;
+/*
+ * Search for known LAP and return the index.  The length of the stream must be
+ * at least search_length + 72.
+ */
+access_code find_ac(char *stream, int search_length, uint32_t LAP){
+	/* Looks for an AC in the stream */
+	uint8_t bit_errors;
+	access_code ac;
+	char *symbols;
+	uint64_t syncword, known_ac;
+	int count = 0;
+	known_ac = gen_syncword(LAP);
+
+	// Search until we're 64 symbols from the end of the buffer
+	for(count = 0; count < search_length; count++)
+	{
+		symbols = &stream[count];
+		syncword = air_to_host64(symbols, 64);
+
+		bit_errors = count_bits(syncword ^ known_ac);
+
+		if (bit_errors < MAX_SYNCWORD_ERRS) {
+			ac.offset = count;
+			ac.LAP = 0xa36fa0;
+			return ac;
+		}
+	}
+	ac.offset = -1;
+	ac.LAP = -1;
+	return ac;
+}
+
 /*
  * Search a symbol stream to find a packet with arbitrary LAP, return index.
  * The length of the stream must be at least search_length + 72.
  */
 access_code sniff_ac(char *stream, int search_length)
 {
-	/* Find any/all LAPs (LAP = =-1) */
-	return find_ac(stream, search_length, -1);
-}
-
-/*
- * Search for known LAP and return the index.  The length of the stream must be
- * at least search_length + 72.
- */
-access_code find_ac(char *stream, int search_length, uint32_t LAP)
-{
 	/* Looks for an AC in the stream */
 	int count;
 	uint8_t barker; // barker code at end of sync word (includes MSB of LAP)
 	uint8_t bit_errors;
 	int max_distance = 1; // maximum number of bit errors to tolerate in barker
-	uint32_t data_LAP;
+	uint32_t LAP;
 	uint64_t syncword, codeword, syndrome, corrected_barker;
 	syndrome_struct *errors;
 	access_code ac;
@@ -126,11 +149,13 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP)
 		gen_syndrome_map(MAX_AC_ERRORS);
 
 	barker = air_to_host8(&stream[57], 6);
+	barker <<= 1;
 
 	// The stream length must be 72 symbols longer than search_length.
 	for(count = 0; count < search_length; count++)
 	{
 		symbols = &stream[count];
+		barker >>= 1;
 		barker |= (symbols[63] << 6);
 		if(BARKER_DISTANCE[barker] <= max_distance)
 		{
@@ -155,16 +180,12 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP)
 					continue;
 			}
 
-			data_LAP = (syncword >> 34) & 0xffffff;
-			if (LAP == 0xffffffff || data_LAP == LAP) {
-				ac.offset = count;
-				ac.LAP = data_LAP;
-				ac.error_count = bit_errors;
-				return ac;
-			}
-
+			LAP = (syncword >> 34) & 0xffffff;
+			ac.offset = count;
+			ac.LAP = LAP;
+			ac.error_count = bit_errors;
+			return ac;
 		}
-		barker >>= 1;
 	}
 	ac.offset = -1;
 	ac.LAP = -1;
