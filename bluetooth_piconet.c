@@ -317,10 +317,10 @@ int channel_winnow(int offset, char channel, piconet *pnet)
 	pnet->num_candidates = new_count;
 
 	if (new_count == 1) {
-		pnet->clk_offset = (pnet->clock_candidates[0] - pnet->first_pkt_time)
-				& 0x7ffffff;
+		// Calculate clock offset for CLKN, not CLK1-27
+		pnet->clk_offset = ((pnet->clock_candidates[0]<<1) - (pnet->first_pkt_time<<1));
+		printf("\nAcquired CLK1-27 = 0x%07x\n", pnet->clock_candidates[0] << 1);
 		pnet->have_clk27 = 1;
-		printf("\nAcquired CLK1-27 offset = 0x%07x\n", pnet->clk_offset);
 	} else if (new_count == 0) {
 		reset(pnet);
 	} else {
@@ -341,6 +341,8 @@ int winnow(piconet *pnet)
 		index = pnet->pattern_indices[pnet->winnowed];
 		channel = pnet->pattern_channels[pnet->winnowed];
 		new_count = channel_winnow(index, channel, pnet);
+		if (new_count == 1)
+			break;
 
 		if (pnet->packets_observed > 0) {
 			last_index = pnet->pattern_indices[pnet->winnowed - 1];

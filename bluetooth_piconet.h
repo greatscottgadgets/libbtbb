@@ -107,7 +107,7 @@ typedef struct piconet {
 	int hop_reversal_inited;
 
 	/* offset between CLKN (local) and CLK of piconet */
-	uint32_t clk_offset;
+	int clk_offset;
 
 	/* local clock (clkn) at time of first packet */
 	uint32_t first_pkt_time;
