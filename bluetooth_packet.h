@@ -267,7 +267,7 @@ int unfec13(char *input, char *output, int length);
 uint16_t fec23(uint16_t data);
 
 /* Decode 2/3 rate FEC, a (15,10) shortened Hamming code */
-char *unfec23(char *input, int length);
+int unfec23(char *input, char *output, int length);
 
 /* Compare stream with sync word */
 int check_syncword(uint64_t streamword, uint64_t syncword);
