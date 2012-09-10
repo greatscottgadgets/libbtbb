@@ -281,13 +281,13 @@ uint16_t fec23(uint16_t data)
 }
 
 /* Decode 2/3 rate FEC, a (15,10) shortened Hamming code */
-int unfec23(char *input, char* output, int length)
+char *unfec23(char *input, int length)
 {
 	/* input points to the input data
 	 * length is length in bits of the data
 	 * before it was encoded with fec2/3 */
 	int iptr, optr, count;
-	//char* output;
+	char* output;
 	uint8_t diff, check;
 	uint16_t data, codeword;
 
@@ -295,6 +295,8 @@ int unfec23(char *input, char* output, int length)
 	// padding at end of data
 	if(0!=diff)
 		length += (10 - diff);
+
+	output = (char *) malloc(length);
 
 	for (iptr = 0, optr = 0; optr<length; iptr += 15, optr += 10) {
 		// copy data to output
@@ -338,11 +340,11 @@ int unfec23(char *input, char* output, int length)
 				case 0x15: output[optr+9] ^= 1; break;
 				/* not one of these errors, probably multiple bit errors
 				* or maybe not a real packet, safe to drop it? */
-				default: return 0;
+				default: free(output); return 0;
 			}
 		}
 	}
-	return 1;
+	return output;
 }
 
 
@@ -530,13 +532,14 @@ int fhs(int clock, packet* p)
 	if (size < p->payload_length * 12)
 		return 1; //FIXME should throw exception
 
-	char corrected[p->payload_length * 8];
-	if (!unfec23(stream, corrected, p->payload_length * 8))
+	char *corrected = unfec23(stream, p->payload_length * 8);
+	if (!corrected)
 		return 0;
 
 	/* try to unwhiten with known clock bits */
 	unwhiten(corrected, p->payload, clock, p->payload_length * 8, 18, p);
 	if (payload_crc(p)) {
+		free(corrected);
 		return 1000;
 	}
 
@@ -544,11 +547,13 @@ int fhs(int clock, packet* p)
 	for (clock = 32; clock < 64; clock++) {
 		unwhiten(corrected, p->payload, clock, p->payload_length * 8, 18, p);
 		if (payload_crc(p)) {
+			free(corrected);
 			return 1000;
 		}
 	}
 
 	/* failed to unwhiten */
+	free(corrected);
 	return 0;
 }
 
@@ -562,10 +567,11 @@ int decode_payload_header(char *stream, int clock, int header_bytes, int size, i
 		if(fec) {
 			if(size < 30)
 				return 0; //FIXME should throw exception
-			char corrected[16];
-			if (!unfec23(stream, corrected, 16))
+			char *corrected = unfec23(stream, 16);
+			if (!corrected)
 				return 0;
 			unwhiten(corrected, p->payload_header, clock, 16, 18, p);
+			free(corrected);
 		} else {
 			unwhiten(stream, p->payload_header, clock, 16, 18, p);
 		}
@@ -577,10 +583,11 @@ int decode_payload_header(char *stream, int clock, int header_bytes, int size, i
 		if(fec) {
 			if(size < 15)
 				return 0; //FIXME should throw exception
-			char corrected[8];
-			if (!unfec23(stream, corrected, 8))
+			char *corrected = unfec23(stream, 8);
+			if (!corrected)
 				return 0;
 			unwhiten(corrected, p->payload_header, clock, 8, 18, p);
+			free(corrected);
 		} else {
 			unwhiten(stream, p->payload_header, clock, 8, 18, p);
 		}
@@ -643,10 +650,11 @@ int DM(int clock, packet* p)
 	if(bitlength > size)
 		return 1; //FIXME should throw exception
 
-	char corrected[bitlength];
-	if (!unfec23(stream, corrected, bitlength))
+	char *corrected = unfec23(stream, bitlength);
+	if (!corrected)
 		return 0;
 	unwhiten(corrected, p->payload, clock, bitlength, 18, p);
+	free(corrected);
 
 	if (payload_crc(p))
 		return 10;
@@ -741,7 +749,7 @@ int EV3(int clock, packet* p)
 
 int EV4(int clock, packet* p)
 {
-	char corrected[10];
+	char *corrected;
 
 	/* skip the access code and packet header */
 	char *stream = p->symbols + 122;
@@ -771,14 +779,16 @@ int EV4(int clock, packet* p)
 		/* unfec/unwhiten next block (15 symbols -> 10 bits) */
 		if (syms + 15 > size)
 			return 1; //FIXME should throw exception
-
-		if (!unfec23(stream + syms, corrected, 10)) {
+		corrected = unfec23(stream + syms, 10);
+		if (!corrected) {
+			free(corrected);
 			if (syms < minlength)
 				return 0;
 			else
 				return 1;
 		}
 		unwhiten(corrected, p->payload + bits, clock, 10, 18 + bits, p);
+		free(corrected);
 
 		/* check CRC one byte at a time */
 		while (p->payload_length * 8 <= bits) {
@@ -848,11 +858,12 @@ int HV(int clock, packet* p)
 		break;
 	case 6:/* HV2 */
 		{
-		char corrected[160];
-		if (!unfec23(stream, corrected, 160))
+		char *corrected = unfec23(stream, 160);
+		if (!corrected)
 			return 0;
 		p->payload_length = 20;
 		unwhiten(corrected, p->payload, clock, p->payload_length*8, 18, p);
+		free(corrected);
 		}
 		break;
 	case 7:/* HV3 */
@@ -892,13 +903,12 @@ int decode_header(packet* p)
 	char *stream = p->symbols + 68;
 	/* 18 bit packet header */
 	char header[18];
-	uint8_t UAP, hec;
-	uint16_t hdr_data;
+	uint8_t UAP;
 
 	if (p->have_clk6 && unfec13(stream, header, 18)) {
 		unwhiten(header, p->packet_header, p->clock, 18, 0, p);
-		hdr_data = air_to_host16(p->packet_header, 10);
-		hec = air_to_host8(&p->packet_header[10], 8);
+		uint16_t hdr_data = air_to_host16(p->packet_header, 10);
+		uint8_t hec = air_to_host8(&p->packet_header[10], 8);
 		UAP = UAP_from_hec(hdr_data, hec);
 		if (UAP == p->UAP) {
 			p->packet_type = air_to_host8(&p->packet_header[3], 4);
@@ -994,18 +1004,12 @@ void decode(packet* p)
 /* print packet information */
 void print(packet* p)
 {
-	int i;
 	if (p->have_payload) {
 		printf("%s\n", TYPE_NAMES[p->packet_type]);
 		if (p->payload_header_length > 0) {
 			printf("  LLID: %d\n", p->payload_llid);
 			printf("  flow: %d\n", p->payload_flow);
 			printf("  payload length: %d\n", p->payload_length);
-		}
-		if (p->payload_length) {
-			for(i=0; i<p->payload_length; i++)
-				printf("%02x ", air_to_host8(p->payload + i*8, 8));
-			printf("\n");
 		}
 	}
 }
