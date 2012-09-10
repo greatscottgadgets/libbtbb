@@ -1010,6 +1010,12 @@ void print(packet* p)
 			printf("  LLID: %d\n", p->payload_llid);
 			printf("  flow: %d\n", p->payload_flow);
 			printf("  payload length: %d\n", p->payload_length);
+			if (p->have_payload) {
+				printf("  Data: ");
+				int i;
+				for(i=0; i<p->payload_length; i++)
+					printf(" %02x", air_to_host8(p->payload + 8*i, 8));
+			}
 		}
 	}
 }
