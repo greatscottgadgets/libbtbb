@@ -841,6 +841,7 @@ int HV(int clock, packet* p)
 	/* number of symbols remaining after access code and packet header */
 	int size = p->length - 122;
 
+	p->payload_header_length = 0;
 	if(size < 240) {
 		p->payload_length = 0;
 		return 1; //FIXME should throw exception
@@ -853,6 +854,7 @@ int HV(int clock, packet* p)
 		if (!unfec13(stream, corrected, 80))
 			return 0;
 		p->payload_length = 10;
+		p->have_payload = 1;
 		unwhiten(corrected, p->payload, clock, p->payload_length*8, 18, p);
 		}
 		break;
@@ -862,12 +864,14 @@ int HV(int clock, packet* p)
 		if (!corrected)
 			return 0;
 		p->payload_length = 20;
+		p->have_payload = 1;
 		unwhiten(corrected, p->payload, clock, p->payload_length*8, 18, p);
 		free(corrected);
 		}
 		break;
 	case 7:/* HV3 */
 		p->payload_length = 30;
+		p->have_payload = 1;
 		unwhiten(stream, p->payload, clock, p->payload_length*8, 18, p);
 		break;
 	}
@@ -911,19 +915,18 @@ int decode_header(packet* p)
 		uint8_t hec = air_to_host8(&p->packet_header[10], 8);
 		UAP = UAP_from_hec(hdr_data, hec);
 		if (UAP == p->UAP) {
+			p->packet_lt_addr = air_to_host8(&p->packet_header[0], 3);
 			p->packet_type = air_to_host8(&p->packet_header[3], 4);
 			return 1;
-		} else {
-			printf("bad HEC! ");
 		}
 	}
 	
-	printf("failed to decode header\n");
 	return 0;
 }
 
-void decode_payload(packet* p)
+int decode_payload(packet* p)
 {
+	int rv = 0;
 	p->payload_header_length = 0;
 
 	switch(p->packet_type)
@@ -931,74 +934,86 @@ void decode_payload(packet* p)
 		case 0: /* NULL */
 			/* no payload to decode */
 			p->payload_length = 0;
+			rv = 1;
 			break;
 		case 1: /* POLL */
 			/* no payload to decode */
 			p->payload_length = 0;
+			rv = 1;
 			break;
 		case 2: /* FHS */
-			fhs(p->clock, p);
+			rv = fhs(p->clock, p);
 			break;
 		case 3: /* DM1 */
-			DM(p->clock, p);
+			rv = DM(p->clock, p);
 			break;
 		case 4: /* DH1 */
 			/* assuming DH1 but could be 2-DH1 */
-			DH(p->clock, p);
+			rv = DH(p->clock, p);
 			break;
 		case 5: /* HV1 */
-			HV(p->clock, p);
+			rv = HV(p->clock, p);
 			break;
 		case 6: /* HV2 */
-			HV(p->clock, p);
+			rv = HV(p->clock, p);
 			break;
 		case 7: /* HV3/EV3/3-EV3 */
 			/* decode as EV3 if CRC checks out */
-			if (EV3(p->clock, p) <= 1)
+			if ((rv = EV3(p->clock, p)) <= 1)
 				/* otherwise assume HV3 */
-				HV(p->clock, p);
+				rv = HV(p->clock, p);
 			/* don't know how to decode 3-EV3 */
 			break;
 		case 8: /* DV */
 			/* assuming DV but could be 3-DH1 */
-			DM(p->clock, p);
+			rv = DM(p->clock, p);
 			break;
 		case 9: /* AUX1 */
-			DH(p->clock, p);
+			rv = DH(p->clock, p);
 			break;
 		case 10: /* DM3 */
 			/* assuming DM3 but could be 2-DH3 */
-			DM(p->clock, p);
+			rv = DM(p->clock, p);
 			break;
 		case 11: /* DH3 */
 			/* assuming DH3 but could be 3-DH3 */
-			DH(p->clock, p);
+			rv = DH(p->clock, p);
 			break;
 		case 12: /* EV4 */
 			/* assuming EV4 but could be 2-EV5 */
-			EV4(p->clock, p);
+			rv = EV4(p->clock, p);
 			break;
 		case 13: /* EV5 */
 			/* assuming EV5 but could be 3-EV5 */
-			EV5(p->clock, p);
+			rv = EV5(p->clock, p);
 		case 14: /* DM5 */
 			/* assuming DM5 but could be 2-DH5 */
-			DM(p->clock, p);
+			rv = DM(p->clock, p);
 			break;
 		case 15: /* DH5 */
 			/* assuming DH5 but could be 3-DH5 */
-			DH(p->clock, p);
+			rv = DH(p->clock, p);
 			break;
 	}
 	p->have_payload = 1;
+	return rv;
 }
 
 /* decode the whole packet */
-void decode(packet* p)
+int decode(packet* p)
 {
 	p->have_payload = 0;
-	if (decode_header(p))
-		decode_payload(p);
+	uint8_t clk6, i;
+	clk6 = p->clock & 0x3f;
+	for(i=0; i<64; i++) {
+		p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
+		if (decode_header(p)) {
+			printf("Header decoded with clock 0x%07x\n", p->clock);
+			return decode_payload(p);
+		}
+	}
+
+	return 0;
 }
 
 /* print packet information */
@@ -1007,15 +1022,17 @@ void print(packet* p)
 	if (p->have_payload) {
 		printf("%s\n", TYPE_NAMES[p->packet_type]);
 		if (p->payload_header_length > 0) {
+			printf("  LT_ADDR: %d\n", p->packet_lt_addr);
 			printf("  LLID: %d\n", p->payload_llid);
 			printf("  flow: %d\n", p->payload_flow);
 			printf("  payload length: %d\n", p->payload_length);
-			if (p->have_payload) {
-				printf("  Data: ");
-				int i;
-				for(i=0; i<p->payload_length; i++)
-					printf(" %02x", air_to_host8(p->payload + 8*i, 8));
-			}
+		}
+		if (p->have_payload && p->payload_length) {
+			printf("  Data: ");
+			int i;
+			for(i=0; i<p->payload_length; i++)
+				printf(" %02x", air_to_host8(p->payload + 8*i, 8));
+			printf("\n");
 		}
 	}
 }

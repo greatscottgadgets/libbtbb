@@ -161,6 +161,9 @@ typedef struct packet {
 	/* packet type */
 	int packet_type;
 	
+	/* LLID field of payload header (2 bits) */
+	uint8_t packet_lt_addr;
+	
 	/* packet header, one bit per char */
 	char packet_header[18];
 	
@@ -207,6 +210,16 @@ typedef struct packet {
 	int have_clk27;
 	
 	int have_payload;
+	
+	/* 1 if crc is correct
+	 * 0 if crc is incorrect
+	 * -1 if packet type has no payload
+	 */
+	int payload_crc;
+	uint16_t crc;
+
+	/* Set to 1 when we know it's an EDR packet */
+	int is_edr;
 	
 	/* CLK1-27 of master */
 	uint32_t clock;
@@ -295,10 +308,10 @@ int crc_check(int clock, packet* p);
 int decode_header(packet* p);
 
 /* decode the packet header */
-void decode_payload(packet* p);
+int decode_payload(packet* p);
 
 /* decode the whole packet */
-void decode(packet* p);
+int decode(packet* p);
 
 /* print packet information */
 void print(packet* p);
