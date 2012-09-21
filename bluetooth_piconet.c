@@ -25,7 +25,6 @@
 #endif
 
 #include "bluetooth_piconet.h"
-#include "uthash.h"
 #include <stdlib.h>
 
 void init_piconet(piconet *pnet)
@@ -42,15 +41,6 @@ void init_piconet(piconet *pnet)
 	pnet->have_clk27 = 0;
 }
 
-/* Container for hopping pattern */
-typedef struct {
-    uint32_t address; /* key */
-    char *sequence;             
-    UT_hash_handle hh;
-} hopping_struct;
-
-static hopping_struct *hopping_map = NULL;
-
 /* Function to calculate piconet hopping patterns and add to hash map */
 void gen_hop_pattern(piconet *pnet)
 {
@@ -62,38 +52,7 @@ void gen_hop_pattern(piconet *pnet)
 	address_precalc(((pnet->UAP<<24) | pnet->LAP) & 0xfffffff, pnet);
 	gen_hops(pnet);
 
-	printf("Hopping pattern calculated.\n");
-}
-
-/* Function to fetch piconet hopping patterns */
-void get_hop_pattern(piconet *pnet)
-{
-	hopping_struct *s;
-	uint32_t address;
-	char *src, *dest;
-	int i;
-
-	address = ((pnet->UAP<<24) | pnet->LAP) & 0xfffffff;
-	HASH_FIND(hh, hopping_map, &address, 4, s);
-	
-	if (s == NULL) {
-		gen_hop_pattern(pnet);
-		s = malloc(sizeof(hopping_struct));
-		s->address = address;
-		/* Copy sequence from piconet to hash */
-		s->sequence = (char*) malloc(SEQUENCE_LENGTH);
-		src = pnet->sequence;
-		dest = s->sequence;
-		HASH_ADD(hh, hopping_map, address, 4, s);
-	} else {
-		printf("\nFound complete hopping sequence in cache.\n");
-		/* Copy from hash to piconet */
-		pnet->sequence = (char*) malloc(SEQUENCE_LENGTH);
-		dest = pnet->sequence;
-		src = s->sequence;
-	}
-	for(i=0; i< SEQUENCE_LENGTH; i++)
-		dest[i] = src[i];
+	printf("Hopping sequence calculated.\n");
 }
 
 /* initialize the hop reversal process */
@@ -101,8 +60,9 @@ int init_hop_reversal(int aliased, piconet *pnet)
 {
 	int max_candidates;
 	uint32_t clock;
-
-	get_hop_pattern(pnet);
+	
+	if(pnet->sequence == NULL)
+		gen_hop_pattern(pnet);
 
 	if(aliased)
 		max_candidates = (SEQUENCE_LENGTH / ALIASED_CHANNELS) / 32;
@@ -378,6 +338,7 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 		pnet->first_pkt_time = clkn;
 
 	if (pnet->packets_observed < MAX_PATTERN_LENGTH) {
+		enqueue(pkt, pnet);
 		pnet->pattern_indices[pnet->packets_observed] = clkn - pnet->first_pkt_time;
 		pnet->pattern_channels[pnet->packets_observed] = pkt->channel;
 	} else {
@@ -475,7 +436,6 @@ void reset(piconet *pnet)
 
 	if(pnet->hop_reversal_inited) {
 		free(pnet->clock_candidates);
-		free(pnet->sequence);
 	}
 	pnet->got_first_packet = 0;
 	pnet->packets_observed = 0;
@@ -523,4 +483,25 @@ packet *dequeue(piconet *pnet)
 	}
 
 	return pkt;
+}
+
+/* decode the whole packet */
+int decode(packet* p, piconet *pnet)
+{
+	p->have_payload = 0;
+	uint8_t clk6, i;
+	clk6 = p->clock & 0x3f;
+	int rv = 0;
+	if(pnet->sequence == NULL)
+		gen_hop_pattern(pnet);
+	for(i=0; i<64; i++) {
+		p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
+		if ((pnet->sequence[p->clock] == p->channel) && (decode_header(p))) {
+			printf("Header decoded with clock 0x%07x\n", p->clock);
+			rv =  decode_payload(p);
+			printf("rv=%d\n", rv);
+		}
+	}
+
+	return rv;
 }

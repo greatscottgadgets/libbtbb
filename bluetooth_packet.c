@@ -999,23 +999,6 @@ int decode_payload(packet* p)
 	return rv;
 }
 
-/* decode the whole packet */
-int decode(packet* p)
-{
-	p->have_payload = 0;
-	uint8_t clk6, i;
-	clk6 = p->clock & 0x3f;
-	for(i=0; i<64; i++) {
-		p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
-		if (decode_header(p)) {
-			printf("Header decoded with clock 0x%07x\n", p->clock);
-			return decode_payload(p);
-		}
-	}
-
-	return 0;
-}
-
 /* print packet information */
 void print(packet* p)
 {

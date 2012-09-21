@@ -310,9 +310,6 @@ int decode_header(packet* p);
 /* decode the packet header */
 int decode_payload(packet* p);
 
-/* decode the whole packet */
-int decode(packet* p);
-
 /* print packet information */
 void print(packet* p);
 
