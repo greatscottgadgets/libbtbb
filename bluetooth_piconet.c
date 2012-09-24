@@ -338,7 +338,6 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 		pnet->first_pkt_time = clkn;
 
 	if (pnet->packets_observed < MAX_PATTERN_LENGTH) {
-		enqueue(pkt, pnet);
 		pnet->pattern_indices[pnet->packets_observed] = clkn - pnet->first_pkt_time;
 		pnet->pattern_channels[pnet->packets_observed] = pkt->channel;
 	} else {
@@ -385,9 +384,13 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 				break;
 
 			default: /* CRC success */
-				printf("Correct CRC! UAP = 0x%x found after %d total packets.\n",
-						UAP, pnet->total_packets_observed);
 				pnet->clk_offset = (count - (pnet->first_pkt_time & 0x3f)) & 0x3f;
+				if (!pnet->have_UAP)
+					printf("Correct CRC! UAP = 0x%x found after %d total packets.\n",
+						UAP, pnet->total_packets_observed);
+				else
+					printf("Correct CRC! CLK6 = 0x%x found after %d total packets.\n",
+						pnet->clk_offset, pnet->total_packets_observed);
 				pnet->UAP = UAP;
 				pnet->have_clk6 = 1;
 				pnet->have_UAP = 1;
@@ -490,18 +493,23 @@ int decode(packet* p, piconet *pnet)
 {
 	p->have_payload = 0;
 	uint8_t clk6, i;
-	clk6 = p->clock & 0x3f;
 	int rv = 0;
-	if(pnet->sequence == NULL)
-		gen_hop_pattern(pnet);
-	for(i=0; i<64; i++) {
-		p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
-		if ((pnet->sequence[p->clock] == p->channel) && (decode_header(p))) {
-			printf("Header decoded with clock 0x%07x\n", p->clock);
-			rv =  decode_payload(p);
-			printf("rv=%d\n", rv);
+	if (pnet->have_clk27) {
+		if(pnet->sequence == NULL)
+			gen_hop_pattern(pnet);
+		clk6 = p->clock & 0x3f;
+		for(i=0; i<64; i++) {
+			p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
+			if ((pnet->sequence[p->clock] == p->channel) && (decode_header(p))) {
+				printf("Header decoded with clock 0x%07x\n", p->clock);
+				rv =  decode_payload(p);
+				printf("rv=%d\n", rv);
+				// TODO: make sure we use best result
+			}
 		}
-	}
+	} else
+		if (decode_header(p))
+			rv = decode_payload(p);
 
 	return rv;
 }
