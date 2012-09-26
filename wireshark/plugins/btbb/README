@@ -1,0 +1,16 @@
+BTBB Wireshark plugin
+
+This is the Bluetooth baseband plugin for Wireshark, it also includes an LMP
+level dissector.
+
+To build the plugin, use the following commands:
+  tar xf wireshark-1.8.2.tar.bz2
+  cp -R libbtbb/wireshark/plugins/btbb wireshark-1.8.2/plugins/
+  patch -p0 < wireshark-1.8.2/plugins/btbb/wireshark-1.8-btbb.patch
+
+  cd wireshark-1.8.2
+  ./autogen.sh
+  ./configure
+  make
+  sudo make install
+
