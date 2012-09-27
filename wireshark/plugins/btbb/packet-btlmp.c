@@ -27,6 +27,7 @@
 # include "config.h"
 #endif
 
+#include <wireshark/config.h> /* needed for epan/gcc-4.x */
 #include <epan/packet.h>
 #include <epan/prefs.h>
 
