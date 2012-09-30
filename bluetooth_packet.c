@@ -119,7 +119,8 @@ access_code find_ac(char *stream, int search_length, uint32_t LAP){
 
 		if (bit_errors < MAX_SYNCWORD_ERRS) {
 			ac.offset = count;
-			ac.LAP = 0xa36fa0;
+			ac.LAP = LAP;
+			ac.error_count = bit_errors;
 			return ac;
 		}
 	}
