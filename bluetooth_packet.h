@@ -253,13 +253,13 @@ int payload_crc(packet* p);
  * Search for known LAP and return the index.  The length of the stream must be
  * at least search_length + 72.
  */
-access_code find_ac(char *stream, int search_length, uint32_t LAP);
+int find_ac(char *stream, int search_length, uint32_t LAP, access_code *ac);
 
 /*
  * Search a symbol stream to find a packet with arbitrary LAP, return index.
  * The length of the stream must be at least search_length + 72.
  */
-access_code sniff_ac(char *stream, int search_length);
+int sniff_ac(char *stream, int search_length, access_code *ac);
 
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte);
