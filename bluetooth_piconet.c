@@ -25,6 +25,7 @@
 #endif
 
 #include "bluetooth_piconet.h"
+#include "uthash.h"
 #include <stdlib.h>
 
 void init_piconet(piconet *pnet)
@@ -55,14 +56,43 @@ void gen_hop_pattern(piconet *pnet)
 	printf("Hopping sequence calculated.\n");
 }
 
+/* Container for hopping pattern */
+typedef struct {
+    uint32_t address; /* key */
+    char *sequence;             
+    UT_hash_handle hh;
+} hopping_struct;
+
+static hopping_struct *hopping_map = NULL;
+
+/* Function to fetch piconet hopping patterns */
+void get_hop_pattern(piconet *pnet)
+{
+       hopping_struct *s;
+       uint32_t address;
+
+       address = ((pnet->UAP<<24) | pnet->LAP) & 0xfffffff;
+       HASH_FIND(hh, hopping_map, &address, 4, s);
+       
+       if (s == NULL) {
+               gen_hop_pattern(pnet);
+               s = malloc(sizeof(hopping_struct));
+               s->address = address;
+               s->sequence = pnet->sequence;
+               HASH_ADD(hh, hopping_map, address, 4, s);
+       } else {
+               printf("\nFound hopping sequence in cache.\n");
+               pnet->sequence = s->sequence;
+       }
+}
+
 /* initialize the hop reversal process */
 int init_hop_reversal(int aliased, piconet *pnet)
 {
 	int max_candidates;
 	uint32_t clock;
 	
-	if(pnet->sequence == NULL)
-		gen_hop_pattern(pnet);
+	get_hop_pattern(pnet);
 
 	if(aliased)
 		max_candidates = (SEQUENCE_LENGTH / ALIASED_CHANNELS) / 32;
@@ -439,6 +469,7 @@ void reset(piconet *pnet)
 
 	if(pnet->hop_reversal_inited) {
 		free(pnet->clock_candidates);
+		pnet->sequence = NULL;
 	}
 	pnet->got_first_packet = 0;
 	pnet->packets_observed = 0;
@@ -496,7 +527,7 @@ int decode(packet* p, piconet *pnet)
 	int rv = 0;
 	if (pnet->have_clk27) {
 		if(pnet->sequence == NULL)
-			gen_hop_pattern(pnet);
+			get_hop_pattern(pnet);
 		clk6 = p->clock & 0x3f;
 		for(i=0; i<64; i++) {
 			p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
