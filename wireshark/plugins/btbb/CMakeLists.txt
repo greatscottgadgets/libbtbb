@@ -26,7 +26,11 @@ project(btbb-wireshark-plugin C)
 cmake_minimum_required(VERSION 2.6)
 set(CMAKE_BACKWARDS_COMPATIBILITY 2.6)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-set(CMAKE_INSTALL_LIBDIR ~/.wireshark)
+
+IF ( NOT CMAKE_INSTALL_LIBDIR )
+  set(CMAKE_INSTALL_LIBDIR /usr/lib/wireshark/libwireshark1/plugins/)
+ENDIF ( NOT CMAKE_INSTALL_LIBDIR )
+MESSAGE (STATUS "Plugin will be installed in: ${CMAKE_INSTALL_LIBDIR}")
 
 INCLUDE(UseMakeDissectorReg)
   
@@ -80,6 +84,6 @@ set_target_properties(btbb PROPERTIES LINK_FLAGS "${WS_LINK_FLAGS}")
 target_link_libraries(btbb wireshark)
 
 install(TARGETS btbb
-	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/plugins NAMELINK_SKIP
+	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} NAMELINK_SKIP
 )
 
