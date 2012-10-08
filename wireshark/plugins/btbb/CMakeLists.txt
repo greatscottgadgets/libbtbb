@@ -28,7 +28,7 @@ set(CMAKE_BACKWARDS_COMPATIBILITY 2.6)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 IF ( NOT CMAKE_INSTALL_LIBDIR )
-  set(CMAKE_INSTALL_LIBDIR /usr/lib/wireshark/libwireshark1/plugins/)
+  set(CMAKE_INSTALL_LIBDIR ~/.wireshark/plugins/)
 ENDIF ( NOT CMAKE_INSTALL_LIBDIR )
 MESSAGE (STATUS "Plugin will be installed in: ${CMAKE_INSTALL_LIBDIR}")
 
