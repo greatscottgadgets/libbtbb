@@ -36,9 +36,14 @@ HEADER_FILES = $(SOURCE_FILES:%.c=%.h)
 
 all: $(LIB_FILE)
 
-$(LIB_FILE): $(SOURCE_FILES) $(HEADER_FILES)
+$(OBJECT_FILES): $(SOURCE_FILES) $(HEADER_FILES)
 	$(CC) $(CFLAGS) -fPIC -c $(SOURCE_FILES)
+
+$(LIB_FILE): $(OBJECT_FILES)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(SONAME) -o $(LIB_FILE) $(OBJECT_FILES)
+
+osx: $(OBJECT_FILES)
+	$(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl -install_name $(INSTALL_DIR)/$(LIB_FILE) -o $(LIB_FILE) $(OBJECT_FILES)
 
 $(STATIC_LIB_FILE): $(LIB_FILE)
 	$(AR) rcs $(STATIC_LIB_FILE) $(OBJECT_FILES)
@@ -60,4 +65,10 @@ cygwin-install: $(LIB_FILE) $(STATIC_LIB_FILE)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(LIB_NAME)
 	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(SONAME)
 
-.PHONY: all clean install cygwin-install
+osx-install: osx
+	$(INSTALL) -m 0644 $(LIB_FILE) $(INSTALL_DIR)
+	$(INSTALL) -m 0644 $(HEADER_FILES) $(INCLUDE_DIR)
+	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(LIB_NAME)
+	ln -fs $(LIB_FILE) $(INSTALL_DIR)/$(SONAME)
+
+.PHONY: all clean install cygwin-install osx osx-install
