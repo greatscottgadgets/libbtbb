@@ -311,7 +311,7 @@ int decode_header(packet* p);
 int decode_payload(packet* p);
 
 /* print packet information */
-void print(packet* p);
+void btbb_print_packet(packet* p);
 
 /* format payload for tun interface */
 char *tun_format(packet* p);

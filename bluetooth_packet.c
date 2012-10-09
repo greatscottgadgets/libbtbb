@@ -995,7 +995,7 @@ int decode_payload(packet* p)
 }
 
 /* print packet information */
-void print(packet* p)
+void btbb_print_packet(packet* p)
 {
 	if (p->have_payload) {
 		printf("%s\n", TYPE_NAMES[p->packet_type]);
