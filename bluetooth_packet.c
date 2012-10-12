@@ -998,7 +998,7 @@ int decode_payload(packet* p)
 void print(packet* p)
 {
 	if (p->have_payload) {
-		printf("%s\n", TYPE_NAMES[p->packet_type]);
+		printf("  Type: %s\n", TYPE_NAMES[p->packet_type]);
 		if (p->payload_header_length > 0) {
 			printf("  LT_ADDR: %d\n", p->packet_lt_addr);
 			printf("  LLID: %d\n", p->payload_llid);

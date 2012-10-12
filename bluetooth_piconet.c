@@ -532,10 +532,24 @@ int decode(packet* p, piconet *pnet)
 		for(i=0; i<64; i++) {
 			p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
 			if ((pnet->sequence[p->clock] == p->channel) && (decode_header(p))) {
-				printf("Header decoded with clock 0x%07x\n", p->clock);
 				rv =  decode_payload(p);
-				printf("rv=%d\n", rv);
+				if(rv > 0) {
+					printf("Packet decoded with clock 0x%07x (rv=%d)\n", p->clock, rv);
+				}
 				// TODO: make sure we use best result
+			}
+		}
+		if(rv == 0) {
+			clk6 = p->clock & 0x3f;
+			for(i=0; i<64; i++) {
+				p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
+				if (decode_header(p)) {
+					rv =  decode_payload(p);
+					if(rv > 0) {
+						printf("Packet decoded with clock 0x%07x (rv=%d)\n", p->clock, rv);
+					}
+					// TODO: make sure we use best result
+				}
 			}
 		}
 	} else
