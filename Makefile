@@ -30,7 +30,7 @@ SONAME   = $(LIB_NAME).0
 LIB_FILE = $(SONAME).1
 STATIC_LIB_FILE = libbtbb.a
 
-SOURCE_FILES = bluetooth_packet.c bluetooth_piconet.c
+SOURCE_FILES = bluetooth_packet.c bluetooth_piconet.c bluetooth_le_packet.c
 OBJECT_FILES = $(SOURCE_FILES:%.c=%.o)
 HEADER_FILES = $(SOURCE_FILES:%.c=%.h)
 
