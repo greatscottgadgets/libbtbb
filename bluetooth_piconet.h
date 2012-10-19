@@ -54,6 +54,9 @@ typedef struct piconet {
 	/* observed pattern that looks like AFH */
 	int looks_like_afh;
 
+	/* AFH channel map - either read or derived from observed packets */
+	uint8_t afh_map[10];
+
 	/* lower address part (of master's BD_ADDR) */
 	uint32_t LAP;
 

@@ -30,6 +30,9 @@
 
 void init_piconet(piconet *pnet)
 {
+	int i;
+	for(i=0; i<10; i++)
+		pnet->afh_map[i] = 0;
 	pnet->got_first_packet = 0;
 	pnet->packets_observed = 0;
 	pnet->total_packets_observed = 0;
@@ -367,6 +370,9 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 	if (!pnet->got_first_packet)
 		pnet->first_pkt_time = clkn;
 
+	// Set afh channel map
+	//pnet->afh_map[pkt->channel/8] |= 0x1 << (pkt->channel % 8);
+
 	if (pnet->packets_observed < MAX_PATTERN_LENGTH) {
 		pnet->pattern_indices[pnet->packets_observed] = clkn - pnet->first_pkt_time;
 		pnet->pattern_channels[pnet->packets_observed] = pkt->channel;
@@ -395,12 +401,8 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 
 			if ((pnet->have_UAP) && (UAP != pnet->UAP))
 				retval = -1;
-			// debugging with a particular UAP
-			//if (UAP == 0x61 || pnet->clock6_candidates[count] == 0x61)
-				//printf("%u: UAP %02x, %02x, type %u, clock %u, clkn %u, first %u, result %d\n", count, UAP, pnet->clock6_candidates[count], pkt->packet_type, clock, clkn, pnet->first_pkt_time, retval);
 
 			switch(retval) {
-
 			case -1: /* UAP mismatch */
 			case 0: /* CRC failure */
 				pnet->clock6_candidates[count] = -1;
@@ -415,12 +417,12 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 
 			default: /* CRC success */
 				pnet->clk_offset = (count - (pnet->first_pkt_time & 0x3f)) & 0x3f;
-				if (!pnet->have_UAP)
-					printf("Correct CRC! UAP = 0x%x found after %d total packets.\n",
-						UAP, pnet->total_packets_observed);
-				else
-					printf("Correct CRC! CLK6 = 0x%x found after %d total packets.\n",
-						pnet->clk_offset, pnet->total_packets_observed);
+				//if (!pnet->have_UAP)
+				//	printf("Correct CRC! UAP = 0x%x found after %d total packets.\n",
+				//		UAP, pnet->total_packets_observed);
+				//else
+				//	printf("Correct CRC! CLK6 = 0x%x found after %d total packets.\n",
+				//		pnet->clk_offset, pnet->total_packets_observed);
 				pnet->UAP = UAP;
 				pnet->have_clk6 = 1;
 				pnet->have_UAP = 1;
@@ -432,16 +434,16 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 
 	pnet->got_first_packet = 1;
 
-	printf("reduced from %d to %d CLK1-6 candidates\n", starting, remaining);
+	//printf("reduced from %d to %d CLK1-6 candidates\n", starting, remaining);
 
 	if (remaining == 1) {
 		pnet->clk_offset = (first_clock - (pnet->first_pkt_time & 0x3f)) & 0x3f;
-		if (!pnet->have_UAP)
-			printf("We have a winner! UAP = 0x%x found after %d total packets.\n",
-				pnet->clock6_candidates[first_clock], pnet->total_packets_observed);
-		else
-			printf("We have a winner! CLK6 = 0x%x found after %d total packets.\n",
-				pnet->clk_offset, pnet->total_packets_observed);
+		//if (!pnet->have_UAP)
+		//	printf("We have a winner! UAP = 0x%x found after %d total packets.\n",
+		//		pnet->clock6_candidates[first_clock], pnet->total_packets_observed);
+		//else
+		//	printf("We have a winner! CLK6 = 0x%x found after %d total packets.\n",
+		//		pnet->clk_offset, pnet->total_packets_observed);
 		pnet->UAP = pnet->clock6_candidates[first_clock];
 		pnet->have_clk6 = 1;
 		pnet->have_UAP = 1;
@@ -484,6 +486,9 @@ void reset(piconet *pnet)
 	 */
 	pnet->afh = pnet->looks_like_afh;
 	pnet->looks_like_afh = 0;
+	//int i;
+	//for(i=0; i<10; i++)
+	//	pnet->afh_map[i] = 0;
 }
 
 /* add a packet to the queue */
@@ -535,6 +540,7 @@ int decode(packet* p, piconet *pnet)
 				rv =  decode_payload(p);
 				if(rv > 0) {
 					printf("Packet decoded with clock 0x%07x (rv=%d)\n", p->clock, rv);
+					print(p);
 				}
 				// TODO: make sure we use best result
 			}
@@ -547,6 +553,7 @@ int decode(packet* p, piconet *pnet)
 					rv =  decode_payload(p);
 					if(rv > 0) {
 						printf("Packet decoded with clock 0x%07x (rv=%d)\n", p->clock, rv);
+						print(p);
 					}
 					// TODO: make sure we use best result
 				}
