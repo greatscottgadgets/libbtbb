@@ -540,7 +540,7 @@ int decode(packet* p, piconet *pnet)
 				rv =  decode_payload(p);
 				if(rv > 0) {
 					printf("Packet decoded with clock 0x%07x (rv=%d)\n", p->clock, rv);
-					print(p);
+					btbb_print_packet(p);
 				}
 				// TODO: make sure we use best result
 			}
@@ -553,7 +553,7 @@ int decode(packet* p, piconet *pnet)
 					rv =  decode_payload(p);
 					if(rv > 0) {
 						printf("Packet decoded with clock 0x%07x (rv=%d)\n", p->clock, rv);
-						print(p);
+						btbb_print_packet(p);
 					}
 					// TODO: make sure we use best result
 				}
