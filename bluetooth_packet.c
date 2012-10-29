@@ -92,7 +92,7 @@ void gen_syndrome_map(int bit_errors)
 {
 	int i;
 	for(i = 1; i <= bit_errors; i++)
-		cycle(0, 0, i, 0xcc7b7268ff614e1b);
+		cycle(0, 0, i, DEFAULT_AC);
 }
 
 uint64_t syncword = 0;
@@ -161,7 +161,7 @@ int sniff_ac(char *stream, int search_length, access_code *ac)
 
 			/* correct the barker code with a simple comparison */
 			corrected_barker = barker_correct[(uint8_t)(syncword >> 57)];
-			syncword = (syncword & 0x01ffffffffffffff) | corrected_barker;
+			syncword = (syncword & 0x01ffffffffffffffULL) | corrected_barker;
 
 			codeword = syncword ^ pn;
 			syndrome = gen_syndrome(codeword);
@@ -191,8 +191,7 @@ int sniff_ac(char *stream, int search_length, access_code *ac)
 uint64_t gen_syncword(int LAP)
 {
 	int i;
-	/* default codeword modified for PN sequence and barker code */
-	uint64_t codeword = 0xb0000002c7820e7e;
+	uint64_t codeword = DEFAULT_CODEWORD;
 	
 	/* the sync word generated is in host order, not air order */
 	for (i = 0; i < 24; i++)
