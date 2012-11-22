@@ -61,7 +61,7 @@ void gen_hop_pattern(piconet *pnet)
 
 /* Container for hopping pattern */
 typedef struct {
-    uint32_t address; /* key */
+    uint64_t key; /* afh flag + address */
     char *sequence;             
     UT_hash_handle hh;
 } hopping_struct;
@@ -72,17 +72,19 @@ static hopping_struct *hopping_map = NULL;
 void get_hop_pattern(piconet *pnet)
 {
        hopping_struct *s;
-       uint32_t address;
+       uint64_t key;
 
-       address = ((pnet->UAP<<24) | pnet->LAP) & 0xfffffff;
-       HASH_FIND(hh, hopping_map, &address, 4, s);
+	   /* Two stages to avoid "left shift count >= width of type" warning */
+	   key = pnet->afh;
+       key = (key<<32) | (pnet->UAP<<24) | pnet->LAP;
+       HASH_FIND(hh, hopping_map, &key, 4, s);
        
        if (s == NULL) {
                gen_hop_pattern(pnet);
                s = malloc(sizeof(hopping_struct));
-               s->address = address;
+               s->key = key;
                s->sequence = pnet->sequence;
-               HASH_ADD(hh, hopping_map, address, 4, s);
+               HASH_ADD(hh, hopping_map, key, 4, s);
        } else {
                printf("\nFound hopping sequence in cache.\n");
                pnet->sequence = s->sequence;
@@ -371,7 +373,7 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 		pnet->first_pkt_time = clkn;
 
 	// Set afh channel map
-	//pnet->afh_map[pkt->channel/8] |= 0x1 << (pkt->channel % 8);
+	pnet->afh_map[pkt->channel/8] |= 0x1 << (pkt->channel % 8);
 
 	if (pnet->packets_observed < MAX_PATTERN_LENGTH) {
 		pnet->pattern_indices[pnet->packets_observed] = clkn - pnet->first_pkt_time;
@@ -417,12 +419,12 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 
 			default: /* CRC success */
 				pnet->clk_offset = (count - (pnet->first_pkt_time & 0x3f)) & 0x3f;
-				//if (!pnet->have_UAP)
-				//	printf("Correct CRC! UAP = 0x%x found after %d total packets.\n",
-				//		UAP, pnet->total_packets_observed);
-				//else
-				//	printf("Correct CRC! CLK6 = 0x%x found after %d total packets.\n",
-				//		pnet->clk_offset, pnet->total_packets_observed);
+				if (!pnet->have_UAP)
+					printf("Correct CRC! UAP = 0x%x found after %d total packets.\n",
+						UAP, pnet->total_packets_observed);
+				else
+					printf("Correct CRC! CLK6 = 0x%x found after %d total packets.\n",
+						pnet->clk_offset, pnet->total_packets_observed);
 				pnet->UAP = UAP;
 				pnet->have_clk6 = 1;
 				pnet->have_UAP = 1;
@@ -438,12 +440,12 @@ int UAP_from_header(packet *pkt, piconet *pnet)
 
 	if (remaining == 1) {
 		pnet->clk_offset = (first_clock - (pnet->first_pkt_time & 0x3f)) & 0x3f;
-		//if (!pnet->have_UAP)
-		//	printf("We have a winner! UAP = 0x%x found after %d total packets.\n",
-		//		pnet->clock6_candidates[first_clock], pnet->total_packets_observed);
-		//else
-		//	printf("We have a winner! CLK6 = 0x%x found after %d total packets.\n",
-		//		pnet->clk_offset, pnet->total_packets_observed);
+		if (!pnet->have_UAP)
+			printf("We have a winner! UAP = 0x%x found after %d total packets.\n",
+				pnet->clock6_candidates[first_clock], pnet->total_packets_observed);
+		else
+			printf("We have a winner! CLK6 = 0x%x found after %d total packets.\n",
+				pnet->clk_offset, pnet->total_packets_observed);
 		pnet->UAP = pnet->clock6_candidates[first_clock];
 		pnet->have_clk6 = 1;
 		pnet->have_UAP = 1;
@@ -564,4 +566,13 @@ int decode(packet* p, piconet *pnet)
 			rv = decode_payload(p);
 
 	return rv;
+}
+
+void btbb_print_afh_map(piconet *pnet) {
+	// Print AFH map from piconet
+	int i;
+	printf("\tAFH Map: 0x");
+	for(i=0; i<10; i++)
+		printf("%02x", pnet->afh_map[i]);
+	printf("\n");	
 }

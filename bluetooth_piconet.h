@@ -181,4 +181,7 @@ void init_piconet(piconet *pnet);
 /* decode a whole packet from the given piconet */
 int decode(packet* p, piconet *pnet);
 
+/* Print hexadecimal representation of the derived AFH map */
+void btbb_print_afh_map(piconet *pnet);
+
 #endif /* INCLUDED_BLUETOOTH_PICONET_H */
