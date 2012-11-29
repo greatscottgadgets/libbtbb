@@ -28,6 +28,19 @@
 #include <string.h>
 #include "bluetooth_le_packet.h"
 
+/* string representations of advertising packet type */
+static const char *ADV_TYPE_NAMES[] = {
+	"ADV_IND", "ADV_DIRECT_IND", "ADV_NONCONN_IND", "SCAN_REQ",
+	"SCAN_RSP", "CONNECT_REQ", "ADV_SCAN_IND",
+};
+
+/* source clock accuracy in a connect packet */
+static const char *CONNECT_SCA[] = {
+	"251 ppm to 500 ppm", "151 ppm to 250 ppm", "101 ppm to 150 ppm",
+	"76 ppm to 100 ppm", "51 ppm to 75 ppm", "31 ppm to 50 ppm",
+	"21 ppm to 30 ppm", "0 ppm to 20 ppm",
+};
+
 // count of objects in an array, shamelessly stolen from Chrome
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 

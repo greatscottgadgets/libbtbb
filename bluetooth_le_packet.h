@@ -29,12 +29,6 @@
 
 #define MAX_LE_SYMBOLS 64
 
-/* string representations of advertising packet type */
-static const char *ADV_TYPE_NAMES[] = {
-	"ADV_IND", "ADV_DIRECT_IND", "ADV_NONCONN_IND", "SCAN_REQ",
-	"SCAN_RSP", "CONNECT_REQ", "ADV_SCAN_IND",
-};
-
 #define ADV_IND			0
 #define ADV_DIRECT_IND	1
 #define ADV_NONCONN_IND	2
@@ -42,13 +36,6 @@ static const char *ADV_TYPE_NAMES[] = {
 #define SCAN_RSP		4
 #define CONNECT_REQ		5
 #define ADV_SCAN_IND	6
-
-/* source clock accuracy in a connect packet */
-static const char *CONNECT_SCA[] = {
-	"251 ppm to 500 ppm", "151 ppm to 250 ppm", "101 ppm to 150 ppm",
-	"76 ppm to 100 ppm", "51 ppm to 75 ppm", "31 ppm to 50 ppm",
-	"21 ppm to 30 ppm", "0 ppm to 20 ppm",
-};
 
 typedef struct _le_packet_t {
 	// raw unwhitened bytes of packet, including access address
