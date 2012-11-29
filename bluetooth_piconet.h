@@ -31,10 +31,10 @@
 #define CHANNELS 79
 
 /* number of hops in the hopping sequence (i.e. number of possible values of CLK1-27) */
-static const int SEQUENCE_LENGTH = 134217728;
+#define SEQUENCE_LENGTH 134217728
 
 /* number of aliased channels received */
-static const int ALIASED_CHANNELS = 25;
+#define ALIASED_CHANNELS 25
 
 /* Packet queue (linked list) */
 typedef struct pkt_queue {
