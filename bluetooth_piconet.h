@@ -150,7 +150,7 @@ int init_hop_reversal(int aliased, bt_piconet *pnet);
 int winnow(bt_piconet *pnet);
 
 /* use packet headers to determine UAP */
-int UAP_from_header(bt_packet *pkt, bt_piconet *pnet);
+int bt_uap_from_header(bt_packet *pkt, bt_piconet *pnet);
 
 /* look up channel for a particular hop */
 char hop(int clock, bt_piconet *pnet);

@@ -148,9 +148,6 @@ int EV4(int clock, bt_packet* p);
 int EV5(int clock, bt_packet* p);
 int HV(int clock, bt_packet* p);
 
-/* decode payload header, return value indicates success */
-int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, bt_packet* p);
-
 /* Search for a packet with specified LAP (or LAP_ANY). The stream
  * must be at least of length serch_length + 72. Limit to
  * 'max_ac_errors' bit errors.
@@ -173,10 +170,7 @@ void bt_packet_set_data(bt_packet *pkt,
 			uint32_t clkn);  // 312.5us clock (CLK27-0)
 
 /* Generate Sync Word from an LAP */
-uint64_t gen_syncword(int LAP);
-
-/* extract UAP by reversing the HEC computation */
-int UAP_from_hec(uint16_t data, uint8_t hec);
+uint64_t bt_gen_syncword(int LAP);
 
 /* check if the packet's CRC is correct for a given clock (CLK1-6) */
 int crc_check(int clock, bt_packet* p);

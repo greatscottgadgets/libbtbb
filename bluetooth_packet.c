@@ -180,7 +180,7 @@ static void gen_syndrome_map(int bit_errors)
 }
 
 /* Generate Sync Word from an LAP */
-uint64_t gen_syncword(int LAP)
+uint64_t bt_gen_syncword(int LAP)
 {
 	int i;
 	uint64_t codeword = DEFAULT_CODEWORD;
@@ -322,7 +322,7 @@ int bt_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors,
 	/* Matching a specific LAP. Error limit is ignored, since the
 	 * goal is to find all packets. */
 	else {
-		ac = gen_syncword(lap);
+		ac = bt_gen_syncword(lap);
 		for (count = 0; count < search_length; count++) {
 			symbols = &stream[count];
 			syncword = air_to_host64(symbols, 64);
@@ -521,7 +521,7 @@ static uint16_t crcgen(char *payload, int length, int UAP)
 }
 
 /* extract UAP by reversing the HEC computation */
-int UAP_from_hec(uint16_t data, uint8_t hec)
+static int bt_uap_from_hec(uint16_t data, uint8_t hec)
 {
         int i;
 
@@ -649,7 +649,7 @@ int fhs(int clock, bt_packet* p)
 }
 
 /* decode payload header, return value indicates success */
-int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, bt_packet* p)
+static int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, bt_packet* p)
 {
 	if(header_bytes == 2)
 	{
@@ -985,7 +985,7 @@ uint8_t try_clock(int clock, bt_packet* p)
 	unwhiten(header, unwhitened, clock, 18, 0, p);
 	uint16_t hdr_data = air_to_host16(unwhitened, 10);
 	uint8_t hec = air_to_host8(&unwhitened[10], 8);
-	p->UAP = UAP_from_hec(hdr_data, hec);
+	p->UAP = bt_uap_from_hec(hdr_data, hec);
 	p->packet_type = air_to_host8(&unwhitened[3], 4);
 
 	return p->UAP;
@@ -1004,7 +1004,7 @@ int decode_header(bt_packet* p)
 		unwhiten(header, p->packet_header, p->clock, 18, 0, p);
 		uint16_t hdr_data = air_to_host16(p->packet_header, 10);
 		uint8_t hec = air_to_host8(&p->packet_header[10], 8);
-		UAP = UAP_from_hec(hdr_data, hec);
+		UAP = bt_uap_from_hec(hdr_data, hec);
 		if (UAP == p->UAP) {
 			p->packet_lt_addr = air_to_host8(&p->packet_header[0], 3);
 			p->packet_type = air_to_host8(&p->packet_header[3], 4);

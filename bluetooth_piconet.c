@@ -439,7 +439,7 @@ int winnow(bt_piconet *pnet)
 }
 
 /* use packet headers to determine UAP */
-int UAP_from_header(bt_packet *pkt, bt_piconet *pnet)
+int bt_uap_from_header(bt_packet *pkt, bt_piconet *pnet)
 {
 	uint8_t UAP;
 	int count, retval, first_clock = 0;
