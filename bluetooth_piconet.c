@@ -28,7 +28,10 @@
 #include "uthash.h"
 #include <stdlib.h>
 
-void init_piconet(piconet *pnet)
+int perm_table_initialized = 0;
+char perm_table[0x20][0x20][0x200];
+
+void init_piconet(bt_piconet *pnet)
 {
 	int i;
 	for(i=0; i<10; i++)
@@ -39,6 +42,7 @@ void init_piconet(piconet *pnet)
 	pnet->hop_reversal_inited = 0;
 	pnet->afh = 0;
 	pnet->looks_like_afh = 0;
+	pnet->have_LAP = 0;
 	pnet->have_UAP = 0;
 	pnet->have_NAP = 0;
 	pnet->have_clk6 = 0;
@@ -46,7 +50,7 @@ void init_piconet(piconet *pnet)
 }
 
 /* Function to calculate piconet hopping patterns and add to hash map */
-void gen_hop_pattern(piconet *pnet)
+void gen_hop_pattern(bt_piconet *pnet)
 {
 	printf("\nCalculating complete hopping sequence.\n");
 	/* this holds the entire hopping sequence */
@@ -69,7 +73,7 @@ typedef struct {
 static hopping_struct *hopping_map = NULL;
 
 /* Function to fetch piconet hopping patterns */
-void get_hop_pattern(piconet *pnet)
+void get_hop_pattern(bt_piconet *pnet)
 {
        hopping_struct *s;
        uint64_t key;
@@ -92,7 +96,7 @@ void get_hop_pattern(piconet *pnet)
 }
 
 /* initialize the hop reversal process */
-int init_hop_reversal(int aliased, piconet *pnet)
+int init_hop_reversal(int aliased, bt_piconet *pnet)
 {
 	int max_candidates;
 	uint32_t clock;
@@ -119,24 +123,19 @@ int init_hop_reversal(int aliased, piconet *pnet)
 }
 
 /* do all the precalculation that can be done before knowing the address */
-void precalc(piconet *pnet)
+void precalc(bt_piconet *pnet)
 {
-	int i, z, p_high, p_low;
+	int i;
 
 	/* populate frequency register bank*/
 	for (i = 0; i < CHANNELS; i++)
 			pnet->bank[i] = ((i * 2) % CHANNELS);
 	/* actual frequency is 2402 + pnet->bank[i] MHz */
 
-	/* populate perm_table for all possible inputs */
-	for (z = 0; z < 0x20; z++)
-		for (p_high = 0; p_high < 0x20; p_high++)
-			for (p_low = 0; p_low < 0x200; p_low++)
-				pnet->perm_table[z][p_high][p_low] = perm5(z, p_high, p_low);
 }
 
 /* do precalculation that requires the address */
-void address_precalc(int address, piconet *pnet)
+void address_precalc(int address, bt_piconet *pnet)
 {
 	/* precalculate some of single_hop()/gen_hop()'s variables */
 	pnet->a1 = (address >> 23) & 0x1f;
@@ -156,11 +155,37 @@ void address_precalc(int address, piconet *pnet)
 		((address >> 1) & 0x01);
 }
 
-/* drop-in replacement for perm5() using lookup table */
-int fast_perm(int z, int p_high, int p_low, piconet *pnet)
+#ifdef WC4
+/* These are optimization experiments, which don't help much for
+ * x86. Hold on to them to see whether they're useful on ARM. */
+//#define BUTTERFLY(z,p,c,a,b)					     \
+//	if ( ((p&(1<<c))!=0) & (((z&(1<<a))!=0) ^ ((z&(1<<b))!=0)) ) \
+//		z ^= ((1<<a)|(1<<b))
+#define BUTTERFLY(z,p,c,a,b) \
+	if ( (((z>>a)^(z>>b)) & (p>>c)) & 0x1 ) \
+		z ^= ((1<<a)|(1<<b))
+
+int perm5(int z, int p_high, int p_low)
 {
-	return(pnet->perm_table[z][p_high][p_low]);
+	int p = (p_high << 5) | p_low;
+	BUTTERFLY(z,p,13,1,2);
+	BUTTERFLY(z,p,12,0,3);
+	BUTTERFLY(z,p,11,1,3);
+	BUTTERFLY(z,p,10,2,4);
+	BUTTERFLY(z,p, 9,0,3);
+	BUTTERFLY(z,p, 8,1,4);
+	BUTTERFLY(z,p, 7,3,4);
+	BUTTERFLY(z,p, 6,0,2);
+	BUTTERFLY(z,p, 5,1,3);
+	BUTTERFLY(z,p, 4,0,4);
+	BUTTERFLY(z,p, 3,3,4);
+	BUTTERFLY(z,p, 2,1,2);
+	BUTTERFLY(z,p, 1,2,3);
+	BUTTERFLY(z,p, 0,0,1);
+
+	return z;
 }
+#endif // WC4
 
 /* 5 bit permutation */
 /* assumes z is constrained to 5 bits, p_high to 5 bits, p_low to 9 bits */
@@ -198,8 +223,29 @@ int perm5(int z, int p_high, int p_low)
 	return(output);
 }
 
+void perm_table_init(void)
+{
+	/* populate perm_table for all possible inputs */
+	int z, p_high, p_low;
+	for (z = 0; z < 0x20; z++)
+		for (p_high = 0; p_high < 0x20; p_high++)
+			for (p_low = 0; p_low < 0x200; p_low++)
+				perm_table[z][p_high][p_low] = perm5(z, p_high, p_low);
+}
+
+/* drop-in replacement for perm5() using lookup table */
+int fast_perm(int z, int p_high, int p_low, bt_piconet *pnet)
+{
+	if (!perm_table_initialized) {
+		perm_table_init();
+		perm_table_initialized = 1;
+	}
+
+	return(perm_table[z][p_high][p_low]);
+}
+
 /* generate the complete hopping sequence */
-void gen_hops(piconet *pnet)
+void gen_hops(bt_piconet *pnet)
 {
 	/* a, b, c, d, e, f, x, y1, y2 are variable names used in section 2.6 of the spec */
 	/* b is already defined */
@@ -244,7 +290,7 @@ void gen_hops(piconet *pnet)
 
 /* determine channel for a particular hop */
 /* replaced with gen_hops() for a complete sequence but could still come in handy */
-char single_hop(int clock, piconet *pnet)
+char single_hop(int clock, bt_piconet *pnet)
 {
 	int a, c, d, f, x, y1, y2;
 
@@ -264,13 +310,13 @@ char single_hop(int clock, piconet *pnet)
 }
 
 /* look up channel for a particular hop */
-char hop(int clock, piconet *pnet)
+char hop(int clock, bt_piconet *pnet)
 {
 	return pnet->sequence[clock];
 }
 
 /* create list of initial candidate clock values (hops with same channel as first observed hop) */
-int init_candidates(char channel, int known_clock_bits, piconet *pnet)
+int init_candidates(char channel, int known_clock_bits, bt_piconet *pnet)
 {
 	int i;
 	int count = 0; /* total number of candidates */
@@ -290,7 +336,7 @@ int init_candidates(char channel, int known_clock_bits, piconet *pnet)
 }
 
 /* narrow a list of candidate clock values based on a single observed hop */
-int channel_winnow(int offset, char channel, piconet *pnet)
+int channel_winnow(int offset, char channel, bt_piconet *pnet)
 {
 	int i;
 	int new_count = 0; /* number of candidates after winnowing */
@@ -326,7 +372,7 @@ int channel_winnow(int offset, char channel, piconet *pnet)
 }
 
 /* narrow a list of candidate clock values based on all observed hops */
-int winnow(piconet *pnet)
+int winnow(bt_piconet *pnet)
 {
 	int new_count = pnet->num_candidates;
 	int index, last_index;
@@ -360,7 +406,7 @@ int winnow(piconet *pnet)
 }
 
 /* use packet headers to determine UAP */
-int UAP_from_header(packet *pkt, piconet *pnet)
+int UAP_from_header(bt_packet *pkt, bt_piconet *pnet)
 {
 	uint8_t UAP;
 	int count, retval, first_clock = 0;
@@ -467,7 +513,7 @@ char aliased_channel(char channel)
 }
 
 /* reset UAP/clock discovery */
-void reset(piconet *pnet)
+void reset(bt_piconet *pnet)
 {
 	printf("no candidates remaining! starting over . . .\n");
 
@@ -494,7 +540,7 @@ void reset(piconet *pnet)
 }
 
 /* add a packet to the queue */
-void enqueue(packet *pkt, piconet *pnet)
+void enqueue(bt_packet *pkt, bt_piconet *pnet)
 {
 	pkt_queue *head;
 	//pkt_queue item;
@@ -512,9 +558,9 @@ void enqueue(packet *pkt, piconet *pnet)
 }
 
 /* pull the first packet from the queue (FIFO) */
-packet *dequeue(piconet *pnet)
+bt_packet *dequeue(bt_piconet *pnet)
 {
-	packet *pkt;
+	bt_packet *pkt;
 
 	if (pnet->queue == NULL) {
 		pkt = NULL;
@@ -527,7 +573,7 @@ packet *dequeue(piconet *pnet)
 }
 
 /* decode the whole packet */
-int decode(packet* p, piconet *pnet)
+int decode(bt_packet* p, bt_piconet *pnet)
 {
 	p->have_payload = 0;
 	uint8_t clk6, i;
@@ -568,7 +614,7 @@ int decode(packet* p, piconet *pnet)
 	return rv;
 }
 
-void btbb_print_afh_map(piconet *pnet) {
+void btbb_print_afh_map(bt_piconet *pnet) {
 	// Print AFH map from piconet
 	int i;
 	printf("\tAFH Map: 0x");

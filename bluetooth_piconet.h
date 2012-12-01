@@ -38,13 +38,13 @@
 
 /* Packet queue (linked list) */
 typedef struct pkt_queue {
-	packet *pkt;
+	bt_packet *pkt;
 
 	struct pkt_queue *next;
 
 } pkt_queue;
 
-typedef struct piconet {
+typedef struct bt_piconet {
 	/* true if using a particular aliased receiver implementation */
 	int aliased;
 
@@ -79,9 +79,6 @@ typedef struct piconet {
 	/* frequency register bank */
 	int bank[CHANNELS];
 
-	/* speed up the perm5 function with a lookup table */
-	char perm_table[0x20][0x20][0x200];
-
 	/* this holds the entire hopping sequence */
 	char *sequence;
 
@@ -115,6 +112,9 @@ typedef struct piconet {
 	/* local clock (clkn) at time of first packet */
 	uint32_t first_pkt_time;
 
+	/* Whether LAP is valid */
+	int have_LAP;
+
 	/* discovery status */
 	int have_UAP;
 	int have_NAP;
@@ -123,65 +123,65 @@ typedef struct piconet {
 
 	/* queue of packets to be decoded */
 	pkt_queue *queue;
-} piconet;
+} bt_piconet;
 
 /* do all the precalculation that can be done before knowing the address */
-void precalc(piconet *pnet);
+void precalc(bt_piconet *pnet);
 
 /* do precalculation that requires the address */
-void address_precalc(int address, piconet *pnet);
+void address_precalc(int address, bt_piconet *pnet);
 
 /* drop-in replacement for perm5() using lookup table */
-int fast_perm(int z, int p_high, int p_low, piconet *pnet);
+int fast_perm(int z, int p_high, int p_low, bt_piconet *pnet);
 
 /* 5 bit permutation */
 /* assumes z is constrained to 5 bits, p_high to 5 bits, p_low to 9 bits */
 int perm5(int z, int p_high, int p_low);
 
 /* generate the complete hopping sequence */
-void gen_hops(piconet *pnet);
+void gen_hops(bt_piconet *pnet);
 
 /* determine channel for a particular hop */
 /* replaced with gen_hops() for a complete sequence but could still come in handy */
-char single_hop(int clock, piconet *pnet);
+char single_hop(int clock, bt_piconet *pnet);
 
 /* create list of initial candidate clock values (hops with same channel as first observed hop) */
-int init_candidates(char channel, int known_clock_bits, piconet *pnet);
+int init_candidates(char channel, int known_clock_bits, bt_piconet *pnet);
 
 /* initialize the hop reversal process */
 /* returns number of initial candidates for CLK1-27 */
-int init_hop_reversal(int aliased, piconet *pnet);
+int init_hop_reversal(int aliased, bt_piconet *pnet);
 
 /* narrow a list of candidate clock values based on a single observed hop */
-int channel_winnow(int offset, char channel, piconet *pnet);
+int channel_winnow(int offset, char channel, bt_piconet *pnet);
 
 /* narrow a list of candidate clock values based on all observed hops */
-int winnow(piconet *pnet);
+int winnow(bt_piconet *pnet);
 
 /* use packet headers to determine UAP */
-int UAP_from_header(packet *pkt, piconet *pnet);
+int UAP_from_header(bt_packet *pkt, bt_piconet *pnet);
 
 /* look up channel for a particular hop */
-char hop(int clock, piconet *pnet);
+char hop(int clock, bt_piconet *pnet);
 
 /* return the observable channel (26-50) for a given channel (0-78) */
 char aliased_channel(char channel);
 
 /* reset UAP/clock discovery */
-void reset(piconet *pnet);
+void reset(bt_piconet *pnet);
 
 /* add a packet to the queue */
-void enqueue(packet* pkt, piconet *pnet);
+void enqueue(bt_packet* pkt, bt_piconet *pnet);
 
 /* pull the first packet from the queue (FIFO) */
-packet *dequeue(piconet *pnet);
+bt_packet *dequeue(bt_piconet *pnet);
 
-void init_piconet(piconet *pnet);
+void init_piconet(bt_piconet *pnet);
 
 /* decode a whole packet from the given piconet */
-int decode(packet* p, piconet *pnet);
+int decode(bt_packet* p, bt_piconet *pnet);
 
 /* Print hexadecimal representation of the derived AFH map */
-void btbb_print_afh_map(piconet *pnet);
+void btbb_print_afh_map(bt_piconet *pnet);
 
 #endif /* INCLUDED_BLUETOOTH_PICONET_H */

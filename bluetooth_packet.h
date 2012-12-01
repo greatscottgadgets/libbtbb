@@ -31,7 +31,7 @@
 #define MAX_SYMBOLS 3125
 
 /* Defaut maximum AC bit errors for unknown ACs, this can be overridden at runtime */
-#define MAX_AC_ERRORS 4
+#define MAX_AC_ERRORS 3
 
 /* maximum number of bit errors for for known syncwords */
 #define MAX_SYNCWORD_ERRS 5
@@ -45,22 +45,7 @@
 /* minimum header bit errors to indicate that this is an ID packet */
 #define ID_THRESHOLD 5
 
-
-/* Need to return more than just the offset,
- * this allows us to correct the data too
- */
-typedef struct access_code {
-	/* AC offset from start of data */
-	int offset;
-
-	/* Corrected LAP */
-	uint32_t LAP;
-
-	/* Number of error bits corrected */
-	uint8_t error_count;
-} access_code;
-
-typedef struct packet {
+typedef struct bt_packet {
 	/* the raw symbol stream (less the preamble), one bit per char */
 	//FIXME maybe this should be a vector so we can grow it only to the size
 	//needed and later shrink it if we find we have more symbols than necessary
@@ -147,42 +132,51 @@ typedef struct packet {
 	/* CLK1-27 of master */
 	uint32_t clock;
 
-	/* native (local) clock */
+	/* native (local) clock, CLK0-27 */
 	uint32_t clkn;
 
 	/* Number of bit errors in the AC */
 	uint8_t ac_errors;
-} packet;
+} bt_packet;
 
 /* type-specific CRC checks and decoding */
-int fhs(int clock, packet* p);
-int DM(int clock, packet* p);
-int DH(int clock, packet* p);
-int EV3(int clock, packet* p);
-int EV4(int clock, packet* p);
-int EV5(int clock, packet* p);
-int HV(int clock, packet* p);
+int fhs(int clock, bt_packet* p);
+int DM(int clock, bt_packet* p);
+int DH(int clock, bt_packet* p);
+int EV3(int clock, bt_packet* p);
+int EV4(int clock, bt_packet* p);
+int EV5(int clock, bt_packet* p);
+int HV(int clock, bt_packet* p);
 
 /* decode payload header, return value indicates success */
-int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, packet* p);
+int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, bt_packet* p);
 
 /* Remove the whitening from an air order array */
-void unwhiten(char* input, char* output, int clock, int length, int skip, packet* p);
+void unwhiten(char* input, char* output, int clock, int length, int skip, bt_packet* p);
 
 /* verify the payload CRC */
-int payload_crc(packet* p);
+int payload_crc(bt_packet* p);
 
-/*
- * Search for known LAP and return the index.  The length of the stream must be
- * at least search_length + 72.
- */
-int find_ac(char *stream, int search_length, uint32_t LAP, access_code *ac);
+/* Search for a packet with specified LAP (or LAP_ANY). The stream
+ * must be at least of length serch_length + 72. Limit to
+ * 'max_ac_errors' bit errors.
+ *
+ * Returns offset into 'stream' at which packet was found. If no
+ * packet was found, returns a negative number. If LAP_ANY was
+ * specified, fills lap. 'ac_errors' must be set as an input, replaced
+ * by actual number of errors on output. */
+int bt_find_ac(char *stream,
+	       int search_length,
+	       uint32_t lap,
+	       int max_ac_errors,
+	       bt_packet *pkt);
+#define LAP_ANY 0xffffffffUL
 
-/*
- * Search a symbol stream to find a packet with arbitrary LAP, return index.
- * The length of the stream must be at least search_length + 72.
- */
-int sniff_ac(char *stream, int search_length, access_code *ac);
+void bt_packet_set_data(bt_packet *pkt,
+			char *syms,      // Symbol data
+			int length,      // Number of symbols
+			uint8_t channel, // Bluetooth channel 0-79
+			uint32_t clkn);  // 312.5us clock (CLK27-0)
 
 /* Reverse the bits in a byte */
 uint8_t reverse(char byte);
@@ -225,41 +219,39 @@ uint16_t crcgen(char *payload, int length, int UAP);
 int UAP_from_hec(uint16_t data, uint8_t hec);
 
 /* check if the packet's CRC is correct for a given clock (CLK1-6) */
-int crc_check(int clock, packet* p);
+int crc_check(int clock, bt_packet* p);
 
 /* decode the packet header */
-int decode_header(packet* p);
+int decode_header(bt_packet* p);
 
 /* decode the packet header */
-int decode_payload(packet* p);
+int decode_payload(bt_packet* p);
 
 /* print packet information */
-void btbb_print_packet(packet* p);
+void btbb_print_packet(bt_packet* p);
 
 /* format payload for tun interface */
-char *tun_format(packet* p);
+char *tun_format(bt_packet* p);
 
 /* try a clock value (CLK1-6) to unwhiten packet header,
  * sets resultant d_packet_type and d_UAP, returns UAP.
  */
-uint8_t try_clock(int clock, packet* p);
+uint8_t try_clock(int clock, bt_packet* p);
 
 /* check to see if the packet has a header */
-int header_present(packet* p);
+int header_present(bt_packet* p);
 
 /* extract LAP from FHS payload */
-uint32_t lap_from_fhs(packet* p);
+uint32_t lap_from_fhs(bt_packet* p);
 
 /* extract UAP from FHS payload */
-uint8_t uap_from_fhs(packet* p);
+uint8_t uap_from_fhs(bt_packet* p);
 
 /* extract NAP from FHS payload */
-uint16_t nap_from_fhs(packet* p);
+uint16_t nap_from_fhs(bt_packet* p);
 
 /* extract clock from FHS payload */
-uint32_t clock_from_fhs(packet* p);
-
-void init_packet(packet *p, char *syms, int len);
+uint32_t clock_from_fhs(bt_packet* p);
 
 /* count the number of 1 bits in a uint64_t */
 uint8_t count_bits(uint64_t n);

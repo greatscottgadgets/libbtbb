@@ -179,96 +179,118 @@ void gen_syndrome_map(int bit_errors)
 		cycle(0, 0, i, DEFAULT_AC);
 }
 
-uint64_t syncword = 0;
-/*
- * Search for known LAP and return the index.  The length of the stream must be
- * at least search_length + 72.
- */
-int find_ac(char *stream, int search_length, uint32_t LAP, access_code *ac) {
-	/* Looks for an AC in the stream */
-	uint8_t bit_errors;
-	char *symbols;
-	uint64_t syncword, known_ac;
-	int count = 0;
-	known_ac = gen_syncword(LAP);
+static inline void init_packet(bt_packet *pkt, uint32_t lap, uint8_t ac_errors)
+{
+	pkt->LAP = lap;
+	pkt->ac_errors = ac_errors;
 
-	// Search until we're 64 symbols from the end of the buffer
-	for(count = 0; count < search_length; count++)
-	{
-		symbols = &stream[count];
-		syncword = air_to_host64(symbols, 64);
-
-		bit_errors = count_bits(syncword ^ known_ac);
-
-		if (bit_errors < MAX_SYNCWORD_ERRS) {
-			ac->offset = count;
-			ac->LAP = LAP;
-			ac->error_count = bit_errors;
-			return 1;
-		}
-	}
-	return 0;
+	pkt->whitened = 1;
+	pkt->have_UAP = 0;
+	pkt->have_NAP = 0;
+	pkt->have_clk6 = 0;
+	pkt->have_clk27 = 0;
+	pkt->have_payload = 0;
+	pkt->payload_length = 0;
 }
 
-/*
- * Search a symbol stream to find a packet with arbitrary LAP, return index.
- * The length of the stream must be at least search_length + 72.
- */
-int sniff_ac(char *stream, int search_length, access_code *ac)
-{
+#define MAX_BARKER_ERRORS 1
+int bt_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors, bt_packet *pkt) {
+
 	/* Looks for an AC in the stream */
 	int count;
-	uint8_t barker; // barker code at end of sync word (includes MSB of LAP)
-	uint8_t bit_errors;
-	int max_distance = 1; // maximum number of bit errors to tolerate in barker
-	uint32_t LAP;
-	uint64_t syncword, codeword, syndrome, corrected_barker;
+	uint8_t ac_errors;
+	uint64_t syncword, codeword, syndrome, corrected_barker, ac;
 	syndrome_struct *errors;
 	char *symbols;
+	int offset = -1;
 
 	if (syndrome_map == NULL)
 		gen_syndrome_map(MAX_AC_ERRORS);
 
-	barker = air_to_host8(&stream[57], 6);
-	barker <<= 1;
+	/* Matching any LAP */
+	if (lap == LAP_ANY) {
 
-	// The stream length must be 72 symbols longer than search_length.
-	for(count = 0; count < search_length; count++)
-	{
-		symbols = &stream[count];
-		barker >>= 1;
-		barker |= (symbols[63] << 6);
-		if(BARKER_DISTANCE[barker] <= max_distance)
-		{
-			// Error correction
-			syncword = air_to_host64(symbols, 64);
+		/* Barker code at end of sync word (includes MSB of
+		 * LAP) is used as a rough filter. */
+		uint8_t barker = air_to_host8(&stream[57], 6);
+		barker <<= 1;
 
-			/* correct the barker code with a simple comparison */
-			corrected_barker = barker_correct[(uint8_t)(syncword >> 57)];
-			syncword = (syncword & 0x01ffffffffffffffULL) | corrected_barker;
+		for (count = 0; count < search_length; count++) {
+			symbols = &stream[count];
+			barker >>= 1;
+			barker |= (symbols[63] << 6);
+			if (BARKER_DISTANCE[barker] <= MAX_BARKER_ERRORS) {
+				// Error correction
+				syncword = air_to_host64(symbols, 64);
+				
+				/* correct the barker code with a simple comparison */
+				corrected_barker = barker_correct[(uint8_t)(syncword >> 57)];
+				syncword = (syncword & 0x01ffffffffffffffULL) | corrected_barker;
+				
+				codeword = syncword ^ pn;
 
-			codeword = syncword ^ pn;
-			syndrome = gen_syndrome(codeword);
-			bit_errors = 0;
-			if (syndrome) {
-				errors = find_syndrome(syndrome);
-				/* If we have an error, correct it */
-				if (errors != NULL) {
-					syncword ^= errors->error;
-					bit_errors = count_bits(errors->error);
+				/* Zero syndrome -> good codeword. */
+				syndrome = gen_syndrome(codeword);
+				ac_errors = 0;
+
+				/* Try to fix errors in bad codeword. */
+				if (syndrome) {
+					errors = find_syndrome(syndrome);
+					if (errors != NULL) {
+						syncword ^= errors->error;
+						ac_errors = count_bits(errors->error);
+						syndrome = 0;
+					}
+					else {
+						ac_errors = 0xff;  // fail
+					}
 				}
-				else
-					continue;
+				
+				if (ac_errors <= max_ac_errors) {
+					lap = (syncword >> 34) & 0xffffff;
+					offset = count;
+					break;
+				}
 			}
-
-			LAP = (syncword >> 34) & 0xffffff;
-			ac->offset = count;
-			ac->LAP = LAP;
-			ac->error_count = bit_errors;
-			return 1;
 		}
 	}
-	return 0;
+
+	/* Matching a specific LAP. Error limit is ignored, since the
+	 * goal is to find all packets. */
+	else {
+		ac = gen_syncword(lap);
+		for (count = 0; count < search_length; count++) {
+			symbols = &stream[count];
+			syncword = air_to_host64(symbols, 64);
+			ac_errors = count_bits(syncword ^ ac);
+
+			if (ac_errors <= MAX_SYNCWORD_ERRS) {
+				offset = count;
+				break;
+			}
+		}
+
+	}
+
+	if (offset >= 0)
+		init_packet(pkt, lap, ac_errors);
+
+	return offset;
+}
+
+/* Copy data (symbols) into packet and set rx data. */
+void bt_packet_set_data(bt_packet *pkt, char *data, int length, uint8_t channel, uint32_t clkn)
+{
+	int i;
+
+	if (length > MAX_SYMBOLS)
+		length = MAX_SYMBOLS;
+	for (i = 0; i < length; i++)
+		pkt->symbols[i] = data[i]; 
+
+	pkt->length = length;
+	pkt->channel = channel;
+	pkt->clkn = clkn >> 1; // really CLK1
 }
 
 /* Generate Sync Word from an LAP */
@@ -299,23 +321,6 @@ int check_syncword(uint64_t streamword, uint64_t syncword)
 		return 0;
 
 	return 1;
-}
-
-void init_packet(packet *p, char *syms, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++)
-		p->symbols[i] = syms[i]; 
-	p->LAP = air_to_host32(&p->symbols[34], 24);
-	p->length = len;
-	p->whitened = 1;
-	p->have_UAP = 0;
-	p->have_NAP = 0;
-	p->have_clk6 = 0;
-	p->have_clk27 = 0;
-	p->have_payload = 0;
-	p->payload_length = 0;
 }
 
 /* Reverse the bits in a byte */
@@ -469,7 +474,7 @@ void host_to_air(uint8_t host_order, char *air_order, int bits)
 }
 
 /* Remove the whitening from an air order array */
-void unwhiten(char* input, char* output, int clock, int length, int skip, packet* p)
+void unwhiten(char* input, char* output, int clock, int length, int skip, bt_packet* p)
 {
 	int count, index;
 	index = INDICES[clock & 0x3f];
@@ -523,7 +528,7 @@ int UAP_from_hec(uint16_t data, uint8_t hec)
 }
 
 /* check if the packet's CRC is correct for a given clock (CLK1-6) */
-int crc_check(int clock, packet* p)
+int crc_check(int clock, bt_packet* p)
 {
 	/*
 	 * return value of 1 represents inconclusive result (default)
@@ -587,7 +592,7 @@ int crc_check(int clock, packet* p)
 }
 
 /* verify the payload CRC */
-int payload_crc(packet* p)
+int payload_crc(bt_packet* p)
 {
 	uint16_t crc;   /* CRC calculated from payload data */
 	uint16_t check; /* CRC supplied by packet */
@@ -598,7 +603,7 @@ int payload_crc(packet* p)
 	return (crc == check);
 }
 
-int fhs(int clock, packet* p)
+int fhs(int clock, bt_packet* p)
 {
 	/* skip the access code and packet header */
 	char *stream = p->symbols + 122;
@@ -636,7 +641,7 @@ int fhs(int clock, packet* p)
 }
 
 /* decode payload header, return value indicates success */
-int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, packet* p)
+int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, bt_packet* p)
 {
 	if(header_bytes == 2)
 	{
@@ -679,7 +684,7 @@ int decode_payload_header(char *stream, int clock, int header_bytes, int size, i
 }
 
 /* DM 1/3/5 packet (and DV)*/
-int DM(int clock, packet* p)
+int DM(int clock, bt_packet* p)
 {
 	int bitlength;
 	/* number of bytes in the payload header */
@@ -743,7 +748,7 @@ int DM(int clock, packet* p)
 
 /* DH 1/3/5 packet (and AUX1) */
 /* similar to DM 1/3/5 but without FEC */
-int DH(int clock, packet* p)
+int DH(int clock, bt_packet* p)
 {
 	int bitlength;
 	/* number of bytes in the payload header */
@@ -794,7 +799,7 @@ int DH(int clock, packet* p)
 	return 1;
 }
 
-int EV3(int clock, packet* p)
+int EV3(int clock, bt_packet* p)
 {
 	/* skip the access code and packet header */
 	char *stream = p->symbols + 122;
@@ -825,7 +830,7 @@ int EV3(int clock, packet* p)
 	return 1;
 }
 
-int EV4(int clock, packet* p)
+int EV4(int clock, bt_packet* p)
 {
 	char *corrected;
 
@@ -880,7 +885,7 @@ int EV4(int clock, packet* p)
 	return 1;
 }
 
-int EV5(int clock, packet* p)
+int EV5(int clock, bt_packet* p)
 {
 	/* skip the access code and packet header */
 	char *stream = p->symbols + 122;
@@ -912,7 +917,7 @@ int EV5(int clock, packet* p)
 }
 
 /* HV packet type payload parser */
-int HV(int clock, packet* p)
+int HV(int clock, bt_packet* p)
 {
 	/* skip the access code and packet header */
 	char *stream = p->symbols + 122;
@@ -959,7 +964,7 @@ int HV(int clock, packet* p)
 /* try a clock value (CLK1-6) to unwhiten packet header,
  * sets resultant p->packet_type and p->UAP, returns UAP.
  */
-uint8_t try_clock(int clock, packet* p)
+uint8_t try_clock(int clock, bt_packet* p)
 {
 	/* skip 72 bit access code */
 	char *stream = p->symbols + 68;
@@ -979,7 +984,7 @@ uint8_t try_clock(int clock, packet* p)
 }
 
 /* decode the packet header */
-int decode_header(packet* p)
+int decode_header(bt_packet* p)
 {
 	/* skip 72 bit access code */
 	char *stream = p->symbols + 68;
@@ -1002,7 +1007,7 @@ int decode_header(packet* p)
 	return 0;
 }
 
-int decode_payload(packet* p)
+int decode_payload(bt_packet* p)
 {
 	int rv = 0;
 	p->payload_header_length = 0;
@@ -1078,7 +1083,7 @@ int decode_payload(packet* p)
 }
 
 /* print packet information */
-void btbb_print_packet(packet* p)
+void btbb_print_packet(bt_packet* p)
 {
 	if (p->have_payload) {
 		printf("  Type: %s\n", TYPE_NAMES[p->packet_type]);
@@ -1098,7 +1103,7 @@ void btbb_print_packet(packet* p)
 	}
 }
 
-char *tun_format(packet* p)
+char *tun_format(bt_packet* p)
 {
 	/* include 6 bytes for meta data, 3 bytes for packet header */
 	int length = 9 + p->payload_length;
@@ -1127,23 +1132,23 @@ char *tun_format(packet* p)
 	return tun_format;
 }
 
-int got_payload(packet* p)
+int got_payload(bt_packet* p)
 {
 	return p->have_payload;
 }
 
-int get_payload_length(packet* p)
+int get_payload_length(bt_packet* p)
 {
 	return p->payload_length;
 }
 
-int get_type(packet* p)
+int get_type(bt_packet* p)
 {
 	return p->packet_type;
 }
 
 /* check to see if the packet has a header */
-int header_present(packet* p)
+int header_present(bt_packet* p)
 {
 	/* skip to last bit of sync word */
 	char *stream = p->symbols + 63;
@@ -1183,28 +1188,28 @@ int header_present(packet* p)
 }
 
 /* extract LAP from FHS payload */
-uint32_t lap_from_fhs(packet* p)
+uint32_t lap_from_fhs(bt_packet* p)
 {
 	/* caller should check got_payload() and get_type() */
 	return air_to_host32(&p->payload[34], 24);
 }
 
 /* extract UAP from FHS payload */
-uint8_t uap_from_fhs(packet* p)
+uint8_t uap_from_fhs(bt_packet* p)
 {
 	/* caller should check got_payload() and get_type() */
 	return air_to_host8(&p->payload[64], 8);
 }
 
 /* extract NAP from FHS payload */
-uint16_t nap_from_fhs(packet* p)
+uint16_t nap_from_fhs(bt_packet* p)
 {
 	/* caller should check got_payload() and get_type() */
 	return air_to_host8(&p->payload[72], 16);
 }
 
 /* extract clock from FHS payload */
-uint32_t clock_from_fhs(packet* p)
+uint32_t clock_from_fhs(bt_packet* p)
 {
 	/*
 	 * caller should check got_payload() and get_type()
