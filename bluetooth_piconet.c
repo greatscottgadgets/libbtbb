@@ -49,87 +49,14 @@ void init_piconet(bt_piconet *pnet)
 	pnet->have_clk27 = 0;
 }
 
-/* Function to calculate piconet hopping patterns and add to hash map */
-void gen_hop_pattern(bt_piconet *pnet)
-{
-	printf("\nCalculating complete hopping sequence.\n");
-	/* this holds the entire hopping sequence */
-	pnet->sequence = (char*) malloc(SEQUENCE_LENGTH);
-
-	precalc(pnet);
-	address_precalc(((pnet->UAP<<24) | pnet->LAP) & 0xfffffff, pnet);
-	gen_hops(pnet);
-
-	printf("Hopping sequence calculated.\n");
-}
-
-/* Container for hopping pattern */
-typedef struct {
-    uint64_t key; /* afh flag + address */
-    char *sequence;             
-    UT_hash_handle hh;
-} hopping_struct;
-
-static hopping_struct *hopping_map = NULL;
-
-/* Function to fetch piconet hopping patterns */
-void get_hop_pattern(bt_piconet *pnet)
-{
-       hopping_struct *s;
-       uint64_t key;
-
-	   /* Two stages to avoid "left shift count >= width of type" warning */
-	   key = pnet->afh;
-       key = (key<<32) | (pnet->UAP<<24) | pnet->LAP;
-       HASH_FIND(hh, hopping_map, &key, 4, s);
-       
-       if (s == NULL) {
-               gen_hop_pattern(pnet);
-               s = malloc(sizeof(hopping_struct));
-               s->key = key;
-               s->sequence = pnet->sequence;
-               HASH_ADD(hh, hopping_map, key, 4, s);
-       } else {
-               printf("\nFound hopping sequence in cache.\n");
-               pnet->sequence = s->sequence;
-       }
-}
-
-/* initialize the hop reversal process */
-int init_hop_reversal(int aliased, bt_piconet *pnet)
-{
-	int max_candidates;
-	uint32_t clock;
-	
-	get_hop_pattern(pnet);
-
-	if(aliased)
-		max_candidates = (SEQUENCE_LENGTH / ALIASED_CHANNELS) / 32;
-	else
-		max_candidates = (SEQUENCE_LENGTH / CHANNELS) / 32;
-	/* this can hold twice the approximate number of initial candidates */
-	pnet->clock_candidates = (uint32_t*) malloc(sizeof(uint32_t) * max_candidates);
-
-	clock = (pnet->clk_offset + pnet->first_pkt_time) & 0x3f;
-	pnet->num_candidates = init_candidates(pnet->pattern_channels[0], clock, pnet);
-	pnet->winnowed = 0;
-	pnet->hop_reversal_inited = 1;
-	pnet->have_clk27 = 0;
-	pnet->aliased = aliased;
-
-	printf("%d initial CLK1-27 candidates\n", pnet->num_candidates);
-
-	return pnet->num_candidates;
-}
-
 /* do all the precalculation that can be done before knowing the address */
 void precalc(bt_piconet *pnet)
 {
 	int i;
 
 	/* populate frequency register bank*/
-	for (i = 0; i < CHANNELS; i++)
-			pnet->bank[i] = ((i * 2) % CHANNELS);
+	for (i = 0; i < BT_NUM_CHANNELS; i++)
+			pnet->bank[i] = ((i * 2) % BT_NUM_CHANNELS);
 	/* actual frequency is 2402 + pnet->bank[i] MHz */
 
 }
@@ -245,7 +172,7 @@ int fast_perm(int z, int p_high, int p_low, bt_piconet *pnet)
 }
 
 /* generate the complete hopping sequence */
-void gen_hops(bt_piconet *pnet)
+static void gen_hops(bt_piconet *pnet)
 {
 	/* a, b, c, d, e, f, x, y1, y2 are variable names used in section 2.6 of the spec */
 	/* b is already defined */
@@ -271,13 +198,13 @@ void gen_hops(bt_piconet *pnet)
 						perm_in = ((x + a) % 32) ^ pnet->b;
 						/* y1 (clock bit 1) = 0, y2 = 0 */
 						perm_out = fast_perm(perm_in, c, d, pnet);
-						pnet->sequence[index] = pnet->bank[(perm_out + pnet->e + f) % CHANNELS];
+						pnet->sequence[index] = pnet->bank[(perm_out + pnet->e + f) % BT_NUM_CHANNELS];
 						if (pnet->afh) {
 							pnet->sequence[index + 1] = pnet->sequence[index];
 						} else {
 							/* y1 (clock bit 1) = 1, y2 = 32 */
 							perm_out = fast_perm(perm_in, c_flipped, d, pnet);
-							pnet->sequence[index + 1] = pnet->bank[(perm_out + pnet->e + f + 32) % CHANNELS];
+							pnet->sequence[index + 1] = pnet->bank[(perm_out + pnet->e + f + 32) % BT_NUM_CHANNELS];
 						}
 						index += 2;
 					}
@@ -286,6 +213,52 @@ void gen_hops(bt_piconet *pnet)
 			}
 		}
 	}
+}
+
+/* Function to calculate piconet hopping patterns and add to hash map */
+void gen_hop_pattern(bt_piconet *pnet)
+{
+	printf("\nCalculating complete hopping sequence.\n");
+	/* this holds the entire hopping sequence */
+	pnet->sequence = (char*) malloc(SEQUENCE_LENGTH);
+
+	precalc(pnet);
+	address_precalc(((pnet->UAP<<24) | pnet->LAP) & 0xfffffff, pnet);
+	gen_hops(pnet);
+
+	printf("Hopping sequence calculated.\n");
+}
+
+/* Container for hopping pattern */
+typedef struct {
+    uint64_t key; /* afh flag + address */
+    char *sequence;             
+    UT_hash_handle hh;
+} hopping_struct;
+
+static hopping_struct *hopping_map = NULL;
+
+/* Function to fetch piconet hopping patterns */
+void get_hop_pattern(bt_piconet *pnet)
+{
+       hopping_struct *s;
+       uint64_t key;
+
+	   /* Two stages to avoid "left shift count >= width of type" warning */
+	   key = pnet->afh;
+       key = (key<<32) | (pnet->UAP<<24) | pnet->LAP;
+       HASH_FIND(hh, hopping_map, &key, 4, s);
+       
+       if (s == NULL) {
+               gen_hop_pattern(pnet);
+               s = malloc(sizeof(hopping_struct));
+               s->key = key;
+               s->sequence = pnet->sequence;
+               HASH_ADD(hh, hopping_map, key, 4, s);
+       } else {
+               printf("\nFound hopping sequence in cache.\n");
+               pnet->sequence = s->sequence;
+       }
 }
 
 /* determine channel for a particular hop */
@@ -306,7 +279,7 @@ char single_hop(int clock, bt_piconet *pnet)
 	f = (clock >> 3) & 0x1fffff0;
 
 	/* hop selection */
-	return(pnet->bank[(fast_perm(((x + a) % 32) ^ pnet->b, (y1 * 0x1f) ^ c, d, pnet) + pnet->e + f + y2) % CHANNELS]);
+	return(pnet->bank[(fast_perm(((x + a) % 32) ^ pnet->b, (y1 * 0x1f) ^ c, d, pnet) + pnet->e + f + y2) % BT_NUM_CHANNELS]);
 }
 
 /* look up channel for a particular hop */
@@ -315,8 +288,13 @@ char hop(int clock, bt_piconet *pnet)
 	return pnet->sequence[clock];
 }
 
+static char aliased_channel(char channel)
+{
+		return ((channel + 24) % ALIASED_CHANNELS) + 26;
+}
+
 /* create list of initial candidate clock values (hops with same channel as first observed hop) */
-int init_candidates(char channel, int known_clock_bits, bt_piconet *pnet)
+static int init_candidates(char channel, int known_clock_bits, bt_piconet *pnet)
 {
 	int i;
 	int count = 0; /* total number of candidates */
@@ -335,8 +313,63 @@ int init_candidates(char channel, int known_clock_bits, bt_piconet *pnet)
 	return count;
 }
 
+/* initialize the hop reversal process */
+int init_hop_reversal(int aliased, bt_piconet *pnet)
+{
+	int max_candidates;
+	uint32_t clock;
+	
+	get_hop_pattern(pnet);
+
+	if(aliased)
+		max_candidates = (SEQUENCE_LENGTH / ALIASED_CHANNELS) / 32;
+	else
+		max_candidates = (SEQUENCE_LENGTH / BT_NUM_CHANNELS) / 32;
+	/* this can hold twice the approximate number of initial candidates */
+	pnet->clock_candidates = (uint32_t*) malloc(sizeof(uint32_t) * max_candidates);
+
+	clock = (pnet->clk_offset + pnet->first_pkt_time) & 0x3f;
+	pnet->num_candidates = init_candidates(pnet->pattern_channels[0], clock, pnet);
+	pnet->winnowed = 0;
+	pnet->hop_reversal_inited = 1;
+	pnet->have_clk27 = 0;
+	pnet->aliased = aliased;
+
+	printf("%d initial CLK1-27 candidates\n", pnet->num_candidates);
+
+	return pnet->num_candidates;
+}
+
+/* return the observable channel (26-50) for a given channel (0-78) */
+/* reset UAP/clock discovery */
+static void reset(bt_piconet *pnet)
+{
+	printf("no candidates remaining! starting over . . .\n");
+
+	if(pnet->hop_reversal_inited) {
+		free(pnet->clock_candidates);
+		pnet->sequence = NULL;
+	}
+	pnet->got_first_packet = 0;
+	pnet->packets_observed = 0;
+	pnet->hop_reversal_inited = 0;
+	pnet->have_UAP = 0;
+	pnet->have_clk6 = 0;
+	pnet->have_clk27 = 0;
+
+	/*
+	 * If we have recently observed two packets in a row on the same
+	 * channel, try AFH next time.  If not, don't.
+	 */
+	pnet->afh = pnet->looks_like_afh;
+	pnet->looks_like_afh = 0;
+	//int i;
+	//for(i=0; i<10; i++)
+	//	pnet->afh_map[i] = 0;
+}
+
 /* narrow a list of candidate clock values based on a single observed hop */
-int channel_winnow(int offset, char channel, bt_piconet *pnet)
+static int channel_winnow(int offset, char channel, bt_piconet *pnet)
 {
 	int i;
 	int new_count = 0; /* number of candidates after winnowing */
@@ -506,41 +539,8 @@ int UAP_from_header(bt_packet *pkt, bt_piconet *pnet)
 	return 0;
 }
 
-/* return the observable channel (26-50) for a given channel (0-78) */
-char aliased_channel(char channel)
-{
-		return ((channel + 24) % ALIASED_CHANNELS) + 26;
-}
-
-/* reset UAP/clock discovery */
-void reset(bt_piconet *pnet)
-{
-	printf("no candidates remaining! starting over . . .\n");
-
-	if(pnet->hop_reversal_inited) {
-		free(pnet->clock_candidates);
-		pnet->sequence = NULL;
-	}
-	pnet->got_first_packet = 0;
-	pnet->packets_observed = 0;
-	pnet->hop_reversal_inited = 0;
-	pnet->have_UAP = 0;
-	pnet->have_clk6 = 0;
-	pnet->have_clk27 = 0;
-
-	/*
-	 * If we have recently observed two packets in a row on the same
-	 * channel, try AFH next time.  If not, don't.
-	 */
-	pnet->afh = pnet->looks_like_afh;
-	pnet->looks_like_afh = 0;
-	//int i;
-	//for(i=0; i<10; i++)
-	//	pnet->afh_map[i] = 0;
-}
-
 /* add a packet to the queue */
-void enqueue(bt_packet *pkt, bt_piconet *pnet)
+static void enqueue(bt_packet *pkt, bt_piconet *pnet)
 {
 	pkt_queue *head;
 	//pkt_queue item;
@@ -558,7 +558,7 @@ void enqueue(bt_packet *pkt, bt_piconet *pnet)
 }
 
 /* pull the first packet from the queue (FIFO) */
-bt_packet *dequeue(bt_piconet *pnet)
+static bt_packet *dequeue(bt_piconet *pnet)
 {
 	bt_packet *pkt;
 

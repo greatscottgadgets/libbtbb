@@ -28,7 +28,7 @@
 #define MAX_PATTERN_LENGTH 1000
 
 /* number of channels in use */
-#define CHANNELS 79
+#define BT_NUM_CHANNELS 79
 
 /* number of hops in the hopping sequence (i.e. number of possible values of CLK1-27) */
 #define SEQUENCE_LENGTH 134217728
@@ -77,7 +77,7 @@ typedef struct bt_piconet {
 	int a1, c1, d1;
 
 	/* frequency register bank */
-	int bank[CHANNELS];
+	int bank[BT_NUM_CHANNELS];
 
 	/* this holds the entire hopping sequence */
 	char *sequence;
@@ -138,22 +138,13 @@ int fast_perm(int z, int p_high, int p_low, bt_piconet *pnet);
 /* assumes z is constrained to 5 bits, p_high to 5 bits, p_low to 9 bits */
 int perm5(int z, int p_high, int p_low);
 
-/* generate the complete hopping sequence */
-void gen_hops(bt_piconet *pnet);
-
 /* determine channel for a particular hop */
 /* replaced with gen_hops() for a complete sequence but could still come in handy */
 char single_hop(int clock, bt_piconet *pnet);
 
-/* create list of initial candidate clock values (hops with same channel as first observed hop) */
-int init_candidates(char channel, int known_clock_bits, bt_piconet *pnet);
-
 /* initialize the hop reversal process */
 /* returns number of initial candidates for CLK1-27 */
 int init_hop_reversal(int aliased, bt_piconet *pnet);
-
-/* narrow a list of candidate clock values based on a single observed hop */
-int channel_winnow(int offset, char channel, bt_piconet *pnet);
 
 /* narrow a list of candidate clock values based on all observed hops */
 int winnow(bt_piconet *pnet);
@@ -163,18 +154,6 @@ int UAP_from_header(bt_packet *pkt, bt_piconet *pnet);
 
 /* look up channel for a particular hop */
 char hop(int clock, bt_piconet *pnet);
-
-/* return the observable channel (26-50) for a given channel (0-78) */
-char aliased_channel(char channel);
-
-/* reset UAP/clock discovery */
-void reset(bt_piconet *pnet);
-
-/* add a packet to the queue */
-void enqueue(bt_packet* pkt, bt_piconet *pnet);
-
-/* pull the first packet from the queue (FIFO) */
-bt_packet *dequeue(bt_piconet *pnet);
 
 void init_piconet(bt_piconet *pnet);
 
