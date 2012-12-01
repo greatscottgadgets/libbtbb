@@ -121,7 +121,7 @@ typedef struct {
 
 static syndrome_struct *syndrome_map = NULL;
 
-void add_syndrome(uint64_t syndrome, uint64_t error)
+static void add_syndrome(uint64_t syndrome, uint64_t error)
 {
 	syndrome_struct *s;
 	s = malloc(sizeof(syndrome_struct));
@@ -131,7 +131,7 @@ void add_syndrome(uint64_t syndrome, uint64_t error)
     HASH_ADD(hh, syndrome_map, syndrome, 8, s);
 }
 
-syndrome_struct *find_syndrome(uint64_t syndrome)
+static syndrome_struct *find_syndrome(uint64_t syndrome)
 {
     syndrome_struct *s;
 
@@ -139,7 +139,7 @@ syndrome_struct *find_syndrome(uint64_t syndrome)
     return s;
 }
 
-uint64_t gen_syndrome(uint64_t codeword)
+static uint64_t gen_syndrome(uint64_t codeword)
 {
 	uint64_t syndrome = codeword & 0xffffffff;
 	codeword >>= 32;
@@ -153,7 +153,7 @@ uint64_t gen_syndrome(uint64_t codeword)
 	return syndrome;
 }
 
-void cycle(uint64_t error, int start, int depth, uint64_t codeword)
+static void cycle(uint64_t error, int start, int depth, uint64_t codeword)
 {
 	uint64_t new_error, syndrome, base;
 	int i;
@@ -172,14 +172,28 @@ void cycle(uint64_t error, int start, int depth, uint64_t codeword)
 	}
 }
 
-void gen_syndrome_map(int bit_errors)
+static void gen_syndrome_map(int bit_errors)
 {
 	int i;
 	for(i = 1; i <= bit_errors; i++)
 		cycle(0, 0, i, DEFAULT_AC);
 }
 
-static inline void init_packet(bt_packet *pkt, uint32_t lap, uint8_t ac_errors)
+/* Generate Sync Word from an LAP */
+uint64_t gen_syncword(int LAP)
+{
+	int i;
+	uint64_t codeword = DEFAULT_CODEWORD;
+	
+	/* the sync word generated is in host order, not air order */
+	for (i = 0; i < 24; i++)
+		if (LAP & (0x800000 >> i))
+			codeword ^= sw_matrix[i];
+	
+	return codeword;
+}
+
+static void init_packet(bt_packet *pkt, uint32_t lap, uint8_t ac_errors)
 {
 	pkt->LAP = lap;
 	pkt->ac_errors = ac_errors;
@@ -191,6 +205,56 @@ static inline void init_packet(bt_packet *pkt, uint32_t lap, uint8_t ac_errors)
 	pkt->have_clk27 = 0;
 	pkt->have_payload = 0;
 	pkt->payload_length = 0;
+}
+
+/* Convert some number of bits of an air order array to a host order integer */
+static uint8_t air_to_host8(char *air_order, int bits)
+{
+	int i;
+	uint8_t host_order = 0;
+	for (i = 0; i < bits; i++)
+		host_order |= ((uint8_t)air_order[i] << i);
+	return host_order;
+}
+static uint16_t air_to_host16(char *air_order, int bits)
+{
+	int i;
+	uint16_t host_order = 0;
+	for (i = 0; i < bits; i++)
+		host_order |= ((uint16_t)air_order[i] << i);
+	return host_order;
+}
+static uint32_t air_to_host32(char *air_order, int bits)
+{
+	int i;
+	uint32_t host_order = 0;
+	for (i = 0; i < bits; i++)
+		host_order |= ((uint32_t)air_order[i] << i);
+	return host_order;
+}
+static uint64_t air_to_host64(char *air_order, int bits)
+{
+	int i;
+	uint64_t host_order = 0;
+	for (i = 0; i < bits; i++)
+		host_order |= ((uint64_t)air_order[i] << i);
+	return host_order;
+}
+
+/* Convert some number of bits in a host order integer to an air order array */
+static void host_to_air(uint8_t host_order, char *air_order, int bits)
+{
+    int i;
+    for (i = 0; i < bits; i++)
+        air_order[i] = (host_order >> i) & 0x01;
+}
+/* count the number of 1 bits in a uint64_t */
+static uint8_t count_bits(uint64_t n)
+{
+	uint8_t i = 0;
+	for (i = 0; n != 0; i++)
+		n &= n - 1;
+	return i;
 }
 
 #define MAX_BARKER_ERRORS 1
@@ -293,24 +357,10 @@ void bt_packet_set_data(bt_packet *pkt, char *data, int length, uint8_t channel,
 	pkt->clkn = clkn >> 1; // really CLK1
 }
 
-/* Generate Sync Word from an LAP */
-uint64_t gen_syncword(int LAP)
-{
-	int i;
-	uint64_t codeword = DEFAULT_CODEWORD;
-	
-	/* the sync word generated is in host order, not air order */
-	for (i = 0; i < 24; i++)
-		if (LAP & (0x800000 >> i))
-			codeword ^= sw_matrix[i];
-	
-	return codeword;
-}
-
 /* Compare stream with sync word
  * Unused, but useful to correct >3 bit errors with known LAP
  */
-int check_syncword(uint64_t streamword, uint64_t syncword)
+static int check_syncword(uint64_t streamword, uint64_t syncword)
 {
 	uint8_t biterrors;
 
@@ -324,14 +374,14 @@ int check_syncword(uint64_t streamword, uint64_t syncword)
 }
 
 /* Reverse the bits in a byte */
-uint8_t reverse(char byte)
+static uint8_t reverse(char byte)
 {
 	return (byte & 0x80) >> 7 | (byte & 0x40) >> 5 | (byte & 0x20) >> 3 | (byte & 0x10) >> 1 | (byte & 0x08) << 1 | (byte & 0x04) << 3 | (byte & 0x02) << 5 | (byte & 0x01) << 7;
 }
 
 
 /* Decode 1/3 rate FEC, three like symbols in a row */
-int unfec13(char *input, char *output, int length)
+static int unfec13(char *input, char *output, int length)
 {
 	int a, b, c, i;
 	int be = 0; /* bit errors */
@@ -350,7 +400,7 @@ int unfec13(char *input, char *output, int length)
 }
 
 /* encode 10 bits with 2/3 rate FEC code, a (15,10) shortened Hamming code */
-uint16_t fec23(uint16_t data)
+static uint16_t fec23(uint16_t data)
 {
 	int i;
 	uint16_t codeword = 0;
@@ -364,7 +414,7 @@ uint16_t fec23(uint16_t data)
 }
 
 /* Decode 2/3 rate FEC, a (15,10) shortened Hamming code */
-char *unfec23(char *input, int length)
+static char *unfec23(char *input, int length)
 {
 	/* input points to the input data
 	 * length is length in bits of the data
@@ -431,50 +481,8 @@ char *unfec23(char *input, int length)
 }
 
 
-/* Convert some number of bits of an air order array to a host order integer */
-uint8_t air_to_host8(char *air_order, int bits)
-{
-	int i;
-	uint8_t host_order = 0;
-	for (i = 0; i < bits; i++)
-		host_order |= ((uint8_t)air_order[i] << i);
-	return host_order;
-}
-uint16_t air_to_host16(char *air_order, int bits)
-{
-	int i;
-	uint16_t host_order = 0;
-	for (i = 0; i < bits; i++)
-		host_order |= ((uint16_t)air_order[i] << i);
-	return host_order;
-}
-uint32_t air_to_host32(char *air_order, int bits)
-{
-	int i;
-	uint32_t host_order = 0;
-	for (i = 0; i < bits; i++)
-		host_order |= ((uint32_t)air_order[i] << i);
-	return host_order;
-}
-uint64_t air_to_host64(char *air_order, int bits)
-{
-	int i;
-	uint64_t host_order = 0;
-	for (i = 0; i < bits; i++)
-		host_order |= ((uint64_t)air_order[i] << i);
-	return host_order;
-}
-
-/* Convert some number of bits in a host order integer to an air order array */
-void host_to_air(uint8_t host_order, char *air_order, int bits)
-{
-    int i;
-    for (i = 0; i < bits; i++)
-        air_order[i] = (host_order >> i) & 0x01;
-}
-
 /* Remove the whitening from an air order array */
-void unwhiten(char* input, char* output, int clock, int length, int skip, bt_packet* p)
+static void unwhiten(char* input, char* output, int clock, int length, int skip, bt_packet* p)
 {
 	int count, index;
 	index = INDICES[clock & 0x3f];
@@ -491,7 +499,7 @@ void unwhiten(char* input, char* output, int clock, int length, int skip, bt_pac
 }
 
 /* Pointer to start of packet, length of packet in bits, UAP */
-uint16_t crcgen(char *payload, int length, int UAP)
+static uint16_t crcgen(char *payload, int length, int UAP)
 {
 	char bit;
 	uint16_t reg, count;
@@ -592,7 +600,7 @@ int crc_check(int clock, bt_packet* p)
 }
 
 /* verify the payload CRC */
-int payload_crc(bt_packet* p)
+static int payload_crc(bt_packet* p)
 {
 	uint16_t crc;   /* CRC calculated from payload data */
 	uint16_t check; /* CRC supplied by packet */
@@ -1218,13 +1226,4 @@ uint32_t clock_from_fhs(bt_packet* p)
 	 * CLK0 and CLK1 are implicitly zero.
 	 */
 	return air_to_host32(&p->payload[115], 26);
-}
-
-/* count the number of 1 bits in a uint64_t */
-uint8_t count_bits(uint64_t n)
-{
-	uint8_t i = 0;
-	for (i = 0; n != 0; i++)
-		n &= n - 1;
-	return i;
 }

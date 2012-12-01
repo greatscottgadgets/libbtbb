@@ -151,12 +151,6 @@ int HV(int clock, bt_packet* p);
 /* decode payload header, return value indicates success */
 int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, bt_packet* p);
 
-/* Remove the whitening from an air order array */
-void unwhiten(char* input, char* output, int clock, int length, int skip, bt_packet* p);
-
-/* verify the payload CRC */
-int payload_crc(bt_packet* p);
-
 /* Search for a packet with specified LAP (or LAP_ANY). The stream
  * must be at least of length serch_length + 72. Limit to
  * 'max_ac_errors' bit errors.
@@ -178,42 +172,8 @@ void bt_packet_set_data(bt_packet *pkt,
 			uint8_t channel, // Bluetooth channel 0-79
 			uint32_t clkn);  // 312.5us clock (CLK27-0)
 
-/* Reverse the bits in a byte */
-uint8_t reverse(char byte);
-
-/* Generate syndrome from the AC codeword */
-uint64_t gen_syndrome(uint64_t codeword);
-
-/* Generate the syndrome map for up to 0 to bit_errors */
-void gen_syndrome_map(int bit_errors);
-
 /* Generate Sync Word from an LAP */
 uint64_t gen_syncword(int LAP);
-
-/* Decode 1/3 rate FEC, three like symbols in a row */
-int unfec13(char *input, char *output, int length);
-
-/* encode 10 bits with 2/3 rate FEC code, a (15,10) shortened Hamming code */
-uint16_t fec23(uint16_t data);
-
-/* Decode 2/3 rate FEC, a (15,10) shortened Hamming code */
-char *unfec23(char *input, int length);
-
-/* Compare stream with sync word */
-int check_syncword(uint64_t streamword, uint64_t syncword);
-
-/* Convert some number of bits of an air order array to a host order integer */
-uint8_t air_to_host8(char *air_order, int bits);
-uint16_t air_to_host16(char *air_order, int bits);
-uint32_t air_to_host32(char *air_order, int bits);
-uint64_t air_to_host64(char *air_order, int bits);
-// hmmm, maybe these should have pointer output so they can be overloaded
-
-/* Convert some number of bits in a host order integer to an air order array */
-void host_to_air(uint8_t host_order, char *air_order, int bits);
-
-/* Create the 16bit CRC for packet payloads - input air order stream */
-uint16_t crcgen(char *payload, int length, int UAP);
 
 /* extract UAP by reversing the HEC computation */
 int UAP_from_hec(uint16_t data, uint8_t hec);
@@ -252,8 +212,5 @@ uint16_t nap_from_fhs(bt_packet* p);
 
 /* extract clock from FHS payload */
 uint32_t clock_from_fhs(bt_packet* p);
-
-/* count the number of 1 bits in a uint64_t */
-uint8_t count_bits(uint64_t n);
 
 #endif /* INCLUDED_BLUETOOTH_PACKET_H */
