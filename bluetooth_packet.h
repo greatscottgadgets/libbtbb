@@ -176,13 +176,13 @@ uint64_t bt_gen_syncword(int LAP);
 int crc_check(int clock, bt_packet* p);
 
 /* decode the packet header */
-int decode_header(bt_packet* p);
+int bt_decode_header(bt_packet* p);
 
 /* decode the packet header */
-int decode_payload(bt_packet* p);
+int bt_decode_payload(bt_packet* p);
 
 /* print packet information */
-void btbb_print_packet(bt_packet* p);
+void bt_print_packet(bt_packet* p);
 
 /* format payload for tun interface */
 char *tun_format(bt_packet* p);
@@ -193,7 +193,7 @@ char *tun_format(bt_packet* p);
 uint8_t try_clock(int clock, bt_packet* p);
 
 /* check to see if the packet has a header */
-int header_present(bt_packet* p);
+int bt_header_present(bt_packet* p);
 
 /* extract LAP from FHS payload */
 uint32_t lap_from_fhs(bt_packet* p);

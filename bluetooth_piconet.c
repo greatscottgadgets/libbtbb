@@ -584,11 +584,11 @@ int decode(bt_packet* p, bt_piconet *pnet)
 		clk6 = p->clock & 0x3f;
 		for(i=0; i<64; i++) {
 			p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
-			if ((pnet->sequence[p->clock] == p->channel) && (decode_header(p))) {
-				rv =  decode_payload(p);
+			if ((pnet->sequence[p->clock] == p->channel) && (bt_decode_header(p))) {
+				rv =  bt_decode_payload(p);
 				if(rv > 0) {
 					printf("Packet decoded with clock 0x%07x (rv=%d)\n", p->clock, rv);
-					btbb_print_packet(p);
+					bt_print_packet(p);
 				}
 				// TODO: make sure we use best result
 			}
@@ -597,19 +597,19 @@ int decode(bt_packet* p, bt_piconet *pnet)
 			clk6 = p->clock & 0x3f;
 			for(i=0; i<64; i++) {
 				p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
-				if (decode_header(p)) {
-					rv =  decode_payload(p);
+				if (bt_decode_header(p)) {
+					rv =  bt_decode_payload(p);
 					if(rv > 0) {
 						printf("Packet decoded with clock 0x%07x (rv=%d)\n", p->clock, rv);
-						btbb_print_packet(p);
+						bt_print_packet(p);
 					}
 					// TODO: make sure we use best result
 				}
 			}
 		}
 	} else
-		if (decode_header(p))
-			rv = decode_payload(p);
+		if (bt_decode_header(p))
+			rv = bt_decode_payload(p);
 
 	return rv;
 }

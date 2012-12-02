@@ -992,7 +992,7 @@ uint8_t try_clock(int clock, bt_packet* p)
 }
 
 /* decode the packet header */
-int decode_header(bt_packet* p)
+int bt_decode_header(bt_packet* p)
 {
 	/* skip 72 bit access code */
 	char *stream = p->symbols + 68;
@@ -1015,7 +1015,7 @@ int decode_header(bt_packet* p)
 	return 0;
 }
 
-int decode_payload(bt_packet* p)
+int bt_decode_payload(bt_packet* p)
 {
 	int rv = 0;
 	p->payload_header_length = 0;
@@ -1091,7 +1091,7 @@ int decode_payload(bt_packet* p)
 }
 
 /* print packet information */
-void btbb_print_packet(bt_packet* p)
+void bt_print_packet(bt_packet* p)
 {
 	if (p->have_payload) {
 		printf("  Type: %s\n", TYPE_NAMES[p->packet_type]);
@@ -1156,7 +1156,7 @@ int get_type(bt_packet* p)
 }
 
 /* check to see if the packet has a header */
-int header_present(bt_packet* p)
+int bt_header_present(bt_packet* p)
 {
 	/* skip to last bit of sync word */
 	char *stream = p->symbols + 63;
