@@ -344,7 +344,7 @@ int init_hop_reversal(int aliased, bt_piconet *pnet)
 /* reset UAP/clock discovery */
 static void reset(bt_piconet *pnet)
 {
-	printf("no candidates remaining! starting over . . .\n");
+	//printf("no candidates remaining! starting over . . .\n");
 
 	if(pnet->hop_reversal_inited) {
 		free(pnet->clock_candidates);
@@ -395,11 +395,13 @@ static int channel_winnow(int offset, char channel, bt_piconet *pnet)
 		pnet->clk_offset = ((pnet->clock_candidates[0]<<1) - (pnet->first_pkt_time<<1));
 		printf("\nAcquired CLK1-27 = 0x%07x\n", pnet->clock_candidates[0]);
 		pnet->have_clk27 = 1;
-	} else if (new_count == 0) {
-		reset(pnet);
-	} else {
-		printf("%d CLK1-27 candidates remaining (channel=%d)\n", new_count, channel);
 	}
+	else if (new_count == 0) {
+		reset(pnet);
+	}
+	//else {
+	//printf("%d CLK1-27 candidates remaining (channel=%d)\n", new_count, channel);
+	//}
 
 	return new_count;
 }
