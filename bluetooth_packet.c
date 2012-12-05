@@ -29,6 +29,21 @@
 #include "uthash.h"
 #include "sw_check_tables.h"
 
+/* Defaut maximum AC bit errors for unknown ACs, this can be overridden at runtime */
+#define MAX_AC_ERRORS 3
+
+/* maximum number of bit errors for known syncwords */
+#define MAX_SYNCWORD_ERRS 5
+
+/* maximum number of bit errors in  */
+#define MAX_BARKER_ERRORS 1
+
+/* default codeword modified for PN sequence and barker code */
+#define DEFAULT_CODEWORD 0xb0000002c7820e7eULL
+
+/* Default access code, used for calculating syndromes */
+#define DEFAULT_AC 0xcc7b7268ff614e1bULL
+
 /* index into whitening data array */
 static const uint8_t INDICES[] = {99, 85, 17, 50, 102, 58, 108, 45, 92, 62, 32, 118, 88, 11, 80, 2, 37, 69, 55, 8, 20, 40, 74, 114, 15, 106, 30, 78, 53, 72, 28, 26, 68, 7, 39, 113, 105, 77, 71, 25, 84, 49, 57, 44, 61, 117, 10, 1, 123, 124, 22, 125, 111, 23, 42, 126, 6, 112, 76, 24, 48, 43, 116, 0};
 
@@ -180,7 +195,7 @@ static void gen_syndrome_map(int bit_errors)
 }
 
 /* Generate Sync Word from an LAP */
-uint64_t bt_gen_syncword(int LAP)
+uint64_t btbb_gen_syncword(int LAP)
 {
 	int i;
 	uint64_t codeword = DEFAULT_CODEWORD;
@@ -193,7 +208,7 @@ uint64_t bt_gen_syncword(int LAP)
 	return codeword;
 }
 
-static void init_packet(bt_packet *pkt, uint32_t lap, uint8_t ac_errors)
+static void init_packet(btbb_packet *pkt, uint32_t lap, uint8_t ac_errors)
 {
 	pkt->LAP = lap;
 	pkt->ac_errors = ac_errors;
@@ -257,8 +272,7 @@ static uint8_t count_bits(uint64_t n)
 	return i;
 }
 
-#define MAX_BARKER_ERRORS 1
-int bt_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors, bt_packet *pkt) {
+int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors, btbb_packet *pkt) {
 
 	/* Looks for an AC in the stream */
 	int count;
@@ -322,7 +336,7 @@ int bt_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors,
 	/* Matching a specific LAP. Error limit is ignored, since the
 	 * goal is to find all packets. */
 	else {
-		ac = bt_gen_syncword(lap);
+		ac = btbb_gen_syncword(lap);
 		for (count = 0; count < search_length; count++) {
 			symbols = &stream[count];
 			syncword = air_to_host64(symbols, 64);
@@ -343,7 +357,7 @@ int bt_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors,
 }
 
 /* Copy data (symbols) into packet and set rx data. */
-void bt_packet_set_data(bt_packet *pkt, char *data, int length, uint8_t channel, uint32_t clkn)
+void btbb_packet_set_data(btbb_packet *pkt, char *data, int length, uint8_t channel, uint32_t clkn)
 {
 	int i;
 
@@ -482,7 +496,7 @@ static char *unfec23(char *input, int length)
 
 
 /* Remove the whitening from an air order array */
-static void unwhiten(char* input, char* output, int clock, int length, int skip, bt_packet* p)
+static void unwhiten(char* input, char* output, int clock, int length, int skip, btbb_packet* p)
 {
 	int count, index;
 	index = INDICES[clock & 0x3f];
@@ -521,7 +535,7 @@ static uint16_t crcgen(char *payload, int length, int UAP)
 }
 
 /* extract UAP by reversing the HEC computation */
-static int bt_uap_from_hec(uint16_t data, uint8_t hec)
+static int btbb_uap_from_hec(uint16_t data, uint8_t hec)
 {
         int i;
 
@@ -536,7 +550,7 @@ static int bt_uap_from_hec(uint16_t data, uint8_t hec)
 }
 
 /* check if the packet's CRC is correct for a given clock (CLK1-6) */
-int crc_check(int clock, bt_packet* p)
+int crc_check(int clock, btbb_packet* p)
 {
 	/*
 	 * return value of 1 represents inconclusive result (default)
@@ -600,7 +614,7 @@ int crc_check(int clock, bt_packet* p)
 }
 
 /* verify the payload CRC */
-static int payload_crc(bt_packet* p)
+static int payload_crc(btbb_packet* p)
 {
 	uint16_t crc;   /* CRC calculated from payload data */
 	uint16_t check; /* CRC supplied by packet */
@@ -611,7 +625,7 @@ static int payload_crc(bt_packet* p)
 	return (crc == check);
 }
 
-int fhs(int clock, bt_packet* p)
+int fhs(int clock, btbb_packet* p)
 {
 	/* skip the access code and packet header */
 	char *stream = p->symbols + 122;
@@ -649,7 +663,7 @@ int fhs(int clock, bt_packet* p)
 }
 
 /* decode payload header, return value indicates success */
-static int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, bt_packet* p)
+static int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, btbb_packet* p)
 {
 	if(header_bytes == 2)
 	{
@@ -692,7 +706,7 @@ static int decode_payload_header(char *stream, int clock, int header_bytes, int 
 }
 
 /* DM 1/3/5 packet (and DV)*/
-int DM(int clock, bt_packet* p)
+int DM(int clock, btbb_packet* p)
 {
 	int bitlength;
 	/* number of bytes in the payload header */
@@ -756,7 +770,7 @@ int DM(int clock, bt_packet* p)
 
 /* DH 1/3/5 packet (and AUX1) */
 /* similar to DM 1/3/5 but without FEC */
-int DH(int clock, bt_packet* p)
+int DH(int clock, btbb_packet* p)
 {
 	int bitlength;
 	/* number of bytes in the payload header */
@@ -807,7 +821,7 @@ int DH(int clock, bt_packet* p)
 	return 1;
 }
 
-int EV3(int clock, bt_packet* p)
+int EV3(int clock, btbb_packet* p)
 {
 	/* skip the access code and packet header */
 	char *stream = p->symbols + 122;
@@ -838,7 +852,7 @@ int EV3(int clock, bt_packet* p)
 	return 1;
 }
 
-int EV4(int clock, bt_packet* p)
+int EV4(int clock, btbb_packet* p)
 {
 	char *corrected;
 
@@ -893,7 +907,7 @@ int EV4(int clock, bt_packet* p)
 	return 1;
 }
 
-int EV5(int clock, bt_packet* p)
+int EV5(int clock, btbb_packet* p)
 {
 	/* skip the access code and packet header */
 	char *stream = p->symbols + 122;
@@ -925,7 +939,7 @@ int EV5(int clock, bt_packet* p)
 }
 
 /* HV packet type payload parser */
-int HV(int clock, bt_packet* p)
+int HV(int clock, btbb_packet* p)
 {
 	/* skip the access code and packet header */
 	char *stream = p->symbols + 122;
@@ -972,7 +986,7 @@ int HV(int clock, bt_packet* p)
 /* try a clock value (CLK1-6) to unwhiten packet header,
  * sets resultant p->packet_type and p->UAP, returns UAP.
  */
-uint8_t try_clock(int clock, bt_packet* p)
+uint8_t try_clock(int clock, btbb_packet* p)
 {
 	/* skip 72 bit access code */
 	char *stream = p->symbols + 68;
@@ -985,14 +999,14 @@ uint8_t try_clock(int clock, bt_packet* p)
 	unwhiten(header, unwhitened, clock, 18, 0, p);
 	uint16_t hdr_data = air_to_host16(unwhitened, 10);
 	uint8_t hec = air_to_host8(&unwhitened[10], 8);
-	p->UAP = bt_uap_from_hec(hdr_data, hec);
+	p->UAP = btbb_uap_from_hec(hdr_data, hec);
 	p->packet_type = air_to_host8(&unwhitened[3], 4);
 
 	return p->UAP;
 }
 
 /* decode the packet header */
-int bt_decode_header(bt_packet* p)
+int btbb_decode_header(btbb_packet* p)
 {
 	/* skip 72 bit access code */
 	char *stream = p->symbols + 68;
@@ -1004,7 +1018,7 @@ int bt_decode_header(bt_packet* p)
 		unwhiten(header, p->packet_header, p->clock, 18, 0, p);
 		uint16_t hdr_data = air_to_host16(p->packet_header, 10);
 		uint8_t hec = air_to_host8(&p->packet_header[10], 8);
-		UAP = bt_uap_from_hec(hdr_data, hec);
+		UAP = btbb_uap_from_hec(hdr_data, hec);
 		if (UAP == p->UAP) {
 			p->packet_lt_addr = air_to_host8(&p->packet_header[0], 3);
 			p->packet_type = air_to_host8(&p->packet_header[3], 4);
@@ -1015,7 +1029,7 @@ int bt_decode_header(bt_packet* p)
 	return 0;
 }
 
-int bt_decode_payload(bt_packet* p)
+int btbb_decode_payload(btbb_packet* p)
 {
 	int rv = 0;
 	p->payload_header_length = 0;
@@ -1091,7 +1105,7 @@ int bt_decode_payload(bt_packet* p)
 }
 
 /* print packet information */
-void bt_print_packet(bt_packet* p)
+void btbb_print_packet(btbb_packet* p)
 {
 	if (p->have_payload) {
 		printf("  Type: %s\n", TYPE_NAMES[p->packet_type]);
@@ -1111,7 +1125,7 @@ void bt_print_packet(bt_packet* p)
 	}
 }
 
-char *tun_format(bt_packet* p)
+char *tun_format(btbb_packet* p)
 {
 	/* include 6 bytes for meta data, 3 bytes for packet header */
 	int length = 9 + p->payload_length;
@@ -1140,23 +1154,23 @@ char *tun_format(bt_packet* p)
 	return tun_format;
 }
 
-int got_payload(bt_packet* p)
+int got_payload(btbb_packet* p)
 {
 	return p->have_payload;
 }
 
-int get_payload_length(bt_packet* p)
+int get_payload_length(btbb_packet* p)
 {
 	return p->payload_length;
 }
 
-int get_type(bt_packet* p)
+int get_type(btbb_packet* p)
 {
 	return p->packet_type;
 }
 
 /* check to see if the packet has a header */
-int bt_header_present(bt_packet* p)
+int btbb_header_present(btbb_packet* p)
 {
 	/* skip to last bit of sync word */
 	char *stream = p->symbols + 63;
@@ -1196,28 +1210,28 @@ int bt_header_present(bt_packet* p)
 }
 
 /* extract LAP from FHS payload */
-uint32_t lap_from_fhs(bt_packet* p)
+uint32_t lap_from_fhs(btbb_packet* p)
 {
 	/* caller should check got_payload() and get_type() */
 	return air_to_host32(&p->payload[34], 24);
 }
 
 /* extract UAP from FHS payload */
-uint8_t uap_from_fhs(bt_packet* p)
+uint8_t uap_from_fhs(btbb_packet* p)
 {
 	/* caller should check got_payload() and get_type() */
 	return air_to_host8(&p->payload[64], 8);
 }
 
 /* extract NAP from FHS payload */
-uint16_t nap_from_fhs(bt_packet* p)
+uint16_t nap_from_fhs(btbb_packet* p)
 {
 	/* caller should check got_payload() and get_type() */
 	return air_to_host8(&p->payload[72], 16);
 }
 
 /* extract clock from FHS payload */
-uint32_t clock_from_fhs(bt_packet* p)
+uint32_t clock_from_fhs(btbb_packet* p)
 {
 	/*
 	 * caller should check got_payload() and get_type()

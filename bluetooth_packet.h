@@ -30,22 +30,10 @@
 /* maximum number of symbols */
 #define MAX_SYMBOLS 3125
 
-/* Defaut maximum AC bit errors for unknown ACs, this can be overridden at runtime */
-#define MAX_AC_ERRORS 3
-
-/* maximum number of bit errors for for known syncwords */
-#define MAX_SYNCWORD_ERRS 5
-
-/* default codeword modified for PN sequence and barker code */
-#define DEFAULT_CODEWORD 0xb0000002c7820e7eULL
-
-/* Default access code, used for calculating syndromes */
-#define DEFAULT_AC 0xcc7b7268ff614e1bULL
-
 /* minimum header bit errors to indicate that this is an ID packet */
 #define ID_THRESHOLD 5
 
-typedef struct bt_packet {
+typedef struct btbb_packet {
 	/* the raw symbol stream (less the preamble), one bit per char */
 	//FIXME maybe this should be a vector so we can grow it only to the size
 	//needed and later shrink it if we find we have more symbols than necessary
@@ -137,16 +125,16 @@ typedef struct bt_packet {
 
 	/* Number of bit errors in the AC */
 	uint8_t ac_errors;
-} bt_packet;
+} btbb_packet;
 
 /* type-specific CRC checks and decoding */
-int fhs(int clock, bt_packet* p);
-int DM(int clock, bt_packet* p);
-int DH(int clock, bt_packet* p);
-int EV3(int clock, bt_packet* p);
-int EV4(int clock, bt_packet* p);
-int EV5(int clock, bt_packet* p);
-int HV(int clock, bt_packet* p);
+int fhs(int clock, btbb_packet* p);
+int DM(int clock, btbb_packet* p);
+int DH(int clock, btbb_packet* p);
+int EV3(int clock, btbb_packet* p);
+int EV4(int clock, btbb_packet* p);
+int EV5(int clock, btbb_packet* p);
+int HV(int clock, btbb_packet* p);
 
 /* Search for a packet with specified LAP (or LAP_ANY). The stream
  * must be at least of length serch_length + 72. Limit to
@@ -156,55 +144,55 @@ int HV(int clock, bt_packet* p);
  * packet was found, returns a negative number. If LAP_ANY was
  * specified, fills lap. 'ac_errors' must be set as an input, replaced
  * by actual number of errors on output. */
-int bt_find_ac(char *stream,
+int btbb_find_ac(char *stream,
 	       int search_length,
 	       uint32_t lap,
 	       int max_ac_errors,
-	       bt_packet *pkt);
+	       btbb_packet *pkt);
 #define LAP_ANY 0xffffffffUL
 
-void bt_packet_set_data(bt_packet *pkt,
+void btbb_packet_set_data(btbb_packet *pkt,
 			char *syms,      // Symbol data
 			int length,      // Number of symbols
 			uint8_t channel, // Bluetooth channel 0-79
 			uint32_t clkn);  // 312.5us clock (CLK27-0)
 
 /* Generate Sync Word from an LAP */
-uint64_t bt_gen_syncword(int LAP);
+uint64_t btbb_gen_syncword(int LAP);
 
 /* check if the packet's CRC is correct for a given clock (CLK1-6) */
-int crc_check(int clock, bt_packet* p);
+int crc_check(int clock, btbb_packet* p);
 
 /* decode the packet header */
-int bt_decode_header(bt_packet* p);
+int btbb_decode_header(btbb_packet* p);
 
 /* decode the packet header */
-int bt_decode_payload(bt_packet* p);
+int btbb_decode_payload(btbb_packet* p);
 
 /* print packet information */
-void bt_print_packet(bt_packet* p);
+void btbb_print_packet(btbb_packet* p);
 
 /* format payload for tun interface */
-char *tun_format(bt_packet* p);
+char *tun_format(btbb_packet* p);
 
 /* try a clock value (CLK1-6) to unwhiten packet header,
  * sets resultant d_packet_type and d_UAP, returns UAP.
  */
-uint8_t try_clock(int clock, bt_packet* p);
+uint8_t try_clock(int clock, btbb_packet* p);
 
 /* check to see if the packet has a header */
-int bt_header_present(bt_packet* p);
+int btbb_header_present(btbb_packet* p);
 
 /* extract LAP from FHS payload */
-uint32_t lap_from_fhs(bt_packet* p);
+uint32_t lap_from_fhs(btbb_packet* p);
 
 /* extract UAP from FHS payload */
-uint8_t uap_from_fhs(bt_packet* p);
+uint8_t uap_from_fhs(btbb_packet* p);
 
 /* extract NAP from FHS payload */
-uint16_t nap_from_fhs(bt_packet* p);
+uint16_t nap_from_fhs(btbb_packet* p);
 
 /* extract clock from FHS payload */
-uint32_t clock_from_fhs(bt_packet* p);
+uint32_t clock_from_fhs(btbb_packet* p);
 
 #endif /* INCLUDED_BLUETOOTH_PACKET_H */

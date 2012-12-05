@@ -38,13 +38,13 @@
 
 /* Packet queue (linked list) */
 typedef struct pkt_queue {
-	bt_packet *pkt;
+	btbb_packet *pkt;
 
 	struct pkt_queue *next;
 
 } pkt_queue;
 
-typedef struct bt_piconet {
+typedef struct btbb_piconet {
 	/* true if using a particular aliased receiver implementation */
 	int aliased;
 
@@ -123,16 +123,16 @@ typedef struct bt_piconet {
 
 	/* queue of packets to be decoded */
 	pkt_queue *queue;
-} bt_piconet;
+} btbb_piconet;
 
 /* do all the precalculation that can be done before knowing the address */
-void precalc(bt_piconet *pnet);
+void precalc(btbb_piconet *pnet);
 
 /* do precalculation that requires the address */
-void address_precalc(int address, bt_piconet *pnet);
+void address_precalc(int address, btbb_piconet *pnet);
 
 /* drop-in replacement for perm5() using lookup table */
-int fast_perm(int z, int p_high, int p_low, bt_piconet *pnet);
+int fast_perm(int z, int p_high, int p_low, btbb_piconet *pnet);
 
 /* 5 bit permutation */
 /* assumes z is constrained to 5 bits, p_high to 5 bits, p_low to 9 bits */
@@ -140,27 +140,27 @@ int perm5(int z, int p_high, int p_low);
 
 /* determine channel for a particular hop */
 /* replaced with gen_hops() for a complete sequence but could still come in handy */
-char single_hop(int clock, bt_piconet *pnet);
+char single_hop(int clock, btbb_piconet *pnet);
 
 /* initialize the hop reversal process */
 /* returns number of initial candidates for CLK1-27 */
-int init_hop_reversal(int aliased, bt_piconet *pnet);
+int init_hop_reversal(int aliased, btbb_piconet *pnet);
 
 /* narrow a list of candidate clock values based on all observed hops */
-int winnow(bt_piconet *pnet);
+int winnow(btbb_piconet *pnet);
 
 /* use packet headers to determine UAP */
-int bt_uap_from_header(bt_packet *pkt, bt_piconet *pnet);
+int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pnet);
 
 /* look up channel for a particular hop */
-char hop(int clock, bt_piconet *pnet);
+char hop(int clock, btbb_piconet *pnet);
 
-void init_piconet(bt_piconet *pnet);
+void init_piconet(btbb_piconet *pnet);
 
 /* decode a whole packet from the given piconet */
-int decode(bt_packet* p, bt_piconet *pnet);
+int decode(btbb_packet* p, btbb_piconet *pnet);
 
 /* Print hexadecimal representation of the derived AFH map */
-void btbb_print_afh_map(bt_piconet *pnet);
+void btbb_print_afh_map(btbb_piconet *pnet);
 
 #endif /* INCLUDED_BLUETOOTH_PICONET_H */
