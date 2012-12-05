@@ -22,6 +22,8 @@ AR      ?= ar
 INSTALL  = /usr/bin/install
 LDCONFIG = /sbin/ldconfig
 
+CFLAGS = -O3
+
 INSTALL_DIR ?= /usr/lib
 INCLUDE_DIR ?= /usr/include
 
