@@ -34,7 +34,7 @@ STATIC_LIB_FILE = libbtbb.a
 
 SOURCE_FILES = bluetooth_packet.c bluetooth_piconet.c bluetooth_le_packet.c
 OBJECT_FILES = $(SOURCE_FILES:%.c=%.o)
-HEADER_FILES = $(SOURCE_FILES:%.c=%.h)
+HEADER_FILES = btbb.h
 
 all: $(LIB_FILE)
 

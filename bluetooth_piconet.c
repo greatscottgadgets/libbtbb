@@ -24,14 +24,16 @@
 #include "config.h"
 #endif
 
+#include "bluetooth_packet.h"
 #include "bluetooth_piconet.h"
 #include "uthash.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 int perm_table_initialized = 0;
 char perm_table[0x20][0x20][0x200];
 
-void init_piconet(btbb_piconet *pnet)
+void btbb_init_piconet(btbb_piconet *pnet)
 {
 	int i;
 	for(i=0; i<10; i++)
@@ -314,7 +316,7 @@ static int init_candidates(char channel, int known_clock_bits, btbb_piconet *pne
 }
 
 /* initialize the hop reversal process */
-int init_hop_reversal(int aliased, btbb_piconet *pnet)
+int btbb_init_hop_reversal(int aliased, btbb_piconet *pnet)
 {
 	int max_candidates;
 	uint32_t clock;
@@ -407,7 +409,7 @@ static int channel_winnow(int offset, char channel, btbb_piconet *pnet)
 }
 
 /* narrow a list of candidate clock values based on all observed hops */
-int winnow(btbb_piconet *pnet)
+int btbb_winnow(btbb_piconet *pnet)
 {
 	int new_count = pnet->num_candidates;
 	int index, last_index;
@@ -575,7 +577,7 @@ static btbb_packet *dequeue(btbb_piconet *pnet)
 }
 
 /* decode the whole packet */
-int decode(btbb_packet* p, btbb_piconet *pnet)
+int btbb_decode(btbb_packet* p, btbb_piconet *pnet)
 {
 	p->have_payload = 0;
 	uint8_t clk6, i;

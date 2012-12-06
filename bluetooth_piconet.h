@@ -21,109 +21,13 @@
  */
 #ifndef INCLUDED_BLUETOOTH_PICONET_H
 #define INCLUDED_BLUETOOTH_PICONET_H
-
-#include "bluetooth_packet.h"
-
-/* maximum number of hops to remember */
-#define MAX_PATTERN_LENGTH 1000
-
-/* number of channels in use */
-#define BT_NUM_CHANNELS 79
+#include "btbb.h"
 
 /* number of hops in the hopping sequence (i.e. number of possible values of CLK1-27) */
 #define SEQUENCE_LENGTH 134217728
 
 /* number of aliased channels received */
 #define ALIASED_CHANNELS 25
-
-/* Packet queue (linked list) */
-typedef struct pkt_queue {
-	btbb_packet *pkt;
-
-	struct pkt_queue *next;
-
-} pkt_queue;
-
-typedef struct btbb_piconet {
-	/* true if using a particular aliased receiver implementation */
-	int aliased;
-
-	/* using adaptive frequency hopping (AFH) */
-	int afh;
-
-	/* observed pattern that looks like AFH */
-	int looks_like_afh;
-
-	/* AFH channel map - either read or derived from observed packets */
-	uint8_t afh_map[10];
-
-	/* lower address part (of master's BD_ADDR) */
-	uint32_t LAP;
-
-	/* upper address part (of master's BD_ADDR) */
-	uint8_t UAP;
-
-	/* non-significant address part (of master's BD_ADDR) */
-	uint16_t NAP;
-
-	/* CLK1-27 candidates */
-	uint32_t *clock_candidates;
-
-	/* these values for hop() can be precalculated */
-	int b, e;
-
-	/* these values for hop() can be precalculated in part (e.g. a1 is the
-	 * precalculated part of a) */
-	int a1, c1, d1;
-
-	/* frequency register bank */
-	int bank[BT_NUM_CHANNELS];
-
-	/* this holds the entire hopping sequence */
-	char *sequence;
-
-	/* number of candidates for CLK1-27 */
-	int num_candidates;
-
-	/* have we collected the first packet in a UAP discovery attempt? */
-	int got_first_packet;
-
-	/* number of packets observed during one attempt at UAP/clock discovery */
-	int packets_observed;
-
-	/* total number of packets observed */
-	int total_packets_observed;
-
-	/* number of observed packets that have been used to winnow the candidates */
-	int winnowed;
-
-	/* CLK1-6 candidates */
-	int clock6_candidates[64];
-
-	/* remember patterns of observed hops */
-	int pattern_indices[MAX_PATTERN_LENGTH];
-	uint8_t pattern_channels[MAX_PATTERN_LENGTH];
-
-	int hop_reversal_inited;
-
-	/* offset between CLKN (local) and CLK of piconet */
-	int clk_offset;
-
-	/* local clock (clkn) at time of first packet */
-	uint32_t first_pkt_time;
-
-	/* Whether LAP is valid */
-	int have_LAP;
-
-	/* discovery status */
-	int have_UAP;
-	int have_NAP;
-	int have_clk6;
-	int have_clk27;
-
-	/* queue of packets to be decoded */
-	pkt_queue *queue;
-} btbb_piconet;
 
 /* do all the precalculation that can be done before knowing the address */
 void precalc(btbb_piconet *pnet);
@@ -142,25 +46,7 @@ int perm5(int z, int p_high, int p_low);
 /* replaced with gen_hops() for a complete sequence but could still come in handy */
 char single_hop(int clock, btbb_piconet *pnet);
 
-/* initialize the hop reversal process */
-/* returns number of initial candidates for CLK1-27 */
-int init_hop_reversal(int aliased, btbb_piconet *pnet);
-
-/* narrow a list of candidate clock values based on all observed hops */
-int winnow(btbb_piconet *pnet);
-
-/* use packet headers to determine UAP */
-int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pnet);
-
 /* look up channel for a particular hop */
 char hop(int clock, btbb_piconet *pnet);
-
-void init_piconet(btbb_piconet *pnet);
-
-/* decode a whole packet from the given piconet */
-int decode(btbb_packet* p, btbb_piconet *pnet);
-
-/* Print hexadecimal representation of the derived AFH map */
-void btbb_print_afh_map(btbb_piconet *pnet);
 
 #endif /* INCLUDED_BLUETOOTH_PICONET_H */

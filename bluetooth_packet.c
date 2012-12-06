@@ -25,6 +25,9 @@
 #include "config.h"
 #endif
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "bluetooth_packet.h"
 #include "uthash.h"
 #include "sw_check_tables.h"
