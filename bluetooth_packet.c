@@ -32,8 +32,9 @@
 #include "uthash.h"
 #include "sw_check_tables.h"
 
-/* Defaut maximum AC bit errors for unknown ACs, this can be overridden at runtime */
-#define MAX_AC_ERRORS 3
+/* Maximum number of AC errors supported by library. Caller may
+ * specify any value <= AC_ERROR_LIMIT in btbb_init(). */
+#define AC_ERROR_LIMIT 5
 
 /* maximum number of bit errors for known syncwords */
 #define MAX_SYNCWORD_ERRS 5
@@ -216,13 +217,8 @@ static void init_packet(btbb_packet *pkt, uint32_t lap, uint8_t ac_errors)
 	pkt->LAP = lap;
 	pkt->ac_errors = ac_errors;
 
-	pkt->whitened = 1;
-	pkt->have_UAP = 0;
-	pkt->have_NAP = 0;
-	pkt->have_clk6 = 0;
-	pkt->have_clk27 = 0;
-	pkt->have_payload = 0;
-	pkt->payload_length = 0;
+	memset(&pkt->flags, 0, sizeof(pkt->flags));
+	pkt->flags.is_whitened = 1;
 }
 
 /* Convert some number of bits of an air order array to a host order integer */
@@ -275,6 +271,21 @@ static uint8_t count_bits(uint64_t n)
 	return i;
 }
 
+int btbb_init(int max_ac_errors)
+{
+	/* Sanity check max_ac_errors. */
+	if ( (max_ac_errors < 0) || (max_ac_errors > AC_ERROR_LIMIT) ) {
+		fprintf(stderr, "%s: max_ac_errors out of range\n",
+			__FUNCTION__);
+		return -1;
+	}
+
+	if (syndrome_map == NULL)
+		gen_syndrome_map(max_ac_errors);
+
+	return 0;
+}
+
 int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors, btbb_packet *pkt) {
 
 	/* Looks for an AC in the stream */
@@ -284,9 +295,6 @@ int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_error
 	syndrome_struct *errors;
 	char *symbols;
 	int offset = -1;
-
-	if (syndrome_map == NULL)
-		gen_syndrome_map(MAX_AC_ERRORS);
 
 	/* Matching any LAP */
 	if (lap == LAP_ANY) {
@@ -509,7 +517,7 @@ static void unwhiten(char* input, char* output, int clock, int length, int skip,
 	for(count = 0; count < length; count++)
 	{
 		/* unwhiten if whitened, otherwise just copy input to output */
-		output[count] = (p->whitened) ? input[count] ^ WHITENING_DATA[index] : input[count];
+		output[count] = (p->flags.is_whitened) ? input[count] ^ WHITENING_DATA[index] : input[count];
 		index += 1;
 		index %= 127;
 	}
@@ -962,7 +970,7 @@ int HV(int clock, btbb_packet* p)
 		if (!unfec13(stream, corrected, 80))
 			return 0;
 		p->payload_length = 10;
-		p->have_payload = 1;
+		p->flags.has_payload = 1;
 		unwhiten(corrected, p->payload, clock, p->payload_length*8, 18, p);
 		}
 		break;
@@ -972,14 +980,14 @@ int HV(int clock, btbb_packet* p)
 		if (!corrected)
 			return 0;
 		p->payload_length = 20;
-		p->have_payload = 1;
+		p->flags.has_payload = 1;
 		unwhiten(corrected, p->payload, clock, p->payload_length*8, 18, p);
 		free(corrected);
 		}
 		break;
 	case 7:/* HV3 */
 		p->payload_length = 30;
-		p->have_payload = 1;
+		p->flags.has_payload = 1;
 		unwhiten(stream, p->payload, clock, p->payload_length*8, 18, p);
 		break;
 	}
@@ -1017,7 +1025,7 @@ int btbb_decode_header(btbb_packet* p)
 	char header[18];
 	uint8_t UAP;
 
-	if (p->have_clk6 && unfec13(stream, header, 18)) {
+	if (p->flags.clk6_valid && unfec13(stream, header, 18)) {
 		unwhiten(header, p->packet_header, p->clock, 18, 0, p);
 		uint16_t hdr_data = air_to_host16(p->packet_header, 10);
 		uint8_t hec = air_to_host8(&p->packet_header[10], 8);
@@ -1103,14 +1111,14 @@ int btbb_decode_payload(btbb_packet* p)
 			rv = DH(p->clock, p);
 			break;
 	}
-	p->have_payload = 1;
+	p->flags.has_payload = 1;
 	return rv;
 }
 
 /* print packet information */
 void btbb_print_packet(btbb_packet* p)
 {
-	if (p->have_payload) {
+	if (p->flags.has_payload) {
 		printf("  Type: %s\n", TYPE_NAMES[p->packet_type]);
 		if (p->payload_header_length > 0) {
 			printf("  LT_ADDR: %d\n", p->packet_lt_addr);
@@ -1118,7 +1126,7 @@ void btbb_print_packet(btbb_packet* p)
 			printf("  flow: %d\n", p->payload_flow);
 			printf("  payload length: %d\n", p->payload_length);
 		}
-		if (p->have_payload && p->payload_length) {
+		if (p->flags.has_payload && p->payload_length) {
 			printf("  Data: ");
 			int i;
 			for(i=0; i<p->payload_length; i++)
@@ -1141,7 +1149,7 @@ char *tun_format(btbb_packet* p)
 	tun_format[2] = (p->clock >> 16) & 0xff;
 	tun_format[3] = (p->clock >> 24) & 0xff;
 	tun_format[4] = p->channel;
-	tun_format[5] = p->have_clk27 | (p->have_NAP << 1);
+	tun_format[5] = p->flags.clk27_valid | (p->flags.nap_valid << 1);
 
 	/* packet header modified to fit byte boundaries */
 	/* lt_addr and type */
@@ -1159,7 +1167,7 @@ char *tun_format(btbb_packet* p)
 
 int got_payload(btbb_packet* p)
 {
-	return p->have_payload;
+	return p->flags.has_payload;
 }
 
 int get_payload_length(btbb_packet* p)

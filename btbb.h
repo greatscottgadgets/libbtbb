@@ -36,56 +36,56 @@
 /* number of channels in use */
 #define BT_NUM_CHANNELS 79
 
+typedef struct btbb_packet_flags {
+	uint32_t is_whitened:1;
+	uint32_t uap_valid:1;
+	uint32_t nap_valid:1;
+	uint32_t lap_valid:1;
+	uint32_t clk6_valid:1;
+	uint32_t clk27_valid:1;
+	uint32_t crc_correct:1;  /* WC4: watch for dual use as has_payload */
+	uint32_t has_payload:1;
+	uint32_t is_edr:1;
+} btbb_packet_flags;
+
 typedef struct btbb_packet {
-	/* the raw symbol stream (less the preamble), one bit per char */
-	//FIXME maybe this should be a vector so we can grow it only to the size
-	//needed and later shrink it if we find we have more symbols than necessary
-	char symbols[MAX_SYMBOLS];
 
-	/* Bluetooth channel */
-	uint8_t channel;
+	btbb_packet_flags flags;
 
-	/* lower address part found in access code */
-	uint32_t LAP;
+	uint8_t channel; /* Bluetooth channel (0-79) */
+	uint8_t UAP;     /* upper address part */
+	uint16_t NAP;    /* non-significant address part */
+	uint32_t LAP;    /* lower address part found in access code */
 	
-	/* upper address part */
-	uint8_t UAP;
-	
-	/* non-significant address part */
-	uint16_t NAP;
-	
-	/* number of symbols */
-	int length;
-	
-	/* packet type */
 	int packet_type;
-	
-	/* LLID field of payload header (2 bits) */
-	uint8_t packet_lt_addr;
+	uint8_t packet_lt_addr; /* LLID field of payload header (2 bits) */
 	
 	/* packet header, one bit per char */
 	char packet_header[18];
 	
-	/* payload header, one bit per char */
-	/* the packet may have a payload header of 0, 1, or 2 bytes, reserving 2 */
-	char payload_header[16];
-	
-	/* number of payload header bytes */
-	/* set to 0, 1, 2, or -1 for unknown */
+	/* number of payload header bytes: 0, 1, 2, or -1 for
+	 * unknown */
 	int payload_header_length;
+	
+	/* payload header, one bit per char */
+	char payload_header[16];
 	
 	/* LLID field of payload header (2 bits) */
 	uint8_t payload_llid;
 	
 	/* flow field of payload header (1 bit) */
 	uint8_t payload_flow;
-	
-	/* payload length: the total length of the asynchronous data in bytes.
-	* This does not include the length of synchronous data, such as the voice
-	* field of a DV packet.
-	* If there is a payload header, this payload length is payload body length
-	* (the length indicated in the payload header's length field) plus
-	* payload_header_length plus 2 bytes CRC (if present).
+
+	/* WC4: move payload out of structure. Maybe return
+	 * dynamically. That way there is only one variable length
+	 * field. */
+
+	/* payload length: the total length of the asynchronous data
+	* in bytes.  This does not include the length of synchronous
+	* data, such as the voice field of a DV packet.  If there is a
+	* payload header, this payload length is payload body length
+	* (the length indicated in the payload header's length field)
+	* plus payload_header_length plus 2 bytes CRC (if present).
 	*/
 	int payload_length;
 	
@@ -96,39 +96,33 @@ typedef struct btbb_packet {
 	* problematic in the short run.
 	*/
 	char payload[2744];
-	
-	/* is the packet whitened? */
-	int whitened;
-	
-	/* do we know the UAP/NAP? */
-	int have_UAP;
-	int have_NAP;
-	
-	/* do we know the master clock? */
-	int have_clk6;
-	int have_clk27;
-	
-	int have_payload;
-	
-	/* 1 if crc is correct
-	 * 0 if crc is incorrect
-	 * -1 if packet type has no payload
-	 */
-	int payload_crc;
+
 	uint16_t crc;
+	uint32_t clock; /* CLK1-27 of master */
+	uint32_t clkn;  /* native (local) clock, CLK0-27 */
+	uint8_t ac_errors; /* Number of bit errors in the AC */
 
-	/* Set to 1 when we know it's an EDR packet */
-	int is_edr;
-	
-	/* CLK1-27 of master */
-	uint32_t clock;
+        /* WC4: make this a zero-length field at the end of the packet
+	 * to allow for variable size. */
 
-	/* native (local) clock, CLK0-27 */
-	uint32_t clkn;
+	/* the raw symbol stream (less the preamble), one bit per char */
+	//FIXME maybe this should be a vector so we can grow it only
+	//to the size needed and later shrink it if we find we have
+	//more symbols than necessary
+	uint16_t length; /* number of symbols */
+	char symbols[MAX_SYMBOLS];
 
-	/* Number of bit errors in the AC */
-	uint8_t ac_errors;
 } btbb_packet;
+
+/* Initialize the library. Compute the syndrome. Return 0 on success,
+ * negative on error.
+ *
+ * The library limits max_ac_errors to 5. Using a larger value will
+ * take up a lot of memory (several GB), without decoding many useful
+ * packets. Even a limit of 5 results in a syndrome table of several
+ * hundred MB and lots of noise. For embedded targets, a value of 2 is
+ * reasonable. */
+int btbb_init(int max_ac_errors);
 
 /* Search for a packet with specified LAP (or LAP_ANY). The stream
  * must be at least of length serch_length + 72. Limit to

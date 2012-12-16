@@ -579,7 +579,7 @@ static btbb_packet *dequeue(btbb_piconet *pnet)
 /* decode the whole packet */
 int btbb_decode(btbb_packet* p, btbb_piconet *pnet)
 {
-	p->have_payload = 0;
+	p->flags.has_payload = 0;
 	uint8_t clk6, i;
 	int rv = 0;
 	if (pnet->have_clk27) {
