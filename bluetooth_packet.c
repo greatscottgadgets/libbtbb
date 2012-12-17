@@ -217,8 +217,8 @@ static void init_packet(btbb_packet *pkt, uint32_t lap, uint8_t ac_errors)
 	pkt->LAP = lap;
 	pkt->ac_errors = ac_errors;
 
-	memset(&pkt->flags, 0, sizeof(pkt->flags));
-	pkt->flags.is_whitened = 1;
+	pkt->flags = 0;
+	btbb_packet_set_flag(pkt, BTBB_WHITENED, 1);
 }
 
 /* Convert some number of bits of an air order array to a host order integer */
@@ -382,6 +382,40 @@ void btbb_packet_set_data(btbb_packet *pkt, char *data, int length, uint8_t chan
 	pkt->clkn = clkn >> 1; // really CLK1
 }
 
+void btbb_packet_set_flag(btbb_packet *pkt, int flag, int val)
+{
+	uint32_t mask = 1L << flag;
+	pkt->flags &= ~mask;
+	if (val)
+		pkt->flags |= mask;
+}
+
+int btbb_packet_get_flag(btbb_packet *pkt, int flag)
+{
+	uint32_t mask = 1L << flag;
+	return ((pkt->flags & mask) != 0);
+}
+
+const char *btbb_get_symbols(btbb_packet* pkt)
+{
+	return (const char*) pkt->symbols;
+}
+
+int btbb_packet_get_payload_length(btbb_packet* p)
+{
+	return p->payload_length;
+}
+
+const char *btbb_get_payload(btbb_packet* p)
+{
+	return (const char*) p->payload;
+}
+
+int btbb_packet_get_type(btbb_packet* p)
+{
+	return p->packet_type;
+}
+
 /* Compare stream with sync word
  * Unused, but useful to correct >3 bit errors with known LAP
  */
@@ -517,7 +551,8 @@ static void unwhiten(char* input, char* output, int clock, int length, int skip,
 	for(count = 0; count < length; count++)
 	{
 		/* unwhiten if whitened, otherwise just copy input to output */
-		output[count] = (p->flags.is_whitened) ? input[count] ^ WHITENING_DATA[index] : input[count];
+		output[count] = btbb_packet_get_flag(p, BTBB_WHITENED) ?
+			input[count] ^ WHITENING_DATA[index] : input[count];
 		index += 1;
 		index %= 127;
 	}
@@ -970,7 +1005,7 @@ int HV(int clock, btbb_packet* p)
 		if (!unfec13(stream, corrected, 80))
 			return 0;
 		p->payload_length = 10;
-		p->flags.has_payload = 1;
+		btbb_packet_set_flag(p, BTBB_HAS_PAYLOAD, 1);
 		unwhiten(corrected, p->payload, clock, p->payload_length*8, 18, p);
 		}
 		break;
@@ -980,14 +1015,14 @@ int HV(int clock, btbb_packet* p)
 		if (!corrected)
 			return 0;
 		p->payload_length = 20;
-		p->flags.has_payload = 1;
+		btbb_packet_set_flag(p, BTBB_HAS_PAYLOAD, 1);
 		unwhiten(corrected, p->payload, clock, p->payload_length*8, 18, p);
 		free(corrected);
 		}
 		break;
 	case 7:/* HV3 */
 		p->payload_length = 30;
-		p->flags.has_payload = 1;
+		btbb_packet_set_flag(p, BTBB_HAS_PAYLOAD, 1);
 		unwhiten(stream, p->payload, clock, p->payload_length*8, 18, p);
 		break;
 	}
@@ -1025,7 +1060,7 @@ int btbb_decode_header(btbb_packet* p)
 	char header[18];
 	uint8_t UAP;
 
-	if (p->flags.clk6_valid && unfec13(stream, header, 18)) {
+	if (btbb_packet_get_flag(p, BTBB_CLK6_VALID) && unfec13(stream, header, 18)) {
 		unwhiten(header, p->packet_header, p->clock, 18, 0, p);
 		uint16_t hdr_data = air_to_host16(p->packet_header, 10);
 		uint8_t hec = air_to_host8(&p->packet_header[10], 8);
@@ -1111,14 +1146,14 @@ int btbb_decode_payload(btbb_packet* p)
 			rv = DH(p->clock, p);
 			break;
 	}
-	p->flags.has_payload = 1;
+	btbb_packet_set_flag(p, BTBB_HAS_PAYLOAD, 1);
 	return rv;
 }
 
 /* print packet information */
 void btbb_print_packet(btbb_packet* p)
 {
-	if (p->flags.has_payload) {
+	if (btbb_packet_get_flag(p, BTBB_HAS_PAYLOAD)) {
 		printf("  Type: %s\n", TYPE_NAMES[p->packet_type]);
 		if (p->payload_header_length > 0) {
 			printf("  LT_ADDR: %d\n", p->packet_lt_addr);
@@ -1126,7 +1161,7 @@ void btbb_print_packet(btbb_packet* p)
 			printf("  flow: %d\n", p->payload_flow);
 			printf("  payload length: %d\n", p->payload_length);
 		}
-		if (p->flags.has_payload && p->payload_length) {
+		if (p->payload_length) {
 			printf("  Data: ");
 			int i;
 			for(i=0; i<p->payload_length; i++)
@@ -1149,7 +1184,8 @@ char *tun_format(btbb_packet* p)
 	tun_format[2] = (p->clock >> 16) & 0xff;
 	tun_format[3] = (p->clock >> 24) & 0xff;
 	tun_format[4] = p->channel;
-	tun_format[5] = p->flags.clk27_valid | (p->flags.nap_valid << 1);
+	tun_format[5] = btbb_packet_get_flag(p, BTBB_CLK27_VALID) |
+		(btbb_packet_get_flag(p, BTBB_NAP_VALID) << 1);
 
 	/* packet header modified to fit byte boundaries */
 	/* lt_addr and type */
@@ -1163,21 +1199,6 @@ char *tun_format(btbb_packet* p)
 		tun_format[i+9] = (char) air_to_host8(&p->payload[i*8], 8);
 
 	return tun_format;
-}
-
-int got_payload(btbb_packet* p)
-{
-	return p->flags.has_payload;
-}
-
-int get_payload_length(btbb_packet* p)
-{
-	return p->payload_length;
-}
-
-int get_type(btbb_packet* p)
-{
-	return p->packet_type;
 }
 
 /* check to see if the packet has a header */

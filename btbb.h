@@ -27,6 +27,9 @@
 /* maximum number of symbols */
 #define MAX_SYMBOLS 3125
 
+/* maximum number of payload bits */
+#define MAX_PAYLOAD_LENGTH 2744
+
 /* minimum header bit errors to indicate that this is an ID packet */
 #define ID_THRESHOLD 5
 
@@ -36,21 +39,19 @@
 /* number of channels in use */
 #define BT_NUM_CHANNELS 79
 
-typedef struct btbb_packet_flags {
-	uint32_t is_whitened:1;
-	uint32_t uap_valid:1;
-	uint32_t nap_valid:1;
-	uint32_t lap_valid:1;
-	uint32_t clk6_valid:1;
-	uint32_t clk27_valid:1;
-	uint32_t crc_correct:1;  /* WC4: watch for dual use as has_payload */
-	uint32_t has_payload:1;
-	uint32_t is_edr:1;
-} btbb_packet_flags;
+#define BTBB_WHITENED    0
+#define BTBB_NAP_VALID   1
+#define BTBB_UAP_VALID   2
+#define BTBB_LAP_VALID   3
+#define BTBB_CLK6_VALID  4
+#define BTBB_CLK27_VALID 5
+#define BTBB_CRC_CORRECT 6
+#define BTBB_HAS_PAYLOAD 7
+#define BTBB_IS_EDR      8
 
 typedef struct btbb_packet {
 
-	btbb_packet_flags flags;
+	uint32_t flags;
 
 	uint8_t channel; /* Bluetooth channel (0-79) */
 	uint8_t UAP;     /* upper address part */
@@ -64,10 +65,8 @@ typedef struct btbb_packet {
 	char packet_header[18];
 	
 	/* number of payload header bytes: 0, 1, 2, or -1 for
-	 * unknown */
+	 * unknown. payload is one bit per char. */
 	int payload_header_length;
-	
-	/* payload header, one bit per char */
 	char payload_header[16];
 	
 	/* LLID field of payload header (2 bits) */
@@ -75,10 +74,6 @@ typedef struct btbb_packet {
 	
 	/* flow field of payload header (1 bit) */
 	uint8_t payload_flow;
-
-	/* WC4: move payload out of structure. Maybe return
-	 * dynamically. That way there is only one variable length
-	 * field. */
 
 	/* payload length: the total length of the asynchronous data
 	* in bytes.  This does not include the length of synchronous
@@ -95,15 +90,12 @@ typedef struct btbb_packet {
 	* Dynamic allocation would probably be better in the long run but is
 	* problematic in the short run.
 	*/
-	char payload[2744];
+	char payload[MAX_PAYLOAD_LENGTH];
 
 	uint16_t crc;
 	uint32_t clock; /* CLK1-27 of master */
 	uint32_t clkn;  /* native (local) clock, CLK0-27 */
 	uint8_t ac_errors; /* Number of bit errors in the AC */
-
-        /* WC4: make this a zero-length field at the end of the packet
-	 * to allow for variable size. */
 
 	/* the raw symbol stream (less the preamble), one bit per char */
 	//FIXME maybe this should be a vector so we can grow it only
@@ -139,11 +131,24 @@ int btbb_find_ac(char *stream,
 	       btbb_packet *pkt);
 #define LAP_ANY 0xffffffffUL
 
+void btbb_packet_set_flag(btbb_packet *pkt, int flag, int val);
+int btbb_packet_get_flag(btbb_packet *pkt, int flag);
+
 void btbb_packet_set_data(btbb_packet *pkt,
-			char *syms,      // Symbol data
-			int length,      // Number of symbols
-			uint8_t channel, // Bluetooth channel 0-79
-			uint32_t clkn);  // 312.5us clock (CLK27-0)
+			  char *syms,      // Symbol data
+			  int length,      // Number of symbols
+			  uint8_t channel, // Bluetooth channel 0-79
+			  uint32_t clkn);  // 312.5us clock (CLK27-0)
+
+/* Get a pointer to packet symbols. */
+const char *btbb_get_symbols(btbb_packet* p);
+
+int btbb_packet_get_payload_length(btbb_packet* p);
+
+/* Get a pointer to payload. */
+const char *btbb_get_payload(btbb_packet* p);
+
+int btbb_packet_get_type(btbb_packet* p);
 
 /* Generate Sync Word from an LAP */
 uint64_t btbb_gen_syncword(int LAP);

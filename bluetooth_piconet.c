@@ -87,9 +87,13 @@ void address_precalc(int address, btbb_piconet *pnet)
 #ifdef WC4
 /* These are optimization experiments, which don't help much for
  * x86. Hold on to them to see whether they're useful on ARM. */
-//#define BUTTERFLY(z,p,c,a,b)					     \
-//	if ( ((p&(1<<c))!=0) & (((z&(1<<a))!=0) ^ ((z&(1<<b))!=0)) ) \
-//		z ^= ((1<<a)|(1<<b))
+
+#ifdef NEVER
+#define BUTTERFLY(z,p,c,a,b)					     \
+	if ( ((p&(1<<c))!=0) & (((z&(1<<a))!=0) ^ ((z&(1<<b))!=0)) ) \
+		z ^= ((1<<a)|(1<<b))
+#endif
+
 #define BUTTERFLY(z,p,c,a,b) \
 	if ( (((z>>a)^(z>>b)) & (p>>c)) & 0x1 ) \
 		z ^= ((1<<a)|(1<<b))
@@ -579,7 +583,7 @@ static btbb_packet *dequeue(btbb_piconet *pnet)
 /* decode the whole packet */
 int btbb_decode(btbb_packet* p, btbb_piconet *pnet)
 {
-	p->flags.has_payload = 0;
+	btbb_packet_set_flag(p, BTBB_HAS_PAYLOAD, 0);
 	uint8_t clk6, i;
 	int rv = 0;
 	if (pnet->have_clk27) {
