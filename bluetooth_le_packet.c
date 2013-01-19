@@ -116,8 +116,20 @@ static void _dump_32(char *name, uint8_t *buf, int offset) {
 void le_print(le_packet_t *p) {
 	int i;
 	if (le_packet_is_data(p)) {
+		int llid = p->symbols[4] & 0x3;
+		static const char *llid_str[] = {
+			"Reserved",
+			"LL Data PDU / empty or L2CAP continuation",
+			"LL Data PDU / L2CAP start",
+			"LL Control PDU",
+		};
+
 		printf("Data / AA %08x / %2d bytes\n", p->access_address, p->length);
 		printf("    Channel Index: %d\n", p->channel_idx);
+		printf("    LLID: %d / %s\n", llid, llid_str[llid]);
+		printf("    NESN: %d  SN: %d  MD: %d\n", (p->symbols[4] >> 2) & 1,
+												 (p->symbols[4] >> 3) & 1,
+												 (p->symbols[4] >> 4) & 1);
 	} else {
 		printf("Advertising / AA %08x / %2d bytes\n", p->access_address, p->length);
 		printf("    Channel Index: %d\n", p->channel_idx);
@@ -161,16 +173,16 @@ void le_print(le_packet_t *p) {
 						CONNECT_SCA[p->symbols[37] >> 5]);
 				break;
 		}
-
-		printf("\n");
-		printf("    Data: ");
-		for (i = 6; i < 6 + p->length; ++i)
-			printf(" %02x", p->symbols[i]);
-		printf("\n");
-
-		printf("    CRC:  ");
-		for (i = 0; i < 3; ++i)
-			printf(" %02x", p->symbols[6 + p->length + i]);
-		printf("\n");
 	}
+
+	printf("\n");
+	printf("    Data: ");
+	for (i = 6; i < 6 + p->length; ++i)
+		printf(" %02x", p->symbols[i]);
+	printf("\n");
+
+	printf("    CRC:  ");
+	for (i = 0; i < 3; ++i)
+		printf(" %02x", p->symbols[6 + p->length + i]);
+	printf("\n");
 }
