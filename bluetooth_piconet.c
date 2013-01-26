@@ -33,49 +33,113 @@
 int perm_table_initialized = 0;
 char perm_table[0x20][0x20][0x200];
 
-void btbb_init_piconet(btbb_piconet *pnet)
+btbb_piconet *
+btbb_piconet_new(void)
 {
-	int i;
-	for(i=0; i<10; i++)
-		pnet->afh_map[i] = 0;
-	pnet->got_first_packet = 0;
-	pnet->packets_observed = 0;
-	pnet->total_packets_observed = 0;
-	pnet->hop_reversal_inited = 0;
-	pnet->afh = 0;
-	pnet->looks_like_afh = 0;
-	pnet->have_LAP = 0;
-	pnet->have_UAP = 0;
-	pnet->have_NAP = 0;
-	pnet->have_clk6 = 0;
-	pnet->have_clk27 = 0;
+	btbb_piconet *pn = (btbb_piconet *)calloc(1, sizeof(btbb_piconet));
+	pn->refcount = 1;
+	return pn;
+}
+
+void
+btbb_piconet_ref(btbb_piconet *pn)
+{
+	pn->refcount++;
+}
+
+void
+btbb_piconet_unref(btbb_piconet *pn)
+{
+	pn->refcount--;
+	if (pn->refcount == 0)
+		free(pn);
+}
+
+void btbb_init_piconet(btbb_piconet *pn)
+{
+	;
+}
+
+void btbb_piconet_set_flag(btbb_piconet *pn, int flag, int val)
+{
+	uint32_t mask = 1L << flag;
+	pn->flags &= ~mask;
+	if (val)
+		pn->flags |= mask;
+}
+
+int btbb_piconet_get_flag(btbb_piconet *pn, int flag)
+{
+	uint32_t mask = 1L << flag;
+	return ((pn->flags & mask) != 0);
+}
+
+void btbb_piconet_set_uap(btbb_piconet *pn, uint8_t uap)
+{
+	pn->UAP = uap;
+	btbb_piconet_set_flag(pn, BTBB_UAP_VALID, 1);
+}
+
+uint8_t btbb_piconet_get_uap(btbb_piconet *pn)
+{
+	return pn->UAP;
+}
+
+void btbb_piconet_set_lap(btbb_piconet *pn, uint32_t lap)
+{
+	pn->LAP = lap;
+	btbb_piconet_set_flag(pn, BTBB_LAP_VALID, 1);
+}
+
+uint32_t btbb_piconet_get_lap(btbb_piconet *pn)
+{
+	return pn->LAP;
+}
+
+uint16_t btbb_piconet_get_nap(btbb_piconet *pn)
+{
+	return pn->NAP;
+}
+
+int btbb_piconet_get_clk_offset(btbb_piconet *pn)
+{
+	return pn->clk_offset;
+}
+
+uint8_t *btbb_piconet_get_afh_map(btbb_piconet *pn) {
+	return pn->afh_map;
+}
+
+void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel)
+{
+	pn->afh_map[channel/8] |= 0x1 << (channel % 8);
 }
 
 /* do all the precalculation that can be done before knowing the address */
-void precalc(btbb_piconet *pnet)
+void precalc(btbb_piconet *pn)
 {
 	int i;
 
 	/* populate frequency register bank*/
 	for (i = 0; i < BT_NUM_CHANNELS; i++)
-			pnet->bank[i] = ((i * 2) % BT_NUM_CHANNELS);
-	/* actual frequency is 2402 + pnet->bank[i] MHz */
+			pn->bank[i] = ((i * 2) % BT_NUM_CHANNELS);
+	/* actual frequency is 2402 + pn->bank[i] MHz */
 
 }
 
 /* do precalculation that requires the address */
-void address_precalc(int address, btbb_piconet *pnet)
+void address_precalc(int address, btbb_piconet *pn)
 {
 	/* precalculate some of single_hop()/gen_hop()'s variables */
-	pnet->a1 = (address >> 23) & 0x1f;
-	pnet->b = (address >> 19) & 0x0f;
-	pnet->c1 = ((address >> 4) & 0x10) +
+	pn->a1 = (address >> 23) & 0x1f;
+	pn->b = (address >> 19) & 0x0f;
+	pn->c1 = ((address >> 4) & 0x10) +
 		((address >> 3) & 0x08) +
 		((address >> 2) & 0x04) +
 		((address >> 1) & 0x02) +
 		(address & 0x01);
-	pnet->d1 = (address >> 10) & 0x1ff;
-	pnet->e = ((address >> 7) & 0x40) +
+	pn->d1 = (address >> 10) & 0x1ff;
+	pn->e = ((address >> 7) & 0x40) +
 		((address >> 6) & 0x20) +
 		((address >> 5) & 0x10) +
 		((address >> 4) & 0x08) +
@@ -167,7 +231,7 @@ void perm_table_init(void)
 }
 
 /* drop-in replacement for perm5() using lookup table */
-int fast_perm(int z, int p_high, int p_low, btbb_piconet *pnet)
+int fast_perm(int z, int p_high, int p_low, btbb_piconet *pn)
 {
 	if (!perm_table_initialized) {
 		perm_table_init();
@@ -178,7 +242,7 @@ int fast_perm(int z, int p_high, int p_low, btbb_piconet *pnet)
 }
 
 /* generate the complete hopping sequence */
-static void gen_hops(btbb_piconet *pnet)
+static void gen_hops(btbb_piconet *pn)
 {
 	/* a, b, c, d, e, f, x, y1, y2 are variable names used in section 2.6 of the spec */
 	/* b is already defined */
@@ -194,23 +258,23 @@ static void gen_hops(btbb_piconet *pnet)
 	/* nested loops for optimization (not recalculating every variable with every clock tick) */
 	for (h = 0; h < 0x04; h++) { /* clock bits 26-27 */
 		for (i = 0; i < 0x20; i++) { /* clock bits 21-25 */
-			a = pnet->a1 ^ i;
+			a = pn->a1 ^ i;
 			for (j = 0; j < 0x20; j++) { /* clock bits 16-20 */
-				c = pnet->c1 ^ j;
+				c = pn->c1 ^ j;
 				c_flipped = c ^ 0x1f;
 				for (k = 0; k < 0x200; k++) { /* clock bits 7-15 */
-					d = pnet->d1 ^ k;
+					d = pn->d1 ^ k;
 					for (x = 0; x < 0x20; x++) { /* clock bits 2-6 */
-						perm_in = ((x + a) % 32) ^ pnet->b;
+						perm_in = ((x + a) % 32) ^ pn->b;
 						/* y1 (clock bit 1) = 0, y2 = 0 */
-						perm_out = fast_perm(perm_in, c, d, pnet);
-						pnet->sequence[index] = pnet->bank[(perm_out + pnet->e + f) % BT_NUM_CHANNELS];
-						if (pnet->afh) {
-							pnet->sequence[index + 1] = pnet->sequence[index];
+						perm_out = fast_perm(perm_in, c, d, pn);
+						pn->sequence[index] = pn->bank[(perm_out + pn->e + f) % BT_NUM_CHANNELS];
+						if (btbb_piconet_get_flag(pn, BTBB_IS_AFH)) {
+							pn->sequence[index + 1] = pn->sequence[index];
 						} else {
 							/* y1 (clock bit 1) = 1, y2 = 32 */
-							perm_out = fast_perm(perm_in, c_flipped, d, pnet);
-							pnet->sequence[index + 1] = pnet->bank[(perm_out + pnet->e + f + 32) % BT_NUM_CHANNELS];
+							perm_out = fast_perm(perm_in, c_flipped, d, pn);
+							pn->sequence[index + 1] = pn->bank[(perm_out + pn->e + f + 32) % BT_NUM_CHANNELS];
 						}
 						index += 2;
 					}
@@ -222,15 +286,15 @@ static void gen_hops(btbb_piconet *pnet)
 }
 
 /* Function to calculate piconet hopping patterns and add to hash map */
-void gen_hop_pattern(btbb_piconet *pnet)
+void gen_hop_pattern(btbb_piconet *pn)
 {
 	printf("\nCalculating complete hopping sequence.\n");
 	/* this holds the entire hopping sequence */
-	pnet->sequence = (char*) malloc(SEQUENCE_LENGTH);
+	pn->sequence = (char*) malloc(SEQUENCE_LENGTH);
 
-	precalc(pnet);
-	address_precalc(((pnet->UAP<<24) | pnet->LAP) & 0xfffffff, pnet);
-	gen_hops(pnet);
+	precalc(pn);
+	address_precalc(((pn->UAP<<24) | pn->LAP) & 0xfffffff, pn);
+	gen_hops(pn);
 
 	printf("Hopping sequence calculated.\n");
 }
@@ -245,31 +309,31 @@ typedef struct {
 static hopping_struct *hopping_map = NULL;
 
 /* Function to fetch piconet hopping patterns */
-void get_hop_pattern(btbb_piconet *pnet)
+void get_hop_pattern(btbb_piconet *pn)
 {
        hopping_struct *s;
        uint64_t key;
 
 	   /* Two stages to avoid "left shift count >= width of type" warning */
-	   key = pnet->afh;
-       key = (key<<32) | (pnet->UAP<<24) | pnet->LAP;
+       key = btbb_piconet_get_flag(pn, BTBB_IS_AFH);
+       key = (key<<32) | (pn->UAP<<24) | pn->LAP;
        HASH_FIND(hh, hopping_map, &key, 4, s);
        
        if (s == NULL) {
-               gen_hop_pattern(pnet);
+               gen_hop_pattern(pn);
                s = malloc(sizeof(hopping_struct));
                s->key = key;
-               s->sequence = pnet->sequence;
+               s->sequence = pn->sequence;
                HASH_ADD(hh, hopping_map, key, 4, s);
        } else {
                printf("\nFound hopping sequence in cache.\n");
-               pnet->sequence = s->sequence;
+               pn->sequence = s->sequence;
        }
 }
 
 /* determine channel for a particular hop */
 /* replaced with gen_hops() for a complete sequence but could still come in handy */
-char single_hop(int clock, btbb_piconet *pnet)
+char single_hop(int clock, btbb_piconet *pn)
 {
 	int a, c, d, f, x, y1, y2;
 
@@ -277,21 +341,21 @@ char single_hop(int clock, btbb_piconet *pnet)
 	x = (clock >> 2) & 0x1f;
 	y1 = (clock >> 1) & 0x01;
 	y2 = y1 << 5;
-	a = (pnet->a1 ^ (clock >> 21)) & 0x1f;
+	a = (pn->a1 ^ (clock >> 21)) & 0x1f;
 	/* b is already defined */
-	c = (pnet->c1 ^ (clock >> 16)) & 0x1f;
-	d = (pnet->d1 ^ (clock >> 7)) & 0x1ff;
+	c = (pn->c1 ^ (clock >> 16)) & 0x1f;
+	d = (pn->d1 ^ (clock >> 7)) & 0x1ff;
 	/* e is already defined */
 	f = (clock >> 3) & 0x1fffff0;
 
 	/* hop selection */
-	return(pnet->bank[(fast_perm(((x + a) % 32) ^ pnet->b, (y1 * 0x1f) ^ c, d, pnet) + pnet->e + f + y2) % BT_NUM_CHANNELS]);
+	return(pn->bank[(fast_perm(((x + a) % 32) ^ pn->b, (y1 * 0x1f) ^ c, d, pn) + pn->e + f + y2) % BT_NUM_CHANNELS]);
 }
 
 /* look up channel for a particular hop */
-char hop(int clock, btbb_piconet *pnet)
+char hop(int clock, btbb_piconet *pn)
 {
-	return pnet->sequence[clock];
+	return pn->sequence[clock];
 }
 
 static char aliased_channel(char channel)
@@ -300,7 +364,7 @@ static char aliased_channel(char channel)
 }
 
 /* create list of initial candidate clock values (hops with same channel as first observed hop) */
-static int init_candidates(char channel, int known_clock_bits, btbb_piconet *pnet)
+static int init_candidates(char channel, int known_clock_bits, btbb_piconet *pn)
 {
 	int i;
 	int count = 0; /* total number of candidates */
@@ -308,102 +372,148 @@ static int init_candidates(char channel, int known_clock_bits, btbb_piconet *pne
 
 	/* only try clock values that match our known bits */
 	for (i = known_clock_bits; i < SEQUENCE_LENGTH; i += 0x40) {
-		if (pnet->aliased)
-			observable_channel = aliased_channel(pnet->sequence[i]);
+		if (pn->aliased)
+			observable_channel = aliased_channel(pn->sequence[i]);
 		else
-			observable_channel = pnet->sequence[i];
+			observable_channel = pn->sequence[i];
 		if (observable_channel == channel)
-			pnet->clock_candidates[count++] = i;
+			pn->clock_candidates[count++] = i;
 		//FIXME ought to throw exception if count gets too big
 	}
 	return count;
 }
 
 /* initialize the hop reversal process */
-int btbb_init_hop_reversal(int aliased, btbb_piconet *pnet)
+int btbb_init_hop_reversal(int aliased, btbb_piconet *pn)
 {
 	int max_candidates;
 	uint32_t clock;
 	
-	get_hop_pattern(pnet);
+	get_hop_pattern(pn);
 
 	if(aliased)
 		max_candidates = (SEQUENCE_LENGTH / ALIASED_CHANNELS) / 32;
 	else
 		max_candidates = (SEQUENCE_LENGTH / BT_NUM_CHANNELS) / 32;
 	/* this can hold twice the approximate number of initial candidates */
-	pnet->clock_candidates = (uint32_t*) malloc(sizeof(uint32_t) * max_candidates);
+	pn->clock_candidates = (uint32_t*) malloc(sizeof(uint32_t) * max_candidates);
 
-	clock = (pnet->clk_offset + pnet->first_pkt_time) & 0x3f;
-	pnet->num_candidates = init_candidates(pnet->pattern_channels[0], clock, pnet);
-	pnet->winnowed = 0;
-	pnet->hop_reversal_inited = 1;
-	pnet->have_clk27 = 0;
-	pnet->aliased = aliased;
+	clock = (pn->clk_offset + pn->first_pkt_time) & 0x3f;
+	pn->num_candidates = init_candidates(pn->pattern_channels[0], clock, pn);
+	pn->winnowed = 0;
+	btbb_piconet_set_flag(pn, BTBB_HOP_REVERSAL_INIT, 1);
+	btbb_piconet_set_flag(pn, BTBB_CLK27_VALID, 0);
+	btbb_piconet_set_flag(pn, BTBB_IS_ALIASED, aliased);
 
-	printf("%d initial CLK1-27 candidates\n", pnet->num_candidates);
+	printf("%d initial CLK1-27 candidates\n", pn->num_candidates);
 
-	return pnet->num_candidates;
+	return pn->num_candidates;
+}
+
+void try_hop(btbb_packet *pkt, btbb_piconet *pn)
+{
+	uint8_t filter_uap = pn->UAP;
+
+	/* Decode packet - fixing clock drift in the process */
+	btbb_decode(pkt, pn);
+
+	if (btbb_piconet_get_flag(pn, BTBB_HOP_REVERSAL_INIT)) {
+		//pn->winnowed = 0;
+		pn->pattern_indices[pn->packets_observed] =
+			pkt->clkn - pn->first_pkt_time;
+		pn->pattern_channels[pn->packets_observed] = pkt->channel;
+		pn->packets_observed++;
+		pn->total_packets_observed++;
+		btbb_winnow(pn);
+		if (btbb_piconet_get_flag(pn, BTBB_CLK27_VALID)) {
+			printf("got CLK1-27\n");
+			printf("clock offset = %d.\n", pn->clk_offset);
+		}
+	} else {
+		if (btbb_piconet_get_flag(pn, BTBB_CLK6_VALID)) {
+			btbb_uap_from_header(pkt, pn);
+			if (btbb_piconet_get_flag(pn, BTBB_CLK27_VALID)) {
+				printf("got CLK1-27\n");
+				printf("clock offset = %d.\n", pn->clk_offset);
+			}
+		} else {
+			if (btbb_uap_from_header(pkt, pn)) {
+				if (filter_uap == pn->UAP) {
+					printf("got CLK1-6\n");
+					btbb_init_hop_reversal(0, pn);
+					btbb_winnow(pn);
+				} else {
+					printf("failed to confirm UAP\n");
+				}
+			}
+		}
+	}
+
+	if(!btbb_piconet_get_flag(pn, BTBB_UAP_VALID)) {
+		btbb_piconet_set_flag(pn, BTBB_UAP_VALID, 1);
+		pn->UAP = filter_uap;
+	}
 }
 
 /* return the observable channel (26-50) for a given channel (0-78) */
 /* reset UAP/clock discovery */
-static void reset(btbb_piconet *pnet)
+static void reset(btbb_piconet *pn)
 {
 	//printf("no candidates remaining! starting over . . .\n");
 
-	if(pnet->hop_reversal_inited) {
-		free(pnet->clock_candidates);
-		pnet->sequence = NULL;
+	if(btbb_piconet_get_flag(pn, BTBB_HOP_REVERSAL_INIT)) {
+		free(pn->clock_candidates);
+		pn->sequence = NULL;
 	}
-	pnet->got_first_packet = 0;
-	pnet->packets_observed = 0;
-	pnet->hop_reversal_inited = 0;
-	pnet->have_UAP = 0;
-	pnet->have_clk6 = 0;
-	pnet->have_clk27 = 0;
+	btbb_piconet_set_flag(pn, BTBB_GOT_FIRST_PACKET, 0);
+	btbb_piconet_set_flag(pn, BTBB_HOP_REVERSAL_INIT, 0);
+	btbb_piconet_set_flag(pn, BTBB_UAP_VALID, 0);
+	btbb_piconet_set_flag(pn, BTBB_CLK6_VALID, 0);
+	btbb_piconet_set_flag(pn, BTBB_CLK27_VALID, 0);
+	pn->packets_observed = 0;
 
 	/*
 	 * If we have recently observed two packets in a row on the same
 	 * channel, try AFH next time.  If not, don't.
 	 */
-	pnet->afh = pnet->looks_like_afh;
-	pnet->looks_like_afh = 0;
+	btbb_piconet_set_flag(pn, BTBB_IS_AFH,
+			      btbb_piconet_get_flag(pn, BTBB_LOOKS_LIKE_AFH));
+	btbb_piconet_set_flag(pn, BTBB_LOOKS_LIKE_AFH, 0);
 	//int i;
 	//for(i=0; i<10; i++)
-	//	pnet->afh_map[i] = 0;
+	//	pn->afh_map[i] = 0;
 }
 
 /* narrow a list of candidate clock values based on a single observed hop */
-static int channel_winnow(int offset, char channel, btbb_piconet *pnet)
+static int channel_winnow(int offset, char channel, btbb_piconet *pn)
 {
 	int i;
 	int new_count = 0; /* number of candidates after winnowing */
 	char observable_channel; /* accounts for aliasing if necessary */
 
 	/* check every candidate */
-	for (i = 0; i < pnet->num_candidates; i++) {
-		if (pnet->aliased)
-			observable_channel = aliased_channel(pnet->sequence[(pnet->clock_candidates[i] + offset) % SEQUENCE_LENGTH]);
+	for (i = 0; i < pn->num_candidates; i++) {
+		if (pn->aliased)
+			observable_channel = aliased_channel(pn->sequence[(pn->clock_candidates[i] + offset) % SEQUENCE_LENGTH]);
 		else
-			observable_channel = pnet->sequence[(pnet->clock_candidates[i] + offset) % SEQUENCE_LENGTH];
+			observable_channel = pn->sequence[(pn->clock_candidates[i] + offset) % SEQUENCE_LENGTH];
 		if (observable_channel == channel) {
 			/* this candidate matches the latest hop */
 			/* blow away old list of candidates with new one */
 			/* safe because new_count can never be greater than i */
-			pnet->clock_candidates[new_count++] = pnet->clock_candidates[i];
+			pn->clock_candidates[new_count++] = pn->clock_candidates[i];
 		}
 	}
-	pnet->num_candidates = new_count;
+	pn->num_candidates = new_count;
 
 	if (new_count == 1) {
 		// Calculate clock offset for CLKN, not CLK1-27
-		pnet->clk_offset = ((pnet->clock_candidates[0]<<1) - (pnet->first_pkt_time<<1));
-		printf("\nAcquired CLK1-27 = 0x%07x\n", pnet->clock_candidates[0]);
-		pnet->have_clk27 = 1;
+		pn->clk_offset = ((pn->clock_candidates[0]<<1) - (pn->first_pkt_time<<1));
+		printf("\nAcquired CLK1-27 = 0x%07x\n", pn->clock_candidates[0]);
+		btbb_piconet_set_flag(pn, BTBB_CLK27_VALID, 1);
 	}
 	else if (new_count == 0) {
-		reset(pnet);
+		reset(pn);
 	}
 	//else {
 	//printf("%d CLK1-27 candidates remaining (channel=%d)\n", new_count, channel);
@@ -413,31 +523,32 @@ static int channel_winnow(int offset, char channel, btbb_piconet *pnet)
 }
 
 /* narrow a list of candidate clock values based on all observed hops */
-int btbb_winnow(btbb_piconet *pnet)
+int btbb_winnow(btbb_piconet *pn)
 {
-	int new_count = pnet->num_candidates;
+	int new_count = pn->num_candidates;
 	int index, last_index;
 	uint8_t channel, last_channel;
 
-	for (; pnet->winnowed < pnet->packets_observed; pnet->winnowed++) {
-		index = pnet->pattern_indices[pnet->winnowed];
-		channel = pnet->pattern_channels[pnet->winnowed];
-		new_count = channel_winnow(index, channel, pnet);
+	for (; pn->winnowed < pn->packets_observed; pn->winnowed++) {
+		index = pn->pattern_indices[pn->winnowed];
+		channel = pn->pattern_channels[pn->winnowed];
+		new_count = channel_winnow(index, channel, pn);
 		if (new_count <= 1)
 			break;
 
-		if (pnet->packets_observed > 0) {
-			last_index = pnet->pattern_indices[pnet->winnowed - 1];
-			last_channel = pnet->pattern_channels[pnet->winnowed - 1];
+		if (pn->packets_observed > 0) {
+			last_index = pn->pattern_indices[pn->winnowed - 1];
+			last_channel = pn->pattern_channels[pn->winnowed - 1];
 			/*
 			 * Two packets in a row on the same channel should only
 			 * happen if adaptive frequency hopping is in use.
 			 * There can be false positives, though, especially if
 			 * there is aliasing.
 			 */
-			if (!pnet->looks_like_afh && (index == last_index + 1)
-					&& (channel == last_channel)) {
-				pnet->looks_like_afh = 1;
+			if (!btbb_piconet_get_flag(pn, BTBB_LOOKS_LIKE_AFH)
+			    && (index == last_index + 1)
+			    && (channel == last_channel)) {
+				btbb_piconet_set_flag(pn, BTBB_LOOKS_LIKE_AFH, 1);
 				printf("Hopping pattern appears to be AFH\n");
 			}
 		}
@@ -447,7 +558,7 @@ int btbb_winnow(btbb_piconet *pnet)
 }
 
 /* use packet headers to determine UAP */
-int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pnet)
+int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 {
 	uint8_t UAP;
 	int count, retval, first_clock = 0;
@@ -456,108 +567,110 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pnet)
 	int remaining = 0;
 	uint32_t clkn = pkt->clkn;
 
-	if (!pnet->got_first_packet)
-		pnet->first_pkt_time = clkn;
+	if (!pn->got_first_packet)
+		pn->first_pkt_time = clkn;
 
 	// Set afh channel map
-	pnet->afh_map[pkt->channel/8] |= 0x1 << (pkt->channel % 8);
+	pn->afh_map[pkt->channel/8] |= 0x1 << (pkt->channel % 8);
 
-	if (pnet->packets_observed < MAX_PATTERN_LENGTH) {
-		pnet->pattern_indices[pnet->packets_observed] = clkn - pnet->first_pkt_time;
-		pnet->pattern_channels[pnet->packets_observed] = pkt->channel;
+	if (pn->packets_observed < MAX_PATTERN_LENGTH) {
+		pn->pattern_indices[pn->packets_observed] = clkn - pn->first_pkt_time;
+		pn->pattern_channels[pn->packets_observed] = pkt->channel;
 	} else {
 		printf("Oops. More hops than we can remember.\n");
-		reset(pnet);
+		reset(pn);
 		return 0; //FIXME ought to throw exception
 	}
-	pnet->packets_observed++;
-	pnet->total_packets_observed++;
+	pn->packets_observed++;
+	pn->total_packets_observed++;
 
 	/* try every possible first packet clock value */
 	for (count = 0; count < 64; count++) {
 		/* skip eliminated candidates unless this is our first time through */
-		if (pnet->clock6_candidates[count] > -1 || !pnet->got_first_packet) {
+		if (pn->clock6_candidates[count] > -1 || !pn->got_first_packet) {
 			/* clock value for the current packet assuming count was the clock of the first packet */
-			int clock = (count + clkn - pnet->first_pkt_time) % 64;
+			int clock = (count + clkn - pn->first_pkt_time) % 64;
 			starting++;
 			UAP = try_clock(clock, pkt);
 			retval = -1;
 
 			/* if this is the first packet: populate the candidate list */
 			/* if not: check CRCs if UAPs match */
-			if (!pnet->got_first_packet || UAP == pnet->clock6_candidates[count])
+			if (!pn->got_first_packet || UAP == pn->clock6_candidates[count])
 				retval = crc_check(clock, pkt);
 
-			if ((pnet->have_UAP) && (UAP != pnet->UAP))
+			if (btbb_piconet_get_flag(pn, BTBB_UAP_VALID) &&
+			    (UAP != pn->UAP))
 				retval = -1;
 
 			switch(retval) {
 			case -1: /* UAP mismatch */
 			case 0: /* CRC failure */
-				pnet->clock6_candidates[count] = -1;
+				pn->clock6_candidates[count] = -1;
 				break;
 
 			case 1: /* inconclusive result */
-				pnet->clock6_candidates[count] = UAP;
+				pn->clock6_candidates[count] = UAP;
 				/* remember this count because it may be the correct clock of the first packet */
 				first_clock = count;
 				remaining++;
 				break;
 
 			default: /* CRC success */
-				pnet->clk_offset = (count - (pnet->first_pkt_time & 0x3f)) & 0x3f;
-				if (!pnet->have_UAP)
+				pn->clk_offset = (count - (pn->first_pkt_time & 0x3f)) & 0x3f;
+				if (!btbb_piconet_get_flag(pn, BTBB_UAP_VALID))
 					printf("Correct CRC! UAP = 0x%x found after %d total packets.\n",
-						UAP, pnet->total_packets_observed);
+						UAP, pn->total_packets_observed);
 				else
 					printf("Correct CRC! CLK6 = 0x%x found after %d total packets.\n",
-						pnet->clk_offset, pnet->total_packets_observed);
-				pnet->UAP = UAP;
-				pnet->have_clk6 = 1;
-				pnet->have_UAP = 1;
-				pnet->total_packets_observed = 0;
+						pn->clk_offset, pn->total_packets_observed);
+				pn->UAP = UAP;
+				btbb_piconet_set_flag(pn, BTBB_CLK6_VALID, 1);
+				btbb_piconet_set_flag(pn, BTBB_UAP_VALID, 1);
+				pn->total_packets_observed = 0;
 				return 1;
 			}
 		}
 	}
 
-	pnet->got_first_packet = 1;
+	pn->got_first_packet = 1;
 
 	//printf("reduced from %d to %d CLK1-6 candidates\n", starting, remaining);
 
 	if (remaining == 1) {
-		pnet->clk_offset = (first_clock - (pnet->first_pkt_time & 0x3f)) & 0x3f;
-		if (!pnet->have_UAP)
+		pn->clk_offset = (first_clock - (pn->first_pkt_time & 0x3f)) & 0x3f;
+		if (!btbb_piconet_get_flag(pn, BTBB_UAP_VALID))
 			printf("We have a winner! UAP = 0x%x found after %d total packets.\n",
-				pnet->clock6_candidates[first_clock], pnet->total_packets_observed);
+				pn->clock6_candidates[first_clock], pn->total_packets_observed);
 		else
 			printf("We have a winner! CLK6 = 0x%x found after %d total packets.\n",
-				pnet->clk_offset, pnet->total_packets_observed);
-		pnet->UAP = pnet->clock6_candidates[first_clock];
-		pnet->have_clk6 = 1;
-		pnet->have_UAP = 1;
-		pnet->total_packets_observed = 0;
+				pn->clk_offset, pn->total_packets_observed);
+		pn->UAP = pn->clock6_candidates[first_clock];
+		btbb_piconet_set_flag(pn, BTBB_CLK6_VALID, 1);
+		btbb_piconet_set_flag(pn, BTBB_UAP_VALID, 1);
+		pn->total_packets_observed = 0;
 		return 1;
 	}
 
 	if (remaining == 0) {
-		reset(pnet);
+		reset(pn);
 	}
 
 	return 0;
 }
 
 /* add a packet to the queue */
-static void enqueue(btbb_packet *pkt, btbb_piconet *pnet)
+static void enqueue(btbb_packet *pkt, btbb_piconet *pn)
 {
 	pkt_queue *head;
 	//pkt_queue item;
-	
+
+	btbb_packet_ref(pkt);
 	pkt_queue item = {pkt, NULL};
-	head = pnet->queue;
+	head = pn->queue;
 	
 	if (head == NULL) {
-		pnet->queue = &item;
+		pn->queue = &item;
 	} else {
 		for(; head->next != NULL; head = head->next)
 		  ;
@@ -566,67 +679,68 @@ static void enqueue(btbb_packet *pkt, btbb_piconet *pnet)
 }
 
 /* pull the first packet from the queue (FIFO) */
-static btbb_packet *dequeue(btbb_piconet *pnet)
+static btbb_packet *dequeue(btbb_piconet *pn)
 {
 	btbb_packet *pkt;
 
-	if (pnet->queue == NULL) {
+	if (pn->queue == NULL) {
 		pkt = NULL;
 	} else {
-		pkt = pnet->queue->pkt;
-		pnet->queue = pnet->queue->next;
+		pkt = pn->queue->pkt;
+		pn->queue = pn->queue->next;
+		btbb_packet_unref(pkt);
 	}
 
 	return pkt;
 }
 
 /* decode the whole packet */
-int btbb_decode(btbb_packet* p, btbb_piconet *pnet)
+int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)
 {
-	btbb_packet_set_flag(p, BTBB_HAS_PAYLOAD, 0);
+	btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 0);
 	uint8_t clk6, i;
 	int rv = 0;
-	if (pnet->have_clk27) {
-		if(pnet->sequence == NULL)
-			get_hop_pattern(pnet);
-		clk6 = p->clock & 0x3f;
+	if (btbb_piconet_get_flag(pn, BTBB_CLK27_VALID)) {
+		if(pn->sequence == NULL)
+			get_hop_pattern(pn);
+		clk6 = pkt->clock & 0x3f;
 		for(i=0; i<64; i++) {
-			p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
-			if ((pnet->sequence[p->clock] == p->channel) && (btbb_decode_header(p))) {
-				rv =  btbb_decode_payload(p);
+			pkt->clock = (pkt->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
+			if ((pn->sequence[pkt->clock] == pkt->channel) && (btbb_decode_header(pkt))) {
+				rv =  btbb_decode_payload(pkt);
 				if(rv > 0) {
-					printf("Packet decoded with clock 0x%07x (rv=%d)\n", p->clock, rv);
-					btbb_print_packet(p);
+					printf("Packet decoded with clock 0x%07x (rv=%d)\n", pkt->clock, rv);
+					btbb_print_packet(pkt);
 				}
 				// TODO: make sure we use best result
 			}
 		}
 		if(rv == 0) {
-			clk6 = p->clock & 0x3f;
+			clk6 = pkt->clock & 0x3f;
 			for(i=0; i<64; i++) {
-				p->clock = (p->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
-				if (btbb_decode_header(p)) {
-					rv =  btbb_decode_payload(p);
+				pkt->clock = (pkt->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
+				if (btbb_decode_header(pkt)) {
+					rv =  btbb_decode_payload(pkt);
 					if(rv > 0) {
-						printf("Packet decoded with clock 0x%07x (rv=%d)\n", p->clock, rv);
-						btbb_print_packet(p);
+						printf("Packet decoded with clock 0x%07x (rv=%d)\n", pkt->clock, rv);
+						btbb_print_packet(pkt);
 					}
 					// TODO: make sure we use best result
 				}
 			}
 		}
 	} else
-		if (btbb_decode_header(p))
-			rv = btbb_decode_payload(p);
+		if (btbb_decode_header(pkt))
+			rv = btbb_decode_payload(pkt);
 
 	return rv;
 }
 
-void btbb_print_afh_map(btbb_piconet *pnet) {
+void btbb_print_afh_map(btbb_piconet *pn) {
 	// Print AFH map from piconet
 	int i;
 	printf("\tAFH Map: 0x");
 	for(i=0; i<10; i++)
-		printf("%02x", pnet->afh_map[i]);
+		printf("%02x", pn->afh_map[i]);
 	printf("\n");	
 }

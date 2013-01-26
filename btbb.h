@@ -49,62 +49,13 @@
 #define BTBB_HAS_PAYLOAD 7
 #define BTBB_IS_EDR      8
 
-typedef struct btbb_packet {
+#define BTBB_HOP_REVERSAL_INIT 9
+#define BTBB_GOT_FIRST_PACKET  10
+#define BTBB_IS_AFH            11
+#define BTBB_LOOKS_LIKE_AFH    12
+#define BTBB_IS_ALIASED        13
 
-	uint32_t flags;
-
-	uint8_t channel; /* Bluetooth channel (0-79) */
-	uint8_t UAP;     /* upper address part */
-	uint16_t NAP;    /* non-significant address part */
-	uint32_t LAP;    /* lower address part found in access code */
-	
-	int packet_type;
-	uint8_t packet_lt_addr; /* LLID field of payload header (2 bits) */
-	
-	/* packet header, one bit per char */
-	char packet_header[18];
-	
-	/* number of payload header bytes: 0, 1, 2, or -1 for
-	 * unknown. payload is one bit per char. */
-	int payload_header_length;
-	char payload_header[16];
-	
-	/* LLID field of payload header (2 bits) */
-	uint8_t payload_llid;
-	
-	/* flow field of payload header (1 bit) */
-	uint8_t payload_flow;
-
-	/* payload length: the total length of the asynchronous data
-	* in bytes.  This does not include the length of synchronous
-	* data, such as the voice field of a DV packet.  If there is a
-	* payload header, this payload length is payload body length
-	* (the length indicated in the payload header's length field)
-	* plus payload_header_length plus 2 bytes CRC (if present).
-	*/
-	int payload_length;
-	
-	/* The actual payload data in host format
-	* Ready for passing to wireshark
-	* 2744 is the maximum length, but most packets are shorter.
-	* Dynamic allocation would probably be better in the long run but is
-	* problematic in the short run.
-	*/
-	char payload[MAX_PAYLOAD_LENGTH];
-
-	uint16_t crc;
-	uint32_t clock; /* CLK1-27 of master */
-	uint32_t clkn;  /* native (local) clock, CLK0-27 */
-	uint8_t ac_errors; /* Number of bit errors in the AC */
-
-	/* the raw symbol stream (less the preamble), one bit per char */
-	//FIXME maybe this should be a vector so we can grow it only
-	//to the size needed and later shrink it if we find we have
-	//more symbols than necessary
-	uint16_t length; /* number of symbols */
-	char symbols[MAX_SYMBOLS];
-
-} btbb_packet;
+typedef struct btbb_packet btbb_packet;
 
 /* Initialize the library. Compute the syndrome. Return 0 on success,
  * negative on error.
@@ -114,7 +65,12 @@ typedef struct btbb_packet {
  * packets. Even a limit of 5 results in a syndrome table of several
  * hundred MB and lots of noise. For embedded targets, a value of 2 is
  * reasonable. */
-int btbb_init(int max_ac_errors);
+int
+btbb_init(int max_ac_errors);
+
+btbb_packet *btbb_packet_new(void);
+void btbb_packet_ref(btbb_packet *pkt);
+void btbb_packet_unref(btbb_packet *pkt);
 
 /* Search for a packet with specified LAP (or LAP_ANY). The stream
  * must be at least of length serch_length + 72. Limit to
@@ -134,6 +90,14 @@ int btbb_find_ac(char *stream,
 void btbb_packet_set_flag(btbb_packet *pkt, int flag, int val);
 int btbb_packet_get_flag(btbb_packet *pkt, int flag);
 
+uint32_t btbb_packet_get_lap(btbb_packet *pkt);
+void btbb_packet_set_uap(btbb_packet *pkt, uint8_t uap);
+uint8_t btbb_packet_get_uap(btbb_packet *pkt);
+
+uint8_t btbb_packet_get_channel(btbb_packet *pkt);
+uint8_t btbb_packet_get_ac_errors(btbb_packet *pkt);
+uint32_t btbb_packet_get_clkn(btbb_packet *pkt);
+
 void btbb_packet_set_data(btbb_packet *pkt,
 			  char *syms,      // Symbol data
 			  int length,      // Number of symbols
@@ -141,29 +105,29 @@ void btbb_packet_set_data(btbb_packet *pkt,
 			  uint32_t clkn);  // 312.5us clock (CLK27-0)
 
 /* Get a pointer to packet symbols. */
-const char *btbb_get_symbols(btbb_packet* p);
+const char *btbb_get_symbols(btbb_packet* pkt);
 
-int btbb_packet_get_payload_length(btbb_packet* p);
+int btbb_packet_get_payload_length(btbb_packet* pkt);
 
 /* Get a pointer to payload. */
-const char *btbb_get_payload(btbb_packet* p);
+const char *btbb_get_payload(btbb_packet* pkt);
 
-int btbb_packet_get_type(btbb_packet* p);
+int btbb_packet_get_type(btbb_packet* pkt);
 
 /* Generate Sync Word from an LAP */
 uint64_t btbb_gen_syncword(int LAP);
 
 /* decode the packet header */
-int btbb_decode_header(btbb_packet* p);
+int btbb_decode_header(btbb_packet* pkt);
 
 /* decode the packet header */
-int btbb_decode_payload(btbb_packet* p);
+int btbb_decode_payload(btbb_packet* pkt);
 
 /* print packet information */
-void btbb_print_packet(btbb_packet* p);
+void btbb_print_packet(btbb_packet* pkt);
 
 /* check to see if the packet has a header */
-int btbb_header_present(btbb_packet* p);
+int btbb_header_present(btbb_packet* pkt);
 
 /* Packet queue (linked list) */
 typedef struct pkt_queue {
@@ -173,104 +137,44 @@ typedef struct pkt_queue {
 
 } pkt_queue;
 
-typedef struct btbb_piconet {
-	/* true if using a particular aliased receiver implementation */
-	int aliased;
+typedef struct btbb_piconet btbb_piconet;
 
-	/* using adaptive frequency hopping (AFH) */
-	int afh;
+btbb_piconet *btbb_piconet_new(void);
+void btbb_piconet_ref(btbb_piconet *pn);
+void btbb_piconet_unref(btbb_piconet *pn);
 
-	/* observed pattern that looks like AFH */
-	int looks_like_afh;
+void btbb_piconet_set_uap(btbb_piconet *pn, uint8_t uap);
+uint8_t btbb_piconet_get_uap(btbb_piconet *pn);
+void btbb_piconet_set_lap(btbb_piconet *pn, uint32_t lap);
+uint32_t btbb_piconet_get_lap(btbb_piconet *pn);
+uint16_t btbb_piconet_get_nap(btbb_piconet *pn);
+int btbb_piconet_get_clk_offset(btbb_piconet *pn);
 
-	/* AFH channel map - either read or derived from observed packets */
-	uint8_t afh_map[10];
+void btbb_piconet_set_flag(btbb_piconet *pn, int flag, int val);
+int btbb_piconet_get_flag(btbb_piconet *pn, int flag);
 
-	/* lower address part (of master's BD_ADDR) */
-	uint32_t LAP;
-
-	/* upper address part (of master's BD_ADDR) */
-	uint8_t UAP;
-
-	/* non-significant address part (of master's BD_ADDR) */
-	uint16_t NAP;
-
-	/* CLK1-27 candidates */
-	uint32_t *clock_candidates;
-
-	/* these values for hop() can be precalculated */
-	int b, e;
-
-	/* these values for hop() can be precalculated in part (e.g. a1 is the
-	 * precalculated part of a) */
-	int a1, c1, d1;
-
-	/* frequency register bank */
-	int bank[BT_NUM_CHANNELS];
-
-	/* this holds the entire hopping sequence */
-	char *sequence;
-
-	/* number of candidates for CLK1-27 */
-	int num_candidates;
-
-	/* have we collected the first packet in a UAP discovery attempt? */
-	int got_first_packet;
-
-	/* number of packets observed during one attempt at UAP/clock discovery */
-	int packets_observed;
-
-	/* total number of packets observed */
-	int total_packets_observed;
-
-	/* number of observed packets that have been used to winnow the candidates */
-	int winnowed;
-
-	/* CLK1-6 candidates */
-	int clock6_candidates[64];
-
-	/* remember patterns of observed hops */
-	int pattern_indices[MAX_PATTERN_LENGTH];
-	uint8_t pattern_channels[MAX_PATTERN_LENGTH];
-
-	int hop_reversal_inited;
-
-	/* offset between CLKN (local) and CLK of piconet */
-	int clk_offset;
-
-	/* local clock (clkn) at time of first packet */
-	uint32_t first_pkt_time;
-
-	/* Whether LAP is valid */
-	int have_LAP;
-
-	/* discovery status */
-	int have_UAP;
-	int have_NAP;
-	int have_clk6;
-	int have_clk27;
-
-	/* queue of packets to be decoded */
-	pkt_queue *queue;
-} btbb_piconet;
+void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel);
+uint8_t *btbb_piconet_get_afh_map(btbb_piconet *pn);
 
 /* use packet headers to determine UAP */
-int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pnet);
+int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn);
 
 /* Print hexadecimal representation of the derived AFH map */
-void btbb_print_afh_map(btbb_piconet *pnet);
+void btbb_print_afh_map(btbb_piconet *pn);
 
 /* decode a whole packet from the given piconet */
-int btbb_decode(btbb_packet* p, btbb_piconet *pnet);
+int btbb_decode(btbb_packet* pkt, btbb_piconet *pn);
 
 /* initialize the piconet struct */
-void btbb_init_piconet(btbb_piconet *pnet);
+void btbb_init_piconet(btbb_piconet *pn);
 
 /* initialize the hop reversal process */
 /* returns number of initial candidates for CLK1-27 */
-int btbb_init_hop_reversal(int aliased, btbb_piconet *pnet);
+int btbb_init_hop_reversal(int aliased, btbb_piconet *pn);
+
+void try_hop(btbb_packet *pkt, btbb_piconet *pn);
 
 /* narrow a list of candidate clock values based on all observed hops */
-int btbb_winnow(btbb_piconet *pnet);
+int btbb_winnow(btbb_piconet *pn);
 
 #endif /* INCLUDED_BTBB_H */
