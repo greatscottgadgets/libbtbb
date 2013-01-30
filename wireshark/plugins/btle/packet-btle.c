@@ -97,51 +97,82 @@ static gint ett_btle_connect = -1;
 static dissector_handle_t btl2cap_handle = NULL;
 
 void
-dissect_adv_ind_or_nonconn_or_scan(proto_tree *tree, tvbuff_t *tvb, int offset, int datalen)
+dissect_adv_ind_or_nonconn_or_scan(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset, int datalen)
 {
+	const guint8 *adv_addr;
+
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 1);
 
-	proto_tree_add_item(tree, hf_btle_adv_addr, tvb, offset, 6, FALSE);
+	adv_addr = tvb_get_ptr(tvb, offset, 6);
+	SET_ADDRESS(&pinfo->src, AT_ETHER, 6, adv_addr);
+
+	proto_tree_add_ether(tree, hf_btle_adv_addr, tvb, offset, 6, adv_addr);
 	proto_tree_add_item(tree, hf_btle_adv_data, tvb, offset + 6, datalen, TRUE);
 }
 
 void
-dissect_adv_direct_ind(proto_tree *tree, tvbuff_t *tvb, int offset)
+dissect_adv_direct_ind(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 {
+	const guint8 *adv_addr, *init_addr;
+
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 1);
 
-	proto_tree_add_item(tree, hf_btle_adv_addr, tvb, offset, 6, FALSE);
-	proto_tree_add_item(tree, hf_btle_init_addr, tvb, offset + 6, 6, TRUE);
+	adv_addr = tvb_get_ptr(tvb, offset, 6);
+	SET_ADDRESS(&pinfo->src, AT_ETHER, 6, adv_addr);
+	init_addr = tvb_get_ptr(tvb, offset+6, 6);
+	SET_ADDRESS(&pinfo->dst, AT_ETHER, 6, init_addr);
+
+	proto_tree_add_ether(tree, hf_btle_adv_addr, tvb, offset, 6, adv_addr);
+	proto_tree_add_ether(tree, hf_btle_init_addr, tvb, offset + 6, 6, init_addr);
 }
 
 void
-dissect_scan_req(proto_tree *tree, tvbuff_t *tvb, int offset)
+dissect_scan_req(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 {
+	const guint8 *scan_addr, *adv_addr;
+
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 1);
 
-	proto_tree_add_item(tree, hf_btle_scan_addr, tvb, offset, 6, TRUE);
-	proto_tree_add_item(tree, hf_btle_adv_addr, tvb, offset + 6, 6, FALSE);
+	scan_addr = tvb_get_ptr(tvb, offset, 6);
+	SET_ADDRESS(&pinfo->src, AT_ETHER, 6, scan_addr);
+	adv_addr = tvb_get_ptr(tvb, offset+6, 6);
+	SET_ADDRESS(&pinfo->dst, AT_ETHER, 6, adv_addr);
+
+	proto_tree_add_ether(tree, hf_btle_scan_addr, tvb, offset, 6, scan_addr);
+	proto_tree_add_ether(tree, hf_btle_adv_addr, tvb, offset+6, 6, adv_addr);
 }
 
 void
-dissect_scan_rsp(proto_tree *tree, tvbuff_t *tvb, int offset, int datalen)
+dissect_scan_rsp(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset, int datalen)
 {
+	const guint8 *adv_addr;
+
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 1);
 
-	proto_tree_add_item(tree, hf_btle_adv_addr, tvb, offset, 6, FALSE);
+	adv_addr = tvb_get_ptr(tvb, offset, 6);
+	SET_ADDRESS(&pinfo->src, AT_ETHER, 6, adv_addr);
+
+	proto_tree_add_ether(tree, hf_btle_adv_addr, tvb, offset, 6, adv_addr);
 	proto_tree_add_item(tree, hf_btle_scan_rsp_data, tvb, offset + 6, datalen, TRUE);
 }
 
 void
-dissect_connect_req(proto_tree *tree, tvbuff_t *tvb, int offset)
+dissect_connect_req(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 {
 	proto_item *connect_item;
 	proto_tree *connect_tree;
+	const guint8 *adv_addr, *init_addr;
+
 
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 1);
 
-	proto_tree_add_item(tree, hf_btle_init_addr, tvb, offset, 6, TRUE);
-	proto_tree_add_item(tree, hf_btle_adv_addr, tvb, offset + 6, 6, FALSE);
+	init_addr = tvb_get_ptr(tvb, offset, 6);
+	SET_ADDRESS(&pinfo->src, AT_ETHER, 6, init_addr);
+	adv_addr = tvb_get_ptr(tvb, offset+6, 6);
+	SET_ADDRESS(&pinfo->dst, AT_ETHER, 6, adv_addr);
+
+	proto_tree_add_ether(tree, hf_btle_init_addr, tvb, offset, 6, init_addr);
+	proto_tree_add_ether(tree, hf_btle_adv_addr, tvb, offset + 6, 6, adv_addr);
 	offset += 12;
 
 	connect_item = proto_tree_add_item(tree, hf_btle_connect, tvb, offset, 22, TRUE);
@@ -215,19 +246,19 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 		case 0x0: // ADV_IND
 		case 0x2: // ADV_NONCONN_IND
 		case 0x6: // ADV_SCAN_IND
-			dissect_adv_ind_or_nonconn_or_scan(btle_tree, tvb, offset, length - 6);
+			dissect_adv_ind_or_nonconn_or_scan(btle_tree, tvb, pinfo, offset, length - 6);
 			break;
 		case 0x1: // ADV_DIRECT_IND
-			dissect_adv_direct_ind(btle_tree, tvb, offset);
+			dissect_adv_direct_ind(btle_tree, tvb, pinfo, offset);
 			break;
 		case 0x3:
-			dissect_scan_req(btle_tree, tvb, offset);
+			dissect_scan_req(btle_tree, tvb, pinfo, offset);
 			break;
 		case 0x4: // SCAN_RSP
-			dissect_scan_rsp(btle_tree, tvb, offset, length - 6);
+			dissect_scan_rsp(btle_tree, tvb, pinfo, offset, length - 6);
 			break;
 		case 0x5: // CONNECT_REQ
-			dissect_connect_req(btle_tree, tvb, offset);
+			dissect_connect_req(btle_tree, tvb, pinfo, offset);
 			break;
 		default:
 			break;
