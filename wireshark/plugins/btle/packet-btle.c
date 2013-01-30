@@ -212,6 +212,14 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 	guint32 aa;
 	guint8 type, length;
 	guint8 llid, ll_control_opcode;
+	tvbuff_t *pld_tvb;
+
+	/*
+	 * FIXME
+	 * I have no idea what this does, but the L2CAP dissector segfaults
+	 * without it.
+	 */
+	guint16 fake_acl_data;
 
 #if 0
 	/* sanity check: length */
@@ -318,13 +326,28 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 			offset += 1;
 
 			proto_tree_add_item(data_tree, hf_btle_length, tvb, offset, 1, TRUE);
+			offset += 1;
 
+			// LL control PDU
 			if (llid == 0x3) {
+				col_set_str(pinfo->cinfo, COL_INFO, "LL Control PDU");
 				proto_tree_add_item(btle_tree, hf_btle_ll_control_opcode, tvb, offset, 1, ENC_NA);
 				proto_tree_add_item(btle_tree, hf_btle_ll_control_data, tvb, offset + 1, length, TRUE);
 			}
 
-			offset += 1 + length;
+			// L2CAP
+			else if (llid == 0x1 || llid == 0x2) {
+				if (length > 0 && btl2cap_handle) {
+					pinfo->private_data = &fake_acl_data;
+					pld_tvb = tvb_new_subset(tvb, offset, length, length);
+					call_dissector(btl2cap_handle, pld_tvb, pinfo, btle_tree);
+				}
+				else if (length == 0) {
+					col_set_str(pinfo->cinfo, COL_INFO, "Empty Data PDU");
+				}
+			}
+
+			offset += length;
 
 			proto_tree_add_item(btle_tree, hf_btle_crc, tvb, offset, 3, TRUE);
 		}
