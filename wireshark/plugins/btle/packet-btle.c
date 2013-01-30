@@ -66,20 +66,6 @@ static const value_string packet_types[] = {
 	{ 0, NULL }
 };
 
-static const value_string sr_modes[] = {
-	{ 0x0, "R0" },
-	{ 0x1, "R1" },
-	{ 0x2, "R2" },
-	{ 0x3, "Reserved" },
-	{ 0, NULL }
-};
-
-static const range_string ps_modes[] = {
-	{ 0x0, 0x0, "Mandatory scan mode" },
-	{ 0x1, 0x7, "Reserved" },
-	{ 0, 0, NULL }
-};
-
 static const value_string llid_codes[] = {
 	{ 0x0, "undefined" },
 	{ 0x1, "Continuation fragment of an L2CAP message (ACL-U)" },
