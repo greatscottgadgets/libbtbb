@@ -3,7 +3,7 @@
 #
 
 # The name
-PACKAGE=btbb
+PACKAGE=btle
 
 # The version
 MODULE_VERSION_MAJOR=0

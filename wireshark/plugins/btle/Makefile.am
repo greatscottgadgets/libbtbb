@@ -32,15 +32,15 @@ include Makefile.common
 
 plugindir = @plugindir@
 
-plugin_LTLIBRARIES = btbb.la
-btbb_la_SOURCES = \
+plugin_LTLIBRARIES = btle.la
+btle_la_SOURCES = \
 	plugin.c \
 	moduleinfo.h \
 	$(DISSECTOR_SRC) \
 	$(DISSECTOR_SUPPORT_SRC) \
 	$(DISSECTOR_INCLUDES)
-btbb_la_LDFLAGS = -module -avoid-version
-btbb_la_LIBADD = @PLUGIN_LIBS@
+btle_la_LDFLAGS = -module -avoid-version
+btle_la_LIBADD = @PLUGIN_LIBS@
 
 # Libs must be cleared, or else libtool won't create a shared module.
 # If your module needs to be linked against any particular libraries,
@@ -111,7 +111,7 @@ plugin.c: $(DISSECTOR_SRC) $(top_srcdir)/tools/make-dissector-reg \
 #	@rm -f $(distdir)/plugin.c
 
 CLEANFILES = \
-	btbb \
+	btle \
 	*~
 
 MAINTAINERCLEANFILES = \

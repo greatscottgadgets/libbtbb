@@ -5,7 +5,7 @@ This is the Bluetooth Low Energy plugin for Wireshark.
 
 To build this on Debian/Ubuntu/BackTrack linux distributions:
   sudo apt-get install wireshark-dev wireshark
-  cd libbtbb/wireshark/plugins/btbb/
+  cd libbtbb/wireshark/plugins/btle/
   cmake .
   make
   make install

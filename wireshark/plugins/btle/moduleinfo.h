@@ -5,7 +5,7 @@
 #endif
 
 /* Name of package */
-#define PACKAGE "btbb"
+#define PACKAGE "btle"
 
 
 #ifdef VERSION
