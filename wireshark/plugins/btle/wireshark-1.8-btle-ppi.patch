@@ -1,0 +1,190 @@
+Index: wireshark-1.8.2/epan/dissectors/packet-ppi.c
+===================================================================
+--- wireshark-1.8.2.orig/epan/dissectors/packet-ppi.c	2013-01-29 10:30:44.009726916 -0800
++++ wireshark-1.8.2/epan/dissectors/packet-ppi.c	2013-01-29 11:17:52.485622604 -0800
+@@ -181,6 +181,7 @@
+     PPI_VECTOR_INFO              = 30003, /* currently available in draft from. jellch@harris.com */
+     PPI_SENSOR_INFO              = 30004, 
+     PPI_ANTENNA_INFO             = 30005,
++    PPI_BTLE                     = 30006,
+     CACE_PRIVATE                 = 0xCACE
+     /* All others RESERVED.  Contact the WinPcap team for an assignment */
+ } ppi_field_type;
+@@ -319,7 +320,7 @@
+ 
+ static dissector_handle_t data_handle;
+ static dissector_handle_t ieee80211_ht_handle;
+-static dissector_handle_t ppi_gps_handle, ppi_vector_handle, ppi_sensor_handle, ppi_antenna_handle;
++static dissector_handle_t ppi_gps_handle, ppi_vector_handle, ppi_sensor_handle, ppi_antenna_handle, ppi_btle_handle;
+ 
+ 
+ static const true_false_string tfs_ppi_head_flag_alignment = { "32-bit aligned", "Not aligned" };
+@@ -881,7 +882,19 @@
+                 call_dissector(ppi_antenna_handle, next_tvb, pinfo, ppi_tree);
+             }
+             break;
+-
++        case PPI_BTLE:
++            if (ppi_btle_handle == NULL)
++            {
++                proto_tree_add_text(ppi_tree, tvb, offset, data_len,
++                                    "%s (%u bytes)", val_to_str(data_type, (value_string *)&vs_ppi_field_type, "BTLE: "), data_len);
++            }
++            else /* we found a suitable dissector */
++            {
++                /* skip over the ppi_fieldheader, and pass it off to the dedicated BTLE dissetor */
++                next_tvb = tvb_new_subset(tvb, offset + 4, data_len - 4 , -1);
++                call_dissector(ppi_btle_handle, next_tvb, pinfo, ppi_tree);
++            }
++            break;
+         default:
+             if (tree)
+                 proto_tree_add_text(ppi_tree, tvb, offset, data_len,
+@@ -1365,6 +1378,7 @@
+     ppi_vector_handle = find_dissector("ppi_vector");
+     ppi_sensor_handle = find_dissector("ppi_sensor");
+     ppi_antenna_handle = find_dissector("ppi_antenna");
++    ppi_btle_handle = find_dissector("ppi_btle");
+ 
+     dissector_add_uint("wtap_encap", WTAP_ENCAP_PPI, ppi_handle);
+ }
+Index: wireshark-1.8.2/epan/dissectors/packet-ppi-btle.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wireshark-1.8.2/epan/dissectors/packet-ppi-btle.c	2013-01-29 11:58:57.641531628 -0800
+@@ -0,0 +1,123 @@
++/* packet-ppi-btle.c
++ * Routines for PPI-BTLE  dissection
++ * Copyright 2013, Mike Ryan, mikeryan /at/ isecpartners /dot/ com
++ *
++ * $Id$
++ *
++ * Wireshark - Network traffic analyzer
++ * By Gerald Combs <gerald@wireshark.org>
++ * Copyright 1998 Gerald Combs
++ *
++ * Copied from packet-ppi-gps.c
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write to the Free Software Foundation, Inc.,
++ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++ */
++
++#ifdef HAVE_CONFIG_H
++# include "config.h"
++#endif
++
++#include <glib.h>
++#include <epan/packet.h>
++
++#define PPI_BTLE_MAXTAGLEN  7
++
++/* protocol */
++static int proto_ppi_btle = -1;
++
++static int hf_ppi_btle_channel = -1;
++static int hf_ppi_btle_clkn_high = -1;
++static int hf_ppi_btle_clk100ns = -1;
++
++static gint ett_ppi_btle = -1;
++
++static void
++dissect_ppi_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree) {
++    /* These are locals used for processing the current tvb */
++    guint length;
++    guint32 channel, clkn_high, clk100ns;
++
++    proto_tree *ppi_btle_tree = NULL;
++    proto_tree *pt, *present_tree = NULL;
++
++    proto_item *ti = NULL;
++
++    /* Clear out stuff in the info column */
++    col_clear(pinfo->cinfo,COL_INFO);
++
++    /* Setup basic column info */
++    if (check_col(pinfo->cinfo, COL_INFO))
++        col_add_fstr(pinfo->cinfo, COL_INFO, "PPI_BTLE Capture");
++
++    /* Sanity check length of tag */
++    /* TODO
++    length = tvb_length(tvb);
++    if (length < 7) {
++        proto_item_append_text(ti, "Invalid PPI-BTLE length  (got %d, %d min\n)", length, PPI_BTLE_MAXTAGLEN);
++        return;
++    }*/
++
++    channel = tvb_get_letohs(tvb, 0);
++    clkn_high = tvb_get_guint8(tvb, 2);
++    clk100ns = tvb_get_letohl(tvb, 3);
++
++    /* Create the basic dissection tree*/
++    if (tree) {
++        ti = proto_tree_add_protocol_format(tree, proto_ppi_btle, tvb, 0, length, "BTLE:");
++        ppi_btle_tree= proto_item_add_subtree(ti, ett_ppi_btle);
++        proto_tree_add_uint(ppi_btle_tree, hf_ppi_btle_channel, tvb, 0, 2, channel);
++        proto_tree_add_uint(ppi_btle_tree, hf_ppi_btle_clkn_high, tvb, 2, 1, clkn_high);
++        proto_tree_add_uint(ppi_btle_tree, hf_ppi_btle_clk100ns, tvb, 3, 4, clk100ns);
++    }
++
++    /* perform tag-specific max length sanity checking */
++    if (length > PPI_BTLE_MAXTAGLEN ) {
++        if (tree)
++            proto_item_append_text(ti, "Invalid PPI-BTLE length  (got %d, %d max\n)", length, PPI_BTLE_MAXTAGLEN);
++        return;
++    }
++
++    return;
++}
++
++void
++proto_register_ppi_btle(void) {
++    /* The following array initializes those header fields declared above to the values displayed */
++    static hf_register_info hf[] = {
++        { &hf_ppi_btle_channel,
++          { "Channel", "ppi_btle.channel",
++            FT_UINT16, BASE_DEC, NULL, 0x0,
++            "Channel packet was captured on", HFILL } },
++
++        { &hf_ppi_btle_clkn_high,
++          { "clkn_high", "ppi_btle.clkn_high",
++            FT_UINT8, BASE_DEC, NULL, 0x0,
++            "High bits of native clock", HFILL } },
++
++        { &hf_ppi_btle_clk100ns,
++          { "clk100ns", "ppi_btle.clk100ns",
++            FT_UINT32, BASE_DEC, NULL, 0x0,
++            "100 ns clock", HFILL } },
++    };
++
++    static gint *ett[] = {
++        &ett_ppi_btle,
++    };
++
++    proto_ppi_btle = proto_register_protocol("PPI Ubertooth BTLE tag decoder", "PPI BTLE Decoder", "ppi_btle");
++    proto_register_field_array(proto_ppi_btle, hf, array_length(hf));
++    proto_register_subtree_array(ett, array_length(ett));
++    register_dissector("ppi_btle", dissect_ppi_btle, proto_ppi_btle);
++}
+Index: wireshark-1.8.2/epan/dissectors/Makefile.common
+===================================================================
+--- wireshark-1.8.2.orig/epan/dissectors/Makefile.common	2013-01-29 11:46:35.429559060 -0800
++++ wireshark-1.8.2/epan/dissectors/Makefile.common	2013-01-29 11:56:46.541536579 -0800
+@@ -881,6 +881,7 @@
+ 	packet-ppi-gps.c	\
+ 	packet-ppi-sensor.c	\
+ 	packet-ppi-vector.c	\
++	packet-ppi-btle.c	\
+ 	packet-ppp.c		\
+ 	packet-pppoe.c		\
+ 	packet-pptp.c		\
