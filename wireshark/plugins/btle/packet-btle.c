@@ -59,6 +59,8 @@ static int hf_btle_data_nesn = -1;
 static int hf_btle_data_sn = -1;
 static int hf_btle_data_md = -1;
 static int hf_btle_data_rfu = -1;
+static int hf_btle_ll_control_opcode = -1;
+static int hf_btle_ll_control_data = -1;
 static int hf_btle_crc = -1;
 
 static const value_string packet_types[] = {
@@ -77,6 +79,24 @@ static const value_string llid_codes[] = {
 	{ 0x1, "Continuation fragment of an L2CAP message" },
 	{ 0x2, "Start of an L2CAP message or no fragmentation" },
 	{ 0x3, "LL Control PDU" },
+	{ 0, NULL }
+};
+
+static const value_string ll_control_opcodes[] = {
+	{ 0x00, "LL_CONNECTION_UPDATE_REQ" },
+	{ 0x01, "LL_CHANNEL_MAP_REQ" },
+	{ 0x02, "LL_TERMINATE_IND" },
+	{ 0x03, "LL_ENC_REQ" },
+	{ 0x04, "LL_ENC_RSP" },
+	{ 0x05, "LL_START_ENC_REQ" },
+	{ 0x06, "LL_START_ENC_RSP" },
+	{ 0x07, "LL_UNKNOWN_RSP" },
+	{ 0x08, "LL_FEATURE_REQ" },
+	{ 0x09, "LL_FEATURE_RSP" },
+	{ 0x0A, "LL_PAUSE_ENC_REQ" },
+	{ 0x0B, "LL_PAUSE_ENC_RSP" },
+	{ 0x0C, "LL_VERSION_IND" },
+	{ 0x0D, "LL_REJECT_IND" },
 	{ 0, NULL }
 };
 
@@ -191,6 +211,7 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 	int offset;
 	guint32 aa;
 	guint8 type, length;
+	guint8 llid, ll_control_opcode;
 
 #if 0
 	/* sanity check: length */
@@ -293,9 +314,16 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 			proto_tree_add_item(data_tree, hf_btle_data_sn, tvb, offset, 1, ENC_NA);
 			proto_tree_add_item(data_tree, hf_btle_data_nesn, tvb, offset, 1, ENC_NA);
 			proto_tree_add_item(data_tree, hf_btle_data_llid, tvb, offset, 1, ENC_NA);
+			llid = tvb_get_guint8(tvb, offset) & 0x3;
 			offset += 1;
 
 			proto_tree_add_item(data_tree, hf_btle_length, tvb, offset, 1, TRUE);
+
+			if (llid == 0x3) {
+				proto_tree_add_item(btle_tree, hf_btle_ll_control_opcode, tvb, offset, 1, ENC_NA);
+				proto_tree_add_item(btle_tree, hf_btle_ll_control_data, tvb, offset + 1, length, TRUE);
+			}
+
 			offset += 1 + length;
 
 			proto_tree_add_item(btle_tree, hf_btle_crc, tvb, offset, 3, TRUE);
@@ -442,6 +470,17 @@ proto_register_btle(void)
 			{ "RFU", "btle.data.rfu",
 			FT_UINT8, BASE_DEC, NULL, 0xe0,
 			"Reserved for Future Use (must be zero)", HFILL }
+		},
+
+		{ &hf_btle_ll_control_opcode,
+			{ "LL Control Opcode", "btle.ll_control_opcode",
+			FT_UINT8, BASE_HEX, VALS(ll_control_opcodes), 0x0,
+			NULL, HFILL }
+		},
+		{ &hf_btle_ll_control_data,
+			{ "LL Control Data", "btle.ll_control_data",
+			FT_BYTES, BASE_NONE, NULL, 0x0,
+			NULL, HFILL }
 		},
 
 		{ &hf_btle_crc,
