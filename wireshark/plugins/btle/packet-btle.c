@@ -53,6 +53,12 @@ static int hf_btle_win_offset = -1;
 static int hf_btle_interval = -1;
 static int hf_btle_latency = -1;
 static int hf_btle_timeout = -1;
+static int hf_btle_data = -1;
+static int hf_btle_data_llid = -1;
+static int hf_btle_data_nesn = -1;
+static int hf_btle_data_sn = -1;
+static int hf_btle_data_md = -1;
+static int hf_btle_data_rfu = -1;
 static int hf_btle_crc = -1;
 
 static const value_string packet_types[] = {
@@ -68,9 +74,9 @@ static const value_string packet_types[] = {
 
 static const value_string llid_codes[] = {
 	{ 0x0, "undefined" },
-	{ 0x1, "Continuation fragment of an L2CAP message (ACL-U)" },
-	{ 0x2, "Start of an L2CAP message or no fragmentation (ACL-U)" },
-	{ 0x3, "LMP message (ACL-C)" },
+	{ 0x1, "Continuation fragment of an L2CAP message" },
+	{ 0x2, "Start of an L2CAP message or no fragmentation" },
+	{ 0x3, "LL Control PDU" },
 	{ 0, NULL }
 };
 
@@ -80,6 +86,7 @@ static const guint32 ADV_AA = 0x8e89bed6;
 static gint ett_btle = -1;
 static gint ett_btle_pkthdr = -1;
 static gint ett_btle_connect = -1;
+static gint ett_btle_data = -1;
 
 /* subdissectors */
 static dissector_handle_t btl2cap_handle = NULL;
@@ -179,8 +186,8 @@ dissect_connect_req(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int off
 static void
 dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
-	proto_item *btle_item, *pkthdr_item, *pld_item;
-	proto_tree *btle_tree, *pkthdr_tree;
+	proto_item *btle_item, *pkthdr_item, *data_item;
+	proto_tree *btle_tree, *pkthdr_tree, *data_tree;
 	int offset;
 	guint32 aa;
 	guint8 type, length;
@@ -215,7 +222,7 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 			offset += 4;
 
 			/* packet header */
-			pkthdr_item = proto_tree_add_item(btle_tree, hf_btle_pkthdr, tvb, offset, 2, TRUE);
+			pkthdr_item = proto_tree_add_item(btle_tree, hf_btle_pkthdr, tvb, offset, 2, ENC_LITTLE_ENDIAN);
 			pkthdr_tree = proto_item_add_subtree(pkthdr_item, ett_btle_pkthdr);
 
 			proto_tree_add_item(pkthdr_tree, hf_btle_type, tvb, offset, 1, TRUE);
@@ -277,10 +284,18 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 			proto_tree_add_item(btle_tree, hf_btle_aa, tvb, offset, 4, TRUE);
 			offset += 4;
 
-			// first byte is a bitfield, skip for now
+			// data PDU header
+			data_item = proto_tree_add_item(btle_tree, hf_btle_data, tvb, offset, 2, TRUE);
+			data_tree = proto_item_add_subtree(data_item, ett_btle_data);
+
+			proto_tree_add_item(data_tree, hf_btle_data_rfu, tvb, offset, 1, ENC_NA);
+			proto_tree_add_item(data_tree, hf_btle_data_md, tvb, offset, 1, ENC_NA);
+			proto_tree_add_item(data_tree, hf_btle_data_sn, tvb, offset, 1, ENC_NA);
+			proto_tree_add_item(data_tree, hf_btle_data_nesn, tvb, offset, 1, ENC_NA);
+			proto_tree_add_item(data_tree, hf_btle_data_llid, tvb, offset, 1, ENC_NA);
 			offset += 1;
 
-			proto_tree_add_item(btle_tree, hf_btle_length, tvb, offset, 1, TRUE);
+			proto_tree_add_item(data_tree, hf_btle_length, tvb, offset, 1, TRUE);
 			offset += 1 + length;
 
 			proto_tree_add_item(btle_tree, hf_btle_crc, tvb, offset, 3, TRUE);
@@ -397,6 +412,38 @@ proto_register_btle(void)
 			NULL, HFILL }
 		},
 
+		// data header
+		{ &hf_btle_data,
+			{ "Data PDU Header", "btle.data",
+			FT_UINT16, BASE_HEX, NULL, 0x0,
+			NULL, HFILL }
+		},
+		{ &hf_btle_data_llid,
+			{ "LLID", "btle.data.llid",
+			FT_UINT8, BASE_DEC, VALS(llid_codes), 0x3,
+			NULL, HFILL }
+		},
+		{ &hf_btle_data_nesn,
+			{ "NESN", "btle.data.nesn",
+			FT_UINT8, BASE_DEC, NULL, 0x4,
+			"Next Expected Sequence Number", HFILL }
+		},
+		{ &hf_btle_data_sn,
+			{ "SN", "btle.data.sn",
+			FT_UINT8, BASE_DEC, NULL, 0x8,
+			"Sequence Number", HFILL }
+		},
+		{ &hf_btle_data_md,
+			{ "MD", "btle.data.md",
+			FT_UINT8, BASE_DEC, NULL, 0x10,
+			"More Data", HFILL }
+		},
+		{ &hf_btle_data_rfu,
+			{ "RFU", "btle.data.rfu",
+			FT_UINT8, BASE_DEC, NULL, 0xe0,
+			"Reserved for Future Use (must be zero)", HFILL }
+		},
+
 		{ &hf_btle_crc,
 			{ "CRC", "btle.crc",
 			FT_UINT24, BASE_HEX, NULL, 0x0,
@@ -409,6 +456,7 @@ proto_register_btle(void)
 		&ett_btle,
 		&ett_btle_pkthdr,
 		&ett_btle_connect,
+		&ett_btle_data,
 	};
 
 	/* register the protocol name and description */
