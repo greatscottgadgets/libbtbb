@@ -74,6 +74,8 @@ static const value_string llid_codes[] = {
 	{ 0, NULL }
 };
 
+static const guint32 ADV_AA = 0x8e89bed6;
+
 /* initialize the subtree pointers */
 static gint ett_btle = -1;
 static gint ett_btle_pkthdr = -1;
@@ -180,6 +182,7 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 	proto_item *btle_item, *pkthdr_item, *pld_item;
 	proto_tree *btle_tree, *pkthdr_tree;
 	int offset;
+	guint32 aa;
 	guint8 type, length;
 
 #if 0
@@ -193,65 +196,95 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 	if (check_col(pinfo->cinfo, COL_PROTOCOL))
 		col_set_str(pinfo->cinfo, COL_PROTOCOL, "Bluetooth LE");
 
-	type = tvb_get_guint8(tvb, 4) & 0xf;
-	length = tvb_get_guint8(tvb, 5) & 0x3f;
+	aa = tvb_get_letohl(tvb, 0);
 
-	/* see if we are being asked for details */
-	if (tree) {
+	// advertising packet
+	if (aa == ADV_AA) {
+		type = tvb_get_guint8(tvb, 4) & 0xf;
+		length = tvb_get_guint8(tvb, 5) & 0x3f;
 
-		/* create display subtree for the protocol */
-		offset = 0;
-		btle_item = proto_tree_add_item(tree, proto_btle, tvb, offset, -1, TRUE);
-		btle_tree = proto_item_add_subtree(btle_item, ett_btle);
+		/* see if we are being asked for details */
+		if (tree) {
 
-		proto_tree_add_item(btle_tree, hf_btle_aa, tvb, offset, 4, TRUE);
-		offset += 4;
+			/* create display subtree for the protocol */
+			offset = 0;
+			btle_item = proto_tree_add_item(tree, proto_btle, tvb, offset, -1, TRUE);
+			btle_tree = proto_item_add_subtree(btle_item, ett_btle);
 
-		/* packet header */
-		pkthdr_item = proto_tree_add_item(btle_tree, hf_btle_pkthdr, tvb, offset, 2, TRUE);
-		pkthdr_tree = proto_item_add_subtree(pkthdr_item, ett_btle_pkthdr);
+			proto_tree_add_item(btle_tree, hf_btle_aa, tvb, offset, 4, TRUE);
+			offset += 4;
 
-		proto_tree_add_item(pkthdr_tree, hf_btle_type, tvb, offset, 1, TRUE);
-		proto_tree_add_item(pkthdr_tree, hf_btle_randomized_tx, tvb, offset, 1, TRUE);
-		proto_tree_add_item(pkthdr_tree, hf_btle_randomized_rx, tvb, offset, 1, TRUE);
-		offset += 1;
+			/* packet header */
+			pkthdr_item = proto_tree_add_item(btle_tree, hf_btle_pkthdr, tvb, offset, 2, TRUE);
+			pkthdr_tree = proto_item_add_subtree(pkthdr_item, ett_btle_pkthdr);
 
-		proto_tree_add_item(pkthdr_tree, hf_btle_length, tvb, offset, 1, TRUE);
-		offset += 1;
+			proto_tree_add_item(pkthdr_tree, hf_btle_type, tvb, offset, 1, TRUE);
+			proto_tree_add_item(pkthdr_tree, hf_btle_randomized_tx, tvb, offset, 1, TRUE);
+			proto_tree_add_item(pkthdr_tree, hf_btle_randomized_rx, tvb, offset, 1, TRUE);
+			offset += 1;
 
-		if (check_col(pinfo->cinfo, COL_INFO)) {
-			if (type <= 0x6) {
-				col_set_str(pinfo->cinfo, COL_INFO, packet_types[type].strptr);
-			} else {
-				col_set_str(pinfo->cinfo, COL_INFO, "Unknown");
+			proto_tree_add_item(pkthdr_tree, hf_btle_length, tvb, offset, 1, TRUE);
+			offset += 1;
+
+			if (check_col(pinfo->cinfo, COL_INFO)) {
+				if (type <= 0x6) {
+					col_set_str(pinfo->cinfo, COL_INFO, packet_types[type].strptr);
+				} else {
+					col_set_str(pinfo->cinfo, COL_INFO, "Unknown");
+				}
 			}
-		}
 
-		/* payload */
-		switch (type) {
-		case 0x0: // ADV_IND
-		case 0x2: // ADV_NONCONN_IND
-		case 0x6: // ADV_SCAN_IND
-			dissect_adv_ind_or_nonconn_or_scan(btle_tree, tvb, pinfo, offset, length - 6);
-			break;
-		case 0x1: // ADV_DIRECT_IND
-			dissect_adv_direct_ind(btle_tree, tvb, pinfo, offset);
-			break;
-		case 0x3:
-			dissect_scan_req(btle_tree, tvb, pinfo, offset);
-			break;
-		case 0x4: // SCAN_RSP
-			dissect_scan_rsp(btle_tree, tvb, pinfo, offset, length - 6);
-			break;
-		case 0x5: // CONNECT_REQ
-			dissect_connect_req(btle_tree, tvb, pinfo, offset);
-			break;
-		default:
-			break;
-		}
+			/* payload */
+			switch (type) {
+			case 0x0: // ADV_IND
+			case 0x2: // ADV_NONCONN_IND
+			case 0x6: // ADV_SCAN_IND
+				dissect_adv_ind_or_nonconn_or_scan(btle_tree, tvb, pinfo, offset, length - 6);
+				break;
+			case 0x1: // ADV_DIRECT_IND
+				dissect_adv_direct_ind(btle_tree, tvb, pinfo, offset);
+				break;
+			case 0x3:
+				dissect_scan_req(btle_tree, tvb, pinfo, offset);
+				break;
+			case 0x4: // SCAN_RSP
+				dissect_scan_rsp(btle_tree, tvb, pinfo, offset, length - 6);
+				break;
+			case 0x5: // CONNECT_REQ
+				dissect_connect_req(btle_tree, tvb, pinfo, offset);
+				break;
+			default:
+				break;
+			}
 
-		offset += length;
-		proto_tree_add_item(btle_tree, hf_btle_crc, tvb, offset, 3, TRUE);
+			offset += length;
+			proto_tree_add_item(btle_tree, hf_btle_crc, tvb, offset, 3, TRUE);
+		}
+	}
+
+	// data PDU
+	else {
+		if (tree) {
+			col_set_str(pinfo->cinfo, COL_INFO, "Data");
+
+			length = tvb_get_guint8(tvb, 5) & 0x1f;
+
+			/* create display subtree for the protocol */
+			offset = 0;
+			btle_item = proto_tree_add_item(tree, proto_btle, tvb, offset, -1, TRUE);
+			btle_tree = proto_item_add_subtree(btle_item, ett_btle);
+
+			proto_tree_add_item(btle_tree, hf_btle_aa, tvb, offset, 4, TRUE);
+			offset += 4;
+
+			// first byte is a bitfield, skip for now
+			offset += 1;
+
+			proto_tree_add_item(btle_tree, hf_btle_length, tvb, offset, 1, TRUE);
+			offset += 1 + length;
+
+			proto_tree_add_item(btle_tree, hf_btle_crc, tvb, offset, 3, TRUE);
+		}
 	}
 
 	return;
