@@ -36,3 +36,14 @@ To build a .deb on Ubuntu, follow these instructions:
 
 The .deb will be created in the wireshark directory, and it can be
 installed with dpkg -i.
+
+Attribute Protocol Support
+--------------------------
+
+Wireshark trunk has native support for the Bluetooth Attribute protocol.
+If you are using a distro package that does not support it, install the
+plugin found in the btatt directory (above this directory).
+
+If the protocol column of non-empty data packets says L2CAP, you should
+install the plugin. If it says ATT, you do not need the plugin. If it
+says something else, please email me!
