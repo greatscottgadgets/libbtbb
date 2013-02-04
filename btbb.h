@@ -84,7 +84,7 @@ int btbb_find_ac(char *stream,
 	       int search_length,
 	       uint32_t lap,
 	       int max_ac_errors,
-	       btbb_packet *pkt);
+	       btbb_packet **pkt);
 #define LAP_ANY 0xffffffffUL
 
 void btbb_packet_set_flag(btbb_packet *pkt, int flag, int val);

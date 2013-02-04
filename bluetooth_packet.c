@@ -336,7 +336,7 @@ uint8_t btbb_packet_get_ac_errors(btbb_packet *pkt) {
 	return pkt->ac_errors;
 }
 
-int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors, btbb_packet *pkt) {
+int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors, btbb_packet **pkt_ptr) {
 
 	/* Looks for an AC in the stream */
 	int count;
@@ -411,8 +411,13 @@ int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_error
 
 	}
 
-	if (offset >= 0)
-		init_packet(pkt, lap, ac_errors);
+	if (offset >= 0) {
+		if (*pkt_ptr == NULL) {
+				printf("Creating new pkt in libbtbb\n");
+				*pkt_ptr = btbb_packet_new();
+		}
+		init_packet(*pkt_ptr, lap, ac_errors);
+	}
 
 	return offset;
 }
