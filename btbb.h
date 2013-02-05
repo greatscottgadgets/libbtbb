@@ -54,6 +54,7 @@
 #define BTBB_IS_AFH            11
 #define BTBB_LOOKS_LIKE_AFH    12
 #define BTBB_IS_ALIASED        13
+#define BTBB_FOLLOWING         14
 
 typedef struct btbb_packet btbb_packet;
 
@@ -155,6 +156,8 @@ int btbb_piconet_get_flag(btbb_piconet *pn, int flag);
 
 void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel);
 uint8_t *btbb_piconet_get_afh_map(btbb_piconet *pn);
+
+int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn);
 
 /* use packet headers to determine UAP */
 int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn);

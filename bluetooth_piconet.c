@@ -744,3 +744,42 @@ void btbb_print_afh_map(btbb_piconet *pn) {
 		printf("%02x", pn->afh_map[i]);
 	printf("\n");	
 }
+
+int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
+	/* If piconet structure is given, a LAP is given, and packet
+	 * header is readable, do further analysis. If UAP has not yet
+	 * been determined, attempt to calculate it from headers. Once
+	 * UAP is known, try to determine clk6 and clk27. Once clocks
+	 * are known, follow the piconet. */
+	if (pn && btbb_piconet_get_flag(pn, BTBB_LAP_VALID) &&
+	    btbb_header_present(pkt)) {
+
+		/* Have LAP/UAP/clocks, now hopping along with the piconet. */
+		if (btbb_piconet_get_flag(pn, BTBB_FOLLOWING)) {
+			btbb_packet_set_uap(pkt, btbb_piconet_get_uap(pn));
+			btbb_packet_set_flag(pkt, BTBB_CLK6_VALID, 1);
+			btbb_packet_set_flag(pkt, BTBB_CLK27_VALID, 1);
+			
+			if(btbb_decode(pkt, pn))
+				btbb_print_packet(pkt);
+			else
+				printf("Failed to decode packet\n");
+		}
+
+		/* Have LAP/UAP, need clocks. */
+		else if (btbb_piconet_get_uap(pn)) {
+			try_hop(pkt, pn);
+			if (btbb_piconet_get_flag(pn, BTBB_CLK6_VALID) &&
+			    btbb_piconet_get_flag(pn, BTBB_CLK27_VALID)) {
+				btbb_piconet_set_flag(pn, BTBB_FOLLOWING, 1);
+				return -1;
+			}
+		}
+		
+		/* Have LAP, need UAP. */
+		else {
+			btbb_uap_from_header(pkt, pn);
+		}
+	}
+	return 0;
+}
