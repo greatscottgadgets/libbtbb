@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2003-2011, Troy D. Hanson     http://uthash.sourceforge.net
+Copyright (c) 2003-2013, Troy D. Hanson     http://uthash.sourceforge.net
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -64,14 +64,24 @@ typedef unsigned char uint8_t;
 #include <inttypes.h>   /* uint32_t */
 #endif
 
-#define UTHASH_VERSION 1.9.4
+#define UTHASH_VERSION 1.9.7
 
+#ifndef uthash_fatal
 #define uthash_fatal(msg) exit(-1)        /* fatal error (out of memory,etc) */
+#endif
+#ifndef uthash_malloc
 #define uthash_malloc(sz) malloc(sz)      /* malloc fcn                      */
+#endif
+#ifndef uthash_free
 #define uthash_free(ptr,sz) free(ptr)     /* free fcn                        */
+#endif
 
+#ifndef uthash_noexpand_fyi
 #define uthash_noexpand_fyi(tbl)          /* can be defined to log noexpand  */
+#endif
+#ifndef uthash_expand_fyi
 #define uthash_expand_fyi(tbl)            /* can be defined to log expands   */
+#endif
 
 /* initial number of buckets */
 #define HASH_INITIAL_NUM_BUCKETS 32      /* initial number of buckets        */
@@ -104,12 +114,12 @@ do {                                                                            
   if (!((tbl)->bloom_bv))  { uthash_fatal( "out of memory"); }                   \
   memset((tbl)->bloom_bv, 0, HASH_BLOOM_BYTELEN);                                \
   (tbl)->bloom_sig = HASH_BLOOM_SIGNATURE;                                       \
-} while (0);
+} while (0) 
 
 #define HASH_BLOOM_FREE(tbl)                                                     \
 do {                                                                             \
   uthash_free((tbl)->bloom_bv, HASH_BLOOM_BYTELEN);                              \
-} while (0);
+} while (0) 
 
 #define HASH_BLOOM_BITSET(bv,idx) (bv[(idx)/8] |= (1U << ((idx)%8)))
 #define HASH_BLOOM_BITTEST(bv,idx) (bv[(idx)/8] & (1U << ((idx)%8)))
@@ -154,7 +164,7 @@ do {                                                                            
  unsigned _ha_bkt;                                                               \
  (add)->hh.next = NULL;                                                          \
  (add)->hh.key = (char*)keyptr;                                                  \
- (add)->hh.keylen = keylen_in;                                                   \
+ (add)->hh.keylen = (unsigned)keylen_in;                                                   \
  if (!(head)) {                                                                  \
     head = (add);                                                                \
     (head)->hh.prev = NULL;                                                      \
@@ -205,17 +215,17 @@ do {                                                                            
         _hd_hh_del = &((delptr)->hh);                                            \
         if ((delptr) == ELMT_FROM_HH((head)->hh.tbl,(head)->hh.tbl->tail)) {     \
             (head)->hh.tbl->tail =                                               \
-                (UT_hash_handle*)((char*)((delptr)->hh.prev) +                   \
+                (UT_hash_handle*)((ptrdiff_t)((delptr)->hh.prev) +               \
                 (head)->hh.tbl->hho);                                            \
         }                                                                        \
         if ((delptr)->hh.prev) {                                                 \
-            ((UT_hash_handle*)((char*)((delptr)->hh.prev) +                      \
+            ((UT_hash_handle*)((ptrdiff_t)((delptr)->hh.prev) +                  \
                     (head)->hh.tbl->hho))->next = (delptr)->hh.next;             \
         } else {                                                                 \
             DECLTYPE_ASSIGN(head,(delptr)->hh.next);                             \
         }                                                                        \
         if (_hd_hh_del->next) {                                                  \
-            ((UT_hash_handle*)((char*)_hd_hh_del->next +                         \
+            ((UT_hash_handle*)((ptrdiff_t)_hd_hh_del->next +                     \
                     (head)->hh.tbl->hho))->prev =                                \
                     _hd_hh_del->prev;                                            \
         }                                                                        \
@@ -355,7 +365,7 @@ do {                                                                            
   for(_fn_i=0; _fn_i < keylen; _fn_i++)                                          \
       hashv = (hashv * 16777619) ^ _hf_key[_fn_i];                               \
   bkt = hashv & (num_bkts-1);                                                    \
-} while(0);
+} while(0) 
  
 #define HASH_OAT(key,keylen,num_bkts,hashv,bkt)                                  \
 do {                                                                             \
@@ -392,7 +402,7 @@ do {                                                                            
   char *_hj_key=(char*)(key);                                                    \
   hashv = 0xfeedbeef;                                                            \
   _hj_i = _hj_j = 0x9e3779b9;                                                    \
-  _hj_k = keylen;                                                                \
+  _hj_k = (unsigned)keylen;                                                                \
   while (_hj_k >= 12) {                                                          \
     _hj_i +=    (_hj_key[0] + ( (unsigned)_hj_key[1] << 8 )                      \
         + ( (unsigned)_hj_key[2] << 16 )                                         \
@@ -480,7 +490,7 @@ do {                                                                            
     hashv ^= hashv << 25;                                                        \
     hashv += hashv >> 6;                                                         \
     bkt = hashv & (num_bkts-1);                                                  \
-} while(0);
+} while(0) 
 
 #ifdef HASH_USING_NO_STRICT_ALIASING
 /* The MurmurHash exploits some CPU's (x86,x86_64) tolerance for unaligned reads.
@@ -492,7 +502,7 @@ do {                                                                            
  *   gcc -m64 -dM -E - < /dev/null                  (on gcc)
  *   cc -## a.c (where a.c is a simple test file)   (Sun Studio)
  */
-#if (defined(__i386__) || defined(__x86_64__)) 
+#if (defined(__i386__) || defined(__x86_64__)  || defined(_M_IX86))
 #define MUR_GETBLOCK(p,i) p[i]
 #else /* non intel */
 #define MUR_PLUS0_ALIGNED(p) (((unsigned long)p & 0x3) == 0)
@@ -531,10 +541,12 @@ do {                                                                   \
   uint32_t _mur_h1 = 0xf88D5353;                                       \
   uint32_t _mur_c1 = 0xcc9e2d51;                                       \
   uint32_t _mur_c2 = 0x1b873593;                                       \
+  uint32_t _mur_k1 = 0;                                                \
+  const uint8_t *_mur_tail;                                            \
   const uint32_t *_mur_blocks = (const uint32_t*)(_mur_data+_mur_nblocks*4); \
   int _mur_i;                                                          \
   for(_mur_i = -_mur_nblocks; _mur_i; _mur_i++) {                      \
-    uint32_t _mur_k1 = MUR_GETBLOCK(_mur_blocks,_mur_i);               \
+    _mur_k1 = MUR_GETBLOCK(_mur_blocks,_mur_i);                        \
     _mur_k1 *= _mur_c1;                                                \
     _mur_k1 = MUR_ROTL32(_mur_k1,15);                                  \
     _mur_k1 *= _mur_c2;                                                \
@@ -543,8 +555,8 @@ do {                                                                   \
     _mur_h1 = MUR_ROTL32(_mur_h1,13);                                  \
     _mur_h1 = _mur_h1*5+0xe6546b64;                                    \
   }                                                                    \
-  const uint8_t *_mur_tail = (const uint8_t*)(_mur_data + _mur_nblocks*4); \
-  uint32_t _mur_k1=0;                                                  \
+  _mur_tail = (const uint8_t*)(_mur_data + _mur_nblocks*4);            \
+  _mur_k1=0;                                                           \
   switch((keylen) & 3) {                                               \
     case 3: _mur_k1 ^= _mur_tail[2] << 16;                             \
     case 2: _mur_k1 ^= _mur_tail[1] << 8;                              \
@@ -570,10 +582,10 @@ do {                                                                            
  if (head.hh_head) DECLTYPE_ASSIGN(out,ELMT_FROM_HH(tbl,head.hh_head));          \
  else out=NULL;                                                                  \
  while (out) {                                                                   \
-    if (out->hh.keylen == keylen_in) {                                           \
-        if ((HASH_KEYCMP(out->hh.key,keyptr,keylen_in)) == 0) break;             \
+    if ((out)->hh.keylen == keylen_in) {                                           \
+        if ((HASH_KEYCMP((out)->hh.key,keyptr,keylen_in)) == 0) break;             \
     }                                                                            \
-    if (out->hh.hh_next) DECLTYPE_ASSIGN(out,ELMT_FROM_HH(tbl,out->hh.hh_next)); \
+    if ((out)->hh.hh_next) DECLTYPE_ASSIGN(out,ELMT_FROM_HH(tbl,(out)->hh.hh_next)); \
     else out = NULL;                                                             \
  }                                                                               \
 } while(0)
