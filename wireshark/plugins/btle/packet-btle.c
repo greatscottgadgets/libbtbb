@@ -338,7 +338,8 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 					col_set_str(pinfo->cinfo, COL_INFO, "LL Control PDU: unknown");
 
 				proto_tree_add_item(btle_tree, hf_btle_ll_control_opcode, tvb, offset, 1, ENC_NA);
-				proto_tree_add_item(btle_tree, hf_btle_ll_control_data, tvb, offset + 1, length, TRUE);
+				if (length > 1)
+					proto_tree_add_item(btle_tree, hf_btle_ll_control_data, tvb, offset + 1, length-1, TRUE);
 			}
 
 			// L2CAP
