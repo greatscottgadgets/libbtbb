@@ -330,7 +330,13 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 
 			// LL control PDU
 			if (llid == 0x3) {
-				col_set_str(pinfo->cinfo, COL_INFO, "LL Control PDU");
+				ll_control_opcode = tvb_get_guint8(tvb, offset);
+				if (ll_control_opcode <= 0x0d)
+					col_add_fstr(pinfo->cinfo, COL_INFO, "LL Control PDU: %s",
+							ll_control_opcodes[ll_control_opcode].strptr);
+				else
+					col_set_str(pinfo->cinfo, COL_INFO, "LL Control PDU: unknown");
+
 				proto_tree_add_item(btle_tree, hf_btle_ll_control_opcode, tvb, offset, 1, ENC_NA);
 				proto_tree_add_item(btle_tree, hf_btle_ll_control_data, tvb, offset + 1, length, TRUE);
 			}
