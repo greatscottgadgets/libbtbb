@@ -413,7 +413,7 @@ int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_error
 
 	if (offset >= 0) {
 		if (*pkt_ptr == NULL)
-				*pkt_ptr = btbb_packet_new();
+			*pkt_ptr = btbb_packet_new();
 		init_packet(*pkt_ptr, lap, ac_errors);
 	}
 
