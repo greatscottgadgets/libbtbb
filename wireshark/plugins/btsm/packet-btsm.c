@@ -287,7 +287,7 @@ proto_register_btsm(void)
 		},
 		{ &hf_btsm_pairing_response_oob_data,
 			{ "OOB Data", "btsm.pairing_response.oob_data",
-			FT_UINT8, BASE_HEX, NULL, 0x0,
+			FT_UINT8, BASE_HEX, VALS(oob_data), 0x0,
 			NULL, HFILL }
 		},
 		{ &hf_btsm_pairing_response_auth_req,
