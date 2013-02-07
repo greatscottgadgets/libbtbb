@@ -47,3 +47,11 @@ plugin found in the btatt directory (above this directory).
 If the protocol column of non-empty data packets says L2CAP, you should
 install the plugin. If it says ATT, you do not need the plugin. If it
 says something else, please email me!
+
+Bluetooth Security Manager Protocol
+-----------------------------------
+
+All security-related exchanges (pairing and identity resolution) take
+place over the Bluetooth Security Manager (SM) protocol, which runs on
+L2CAP. If you would like to dissect these packets, build and install the
+plugin found in the btsm directory above this directory.
