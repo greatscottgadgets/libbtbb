@@ -323,9 +323,9 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 			pkthdr_item = proto_tree_add_item(btle_tree, hf_btle_pkthdr, tvb, offset, 2, ENC_LITTLE_ENDIAN);
 			pkthdr_tree = proto_item_add_subtree(pkthdr_item, ett_btle_pkthdr);
 
-			proto_tree_add_item(pkthdr_tree, hf_btle_type, tvb, offset, 1, TRUE);
-			proto_tree_add_item(pkthdr_tree, hf_btle_randomized_tx, tvb, offset, 1, TRUE);
-			proto_tree_add_item(pkthdr_tree, hf_btle_randomized_rx, tvb, offset, 1, TRUE);
+			proto_tree_add_bits_item(pkthdr_tree, hf_btle_randomized_rx, tvb, offset * 8, 1, TRUE);
+			proto_tree_add_bits_item(pkthdr_tree, hf_btle_randomized_tx, tvb, offset * 8 + 1, 1, TRUE);
+			proto_tree_add_bits_item(pkthdr_tree, hf_btle_type, tvb, offset * 8 + 4, 4, TRUE);
 			offset += 1;
 
 			proto_tree_add_item(pkthdr_tree, hf_btle_length, tvb, offset, 1, TRUE);
@@ -449,12 +449,12 @@ proto_register_btle(void)
 		},
 		{ &hf_btle_randomized_tx,
 			{ "Randomized TX Address", "btle.randomized_tx",
-			FT_BOOLEAN, 8, NULL, 0x0,
+			FT_BOOLEAN, BASE_NONE, TFS(&tfs_yes_no), 0x0,
 			NULL, HFILL }
 		},
 		{ &hf_btle_randomized_rx,
 			{ "Randomized RX Address", "btle.randomized_rx",
-			FT_BOOLEAN, 8, NULL, 0x0,
+			FT_BOOLEAN, BASE_NONE, TFS(&tfs_yes_no), 0x0,
 			NULL, HFILL }
 		},
 		{ &hf_btle_length,
