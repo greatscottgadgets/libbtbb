@@ -66,6 +66,9 @@ static int hf_btle_ll_control_ll_enc_req_rand = -1;
 static int hf_btle_ll_control_ll_enc_req_ediv = -1;
 static int hf_btle_ll_control_ll_enc_req_skdm = -1;
 static int hf_btle_ll_control_ll_enc_req_ivm = -1;
+static int hf_btle_ll_control_ll_enc_rsp = -1;
+static int hf_btle_ll_control_ll_enc_rsp_skds = -1;
+static int hf_btle_ll_control_ll_enc_rsp_ivs = -1;
 static int hf_btle_crc = -1;
 
 static const value_string packet_types[] = {
@@ -113,6 +116,7 @@ static gint ett_btle_pkthdr = -1;
 static gint ett_btle_connect = -1;
 static gint ett_btle_data = -1;
 static gint ett_ll_enc_req = -1;
+static gint ett_ll_enc_rsp = -1;
 
 /* subdissectors */
 static dissector_handle_t btl2cap_handle = NULL;
@@ -224,6 +228,19 @@ dissect_ll_enc_req(proto_tree *tree, tvbuff_t *tvb, int offset)
 }
 
 void
+dissect_ll_enc_rsp(proto_tree *tree, tvbuff_t *tvb, int offset)
+{
+	proto_item *ll_enc_rsp_item;
+	proto_tree *ll_enc_rsp_tree;
+
+	ll_enc_rsp_item = proto_tree_add_item(tree, hf_btle_ll_control_ll_enc_rsp, tvb, offset + 1, 12, TRUE);
+	ll_enc_rsp_tree = proto_item_add_subtree(ll_enc_rsp_item, ett_ll_enc_rsp);
+
+	proto_tree_add_item(ll_enc_rsp_tree, hf_btle_ll_control_ll_enc_rsp_skds, tvb, offset + 1, 8, TRUE);
+	proto_tree_add_item(ll_enc_rsp_tree, hf_btle_ll_control_ll_enc_rsp_ivs,  tvb, offset + 9, 4, TRUE);
+}
+
+void
 dissect_ll_control(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset, guint8 length)
 {
 	guint8 ll_control_opcode;
@@ -238,6 +255,9 @@ dissect_ll_control(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offs
 		switch (ll_control_opcode) {
 			case 0x03: // LL_ENC_REQ
 				dissect_ll_enc_req(tree, tvb, offset);
+				break;
+			case 0x04: // LL_ENC_RSP
+				dissect_ll_enc_rsp(tree, tvb, offset);
 				break;
 			default:
 				if (length > 1)
@@ -579,6 +599,23 @@ proto_register_btle(void)
 			"Master's Initialization Vector", HFILL }
 		},
 
+		{ &hf_btle_ll_control_ll_enc_rsp,
+			{ "Encryption Response", "btle.ll_enc_rsp",
+			FT_NONE, BASE_NONE, NULL, 0x0,
+			NULL, HFILL }
+		},
+		{ &hf_btle_ll_control_ll_enc_rsp_skds,
+			{ "SDKs", "btle.ll_enc_rsp.skds",
+			FT_BYTES, BASE_NONE, NULL, 0x0,
+			"Slave's Session Key Identifier", HFILL }
+		},
+		{ &hf_btle_ll_control_ll_enc_rsp_ivs,
+			{ "IVs", "btle.ll_enc_rsp.ivs",
+			FT_BYTES, BASE_NONE, NULL, 0x0,
+			"Slave's Initialization Vector", HFILL }
+		},
+
+
 		{ &hf_btle_crc,
 			{ "CRC", "btle.crc",
 			FT_UINT24, BASE_HEX, NULL, 0x0,
@@ -593,6 +630,7 @@ proto_register_btle(void)
 		&ett_btle_connect,
 		&ett_btle_data,
 		&ett_ll_enc_req,
+		&ett_ll_enc_rsp,
 	};
 
 	/* register the protocol name and description */
