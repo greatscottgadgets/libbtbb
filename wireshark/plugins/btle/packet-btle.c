@@ -202,6 +202,23 @@ dissect_connect_req(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int off
 	proto_tree_add_item(connect_tree, hf_btle_timeout,		tvb, offset+14, 2, ENC_LITTLE_ENDIAN);
 }
 
+void
+dissect_ll_control(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset, guint8 length)
+{
+	guint8 ll_control_opcode;
+
+	ll_control_opcode = tvb_get_guint8(tvb, offset);
+	if (ll_control_opcode <= 0x0d)
+		col_add_fstr(pinfo->cinfo, COL_INFO, "LL Control PDU: %s",
+				ll_control_opcodes[ll_control_opcode].strptr);
+	else
+		col_set_str(pinfo->cinfo, COL_INFO, "LL Control PDU: unknown");
+
+	proto_tree_add_item(tree, hf_btle_ll_control_opcode, tvb, offset, 1, ENC_NA);
+	if (length > 1)
+		proto_tree_add_item(tree, hf_btle_ll_control_data, tvb, offset + 1, length-1, TRUE);
+}
+
 /* dissect a packet */
 static void
 dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
@@ -211,7 +228,7 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 	int offset;
 	guint32 aa;
 	guint8 type, length;
-	guint8 llid, ll_control_opcode;
+	guint8 llid;
 	tvbuff_t *pld_tvb;
 
 	/*
@@ -330,16 +347,7 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 
 			// LL control PDU
 			if (llid == 0x3) {
-				ll_control_opcode = tvb_get_guint8(tvb, offset);
-				if (ll_control_opcode <= 0x0d)
-					col_add_fstr(pinfo->cinfo, COL_INFO, "LL Control PDU: %s",
-							ll_control_opcodes[ll_control_opcode].strptr);
-				else
-					col_set_str(pinfo->cinfo, COL_INFO, "LL Control PDU: unknown");
-
-				proto_tree_add_item(btle_tree, hf_btle_ll_control_opcode, tvb, offset, 1, ENC_NA);
-				if (length > 1)
-					proto_tree_add_item(btle_tree, hf_btle_ll_control_data, tvb, offset + 1, length-1, TRUE);
+				dissect_ll_control(btle_tree, tvb, pinfo, offset, length);
 			}
 
 			// L2CAP
