@@ -61,6 +61,11 @@ static int hf_btle_data_md = -1;
 static int hf_btle_data_rfu = -1;
 static int hf_btle_ll_control_opcode = -1;
 static int hf_btle_ll_control_data = -1;
+static int hf_btle_ll_control_ll_enc_req = -1;
+static int hf_btle_ll_control_ll_enc_req_rand = -1;
+static int hf_btle_ll_control_ll_enc_req_ediv = -1;
+static int hf_btle_ll_control_ll_enc_req_skdm = -1;
+static int hf_btle_ll_control_ll_enc_req_ivm = -1;
 static int hf_btle_crc = -1;
 
 static const value_string packet_types[] = {
@@ -107,6 +112,7 @@ static gint ett_btle = -1;
 static gint ett_btle_pkthdr = -1;
 static gint ett_btle_connect = -1;
 static gint ett_btle_data = -1;
+static gint ett_ll_enc_req = -1;
 
 /* subdissectors */
 static dissector_handle_t btl2cap_handle = NULL;
@@ -203,20 +209,46 @@ dissect_connect_req(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int off
 }
 
 void
+dissect_ll_enc_req(proto_tree *tree, tvbuff_t *tvb, int offset)
+{
+	proto_item *ll_enc_req_item;
+	proto_tree *ll_enc_req_tree;
+
+	ll_enc_req_item = proto_tree_add_item(tree, hf_btle_ll_control_ll_enc_req, tvb, offset + 1, 22, TRUE);
+	ll_enc_req_tree = proto_item_add_subtree(ll_enc_req_item, ett_ll_enc_req);
+
+	proto_tree_add_item(ll_enc_req_tree, hf_btle_ll_control_ll_enc_req_rand, tvb, offset + 1,  8, TRUE);
+	proto_tree_add_item(ll_enc_req_tree, hf_btle_ll_control_ll_enc_req_ediv, tvb, offset + 9,  2, TRUE);
+	proto_tree_add_item(ll_enc_req_tree, hf_btle_ll_control_ll_enc_req_skdm, tvb, offset + 11, 8, TRUE);
+	proto_tree_add_item(ll_enc_req_tree, hf_btle_ll_control_ll_enc_req_ivm,  tvb, offset + 19, 4, TRUE);
+}
+
+void
 dissect_ll_control(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset, guint8 length)
 {
 	guint8 ll_control_opcode;
 
+	proto_tree_add_item(tree, hf_btle_ll_control_opcode, tvb, offset, 1, ENC_NA);
+
 	ll_control_opcode = tvb_get_guint8(tvb, offset);
-	if (ll_control_opcode <= 0x0d)
+	if (ll_control_opcode <= 0x0d) {
 		col_add_fstr(pinfo->cinfo, COL_INFO, "LL Control PDU: %s",
 				ll_control_opcodes[ll_control_opcode].strptr);
-	else
-		col_set_str(pinfo->cinfo, COL_INFO, "LL Control PDU: unknown");
 
-	proto_tree_add_item(tree, hf_btle_ll_control_opcode, tvb, offset, 1, ENC_NA);
-	if (length > 1)
-		proto_tree_add_item(tree, hf_btle_ll_control_data, tvb, offset + 1, length-1, TRUE);
+		switch (ll_control_opcode) {
+			case 0x03: // LL_ENC_REQ
+				dissect_ll_enc_req(tree, tvb, offset);
+				break;
+			default:
+				if (length > 1)
+					proto_tree_add_item(tree, hf_btle_ll_control_data, tvb, offset + 1, length-1, TRUE);
+				break;
+		}
+	} else {
+		col_set_str(pinfo->cinfo, COL_INFO, "LL Control PDU: unknown");
+		if (length > 1)
+			proto_tree_add_item(tree, hf_btle_ll_control_data, tvb, offset + 1, length-1, TRUE);
+	}
 }
 
 /* dissect a packet */
@@ -521,6 +553,32 @@ proto_register_btle(void)
 			NULL, HFILL }
 		},
 
+		{ &hf_btle_ll_control_ll_enc_req,
+			{ "Encryption Request", "btle.ll_enc_req",
+			FT_NONE, BASE_NONE, NULL, 0x0,
+			NULL, HFILL }
+		},
+		{ &hf_btle_ll_control_ll_enc_req_rand,
+			{ "Rand", "btle.ll_enc_req.rand",
+			FT_BYTES, BASE_NONE, NULL, 0x0,
+			NULL, HFILL }
+		},
+		{ &hf_btle_ll_control_ll_enc_req_ediv,
+			{ "EDIV", "btle.ll_enc_req.ediv",
+			FT_BYTES, BASE_NONE, NULL, 0x0,
+			"Encrypted Diversifier", HFILL }
+		},
+		{ &hf_btle_ll_control_ll_enc_req_skdm,
+			{ "SDKm", "btle.ll_enc_req.skdm",
+			FT_BYTES, BASE_NONE, NULL, 0x0,
+			"Master's Session Key Identifier", HFILL }
+		},
+		{ &hf_btle_ll_control_ll_enc_req_ivm,
+			{ "IVm", "btle.ll_enc_req.ivm",
+			FT_BYTES, BASE_NONE, NULL, 0x0,
+			"Master's Initialization Vector", HFILL }
+		},
+
 		{ &hf_btle_crc,
 			{ "CRC", "btle.crc",
 			FT_UINT24, BASE_HEX, NULL, 0x0,
@@ -534,6 +592,7 @@ proto_register_btle(void)
 		&ett_btle_pkthdr,
 		&ett_btle_connect,
 		&ett_btle_data,
+		&ett_ll_enc_req,
 	};
 
 	/* register the protocol name and description */
