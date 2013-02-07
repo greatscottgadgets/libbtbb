@@ -255,7 +255,7 @@ proto_register_btsm(void)
 		},
 		{ &hf_btsm_pairing_request_mitm,
 			{ "MITM Protection", "btsm.pairing_request.auth_req.mitm",
-			FT_BOOLEAN, BASE_NONE, TFS(&tfs_set_notset), 0x0,
+			FT_BOOLEAN, BASE_NONE, TFS(&tfs_yes_no), 0x0,
 			NULL, HFILL }
 		},
 		{ &hf_btsm_pairing_request_bonding_flags,
@@ -302,7 +302,7 @@ proto_register_btsm(void)
 		},
 		{ &hf_btsm_pairing_response_mitm,
 			{ "MITM Protection", "btsm.pairing_response.auth_req.mitm",
-			FT_BOOLEAN, BASE_NONE, TFS(&tfs_set_notset), 0x0,
+			FT_BOOLEAN, BASE_NONE, TFS(&tfs_yes_no), 0x0,
 			NULL, HFILL }
 		},
 		{ &hf_btsm_pairing_response_bonding_flags,
