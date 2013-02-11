@@ -1,6 +1,6 @@
 /* -*- c -*- */
 /*
- * Copyright 2007 - 2010 Dominic Spill, Michael Ossmann                                                                                            
+ * Copyright 2007 - 2013 Dominic Spill, Michael Ossmann, Will Code
  * 
  * This file is part of libbtbb
  * 

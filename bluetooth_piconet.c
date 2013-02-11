@@ -1,6 +1,6 @@
 /* -*- c -*- */
 /*
- * Copyright 2007 - 2010 Dominic Spill, Michael Ossmann                                                                                            
+ * Copyright 2007 - 2013 Dominic Spill, Michael Ossmann, Will Code
  * 
  * This file is part of libbtbb
  * 
@@ -19,10 +19,6 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "bluetooth_packet.h"
 #include "bluetooth_piconet.h"
@@ -561,7 +557,7 @@ int btbb_winnow(btbb_piconet *pn)
 int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 {
 	uint8_t UAP;
-	int count, retval, first_clock = 0;
+	int count, crc_chk, first_clock = 0;
 
 	int starting = 0;
 	int remaining = 0;
@@ -592,18 +588,18 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 			int clock = (count + clkn - pn->first_pkt_time) % 64;
 			starting++;
 			UAP = try_clock(clock, pkt);
-			retval = -1;
+			crc_chk = -1;
 
 			/* if this is the first packet: populate the candidate list */
 			/* if not: check CRCs if UAPs match */
 			if (!pn->got_first_packet || UAP == pn->clock6_candidates[count])
-				retval = crc_check(clock, pkt);
+				crc_chk = crc_check(clock, pkt);
 
 			if (btbb_piconet_get_flag(pn, BTBB_UAP_VALID) &&
 			    (UAP != pn->UAP))
-				retval = -1;
+				crc_chk = -1;
 
-			switch(retval) {
+			switch(crc_chk) {
 			case -1: /* UAP mismatch */
 			case 0: /* CRC failure */
 				pn->clock6_candidates[count] = -1;
@@ -745,7 +741,66 @@ void btbb_print_afh_map(btbb_piconet *pn) {
 	printf("\n");	
 }
 
+/* Container for survey piconets */
+typedef struct {
+    uint32_t key; /* LAP */
+    btbb_piconet *pn;             
+    UT_hash_handle hh;
+} survey_hash;
+
+static survey_hash *piconet_survey = NULL;
+
+/* A bit of a hack to make it work for now */
+static int survey_mode = 0;
+int btbb_init_survey() {
+	survey_mode = 1;
+	return 0;
+}
+
+/* Check for existing piconets in survey results */
+btbb_piconet *get_piconet(uint32_t lap)
+{
+	survey_hash *s;
+	btbb_piconet *pn;
+	HASH_FIND(hh, piconet_survey, &lap, 4, s);
+
+	if (s == NULL) {
+		pn = btbb_piconet_new();
+		btbb_piconet_set_lap(pn, lap);
+
+		s = malloc(sizeof(survey_hash));
+		s->key = lap;
+		s->pn = pn;
+		HASH_ADD(hh, piconet_survey, key, 4, s);
+	} else {
+		pn = s->pn;
+	}
+	return pn;
+}
+
+/* Iterate over survey results */
+btbb_piconet *btbb_next_survey_result(int remove) {
+	btbb_piconet *pn = NULL;
+	survey_hash *tmp;
+
+	if (piconet_survey != NULL) {
+		pn = piconet_survey->pn;
+		tmp = piconet_survey;
+		piconet_survey = piconet_survey->hh.next;
+		free(tmp);
+	}
+	return pn;
+}
+
 int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
+	if (survey_mode) {
+		pn = get_piconet(btbb_packet_get_lap(pkt));
+		btbb_piconet_set_channel_seen(pn, pkt->channel);
+		if(btbb_header_present(pkt) && !btbb_piconet_get_flag(pn, BTBB_UAP_VALID))
+			btbb_uap_from_header(pkt, pn);
+		return 0;
+	}
+
 	/* If piconet structure is given, a LAP is given, and packet
 	 * header is readable, do further analysis. If UAP has not yet
 	 * been determined, attempt to calculate it from headers. Once
@@ -782,4 +837,15 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 		}
 	}
 	return 0;
+}
+
+/* Print AFH map from observed packets */
+void btbb_piconet_print_afh_map(btbb_piconet *pn) {
+	uint8_t *afh_map, i;
+	afh_map = pn->afh_map;
+
+	/* Printed ch78 -> ch0 */
+	printf("\tAFH Map: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+		   afh_map[9], afh_map[8], afh_map[7], afh_map[6], afh_map[5],
+		   afh_map[4], afh_map[3], afh_map[2], afh_map[1], afh_map[0]);
 }

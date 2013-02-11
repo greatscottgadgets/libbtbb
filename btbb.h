@@ -1,6 +1,6 @@
 /* -*- c -*- */
 /*
- * Copyright 2007 - 2012 Dominic Spill, Michael Ossmann                                                                                            
+ * Copyright 2007 - 2013 Dominic Spill, Michael Ossmann, Will Code
  * 
  * This file is part of libbtbb
  * 
@@ -66,8 +66,7 @@ typedef struct btbb_packet btbb_packet;
  * packets. Even a limit of 5 results in a syndrome table of several
  * hundred MB and lots of noise. For embedded targets, a value of 2 is
  * reasonable. */
-int
-btbb_init(int max_ac_errors);
+int btbb_init(int max_ac_errors);
 
 btbb_packet *btbb_packet_new(void);
 void btbb_packet_ref(btbb_packet *pkt);
@@ -157,6 +156,7 @@ int btbb_piconet_get_flag(btbb_piconet *pn, int flag);
 void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel);
 uint8_t *btbb_piconet_get_afh_map(btbb_piconet *pn);
 
+/* Extract as much information (LAP/UAP/CLK) as possible from received packet */
 int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn);
 
 /* use packet headers to determine UAP */
@@ -179,5 +179,12 @@ void try_hop(btbb_packet *pkt, btbb_piconet *pn);
 
 /* narrow a list of candidate clock values based on all observed hops */
 int btbb_winnow(btbb_piconet *pn);
+
+int btbb_init_survey(void);
+/* Iterate over survey results - optionally remove elements */
+btbb_piconet *btbb_next_survey_result(int remove);
+
+/* Print AFH map from observed packets */
+void btbb_piconet_print_afh_map(btbb_piconet *pn);
 
 #endif /* INCLUDED_BTBB_H */
