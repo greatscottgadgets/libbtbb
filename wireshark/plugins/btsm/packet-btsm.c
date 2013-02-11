@@ -54,6 +54,7 @@ static int hf_btsm_pairing_response_initiator_key_distribution = -1;
 static int hf_btsm_pairing_response_responder_key_distribution = -1;
 static int hf_btsm_pairing_confirm_confirm = -1;
 static int hf_btsm_pairing_random_random = -1;
+static int hf_btsm_encryption_info_ltk = -1;
 
 static const value_string commands[] = {
 	{ 0x00, "Reserved" },
@@ -150,6 +151,12 @@ dissect_pairing_random(tvbuff_t *tvb, proto_tree *tree)
 	proto_tree_add_item(tree, hf_btsm_pairing_random_random, tvb, 1, 16, TRUE);
 }
 
+static void
+dissect_encryption_info(tvbuff_t *tvb, proto_tree *tree)
+{
+	proto_tree_add_item(tree, hf_btsm_encryption_info_ltk, tvb, 1, 16, TRUE);
+}
+
 /* dissect a packet */
 static void
 dissect_btsm(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
@@ -175,7 +182,7 @@ dissect_btsm(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 	if (tree) {
 
 		/* create display subtree for the protocol */
-		btsm_item = proto_tree_add_item(tree, proto_btsm, tvb, 0, -1, TRUE);
+		btsm_item = proto_tree_add_item(tree, proto_btsm, tvb, 0, tvb_length(tvb), TRUE);
 		btsm_tree = proto_item_add_subtree(btsm_item, ett_btsm);
 
 		proto_tree_add_item(btsm_tree, hf_btsm_command, tvb, 0, 1, TRUE);
@@ -201,6 +208,9 @@ dissect_btsm(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 				break;
 			case (0x4):
 				dissect_pairing_random(tvb, btsm_tree);
+				break;
+			case (0x6):
+				dissect_encryption_info(tvb, btsm_tree);
 				break;
 			default:
 				break;
@@ -341,7 +351,12 @@ proto_register_btsm(void)
 			NULL, HFILL }
 		},
 
-
+		// encryption info LTK
+		{ &hf_btsm_encryption_info_ltk,
+			{ "LTK", "btsm.encryption_info.ltk",
+			FT_BYTES, BASE_NONE, NULL, 0x0,
+			NULL, HFILL }
+		},
 
 	};
 
