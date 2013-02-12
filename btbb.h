@@ -133,7 +133,9 @@ uint8_t btbb_piconet_get_uap(btbb_piconet *pn);
 void btbb_piconet_set_lap(btbb_piconet *pn, uint32_t lap);
 uint32_t btbb_piconet_get_lap(btbb_piconet *pn);
 uint16_t btbb_piconet_get_nap(btbb_piconet *pn);
+
 int btbb_piconet_get_clk_offset(btbb_piconet *pn);
+void btbb_piconet_set_clk_offset(btbb_piconet *pn, int clk_offset);
 
 void btbb_piconet_set_flag(btbb_piconet *pn, int flag, int val);
 int btbb_piconet_get_flag(btbb_piconet *pn, int flag);

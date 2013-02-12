@@ -102,6 +102,11 @@ int btbb_piconet_get_clk_offset(btbb_piconet *pn)
 	return pn->clk_offset;
 }
 
+void btbb_piconet_set_clk_offset(btbb_piconet *pn, int clk_offset)
+{
+	pn->clk_offset = clk_offset;
+}
+
 void btbb_piconet_set_afh_map(btbb_piconet *pn, uint8_t *afh_map) {
 	int i;
 	// DGS: Unroll this?
