@@ -102,6 +102,13 @@ int btbb_piconet_get_clk_offset(btbb_piconet *pn)
 	return pn->clk_offset;
 }
 
+void btbb_piconet_set_afh_map(btbb_piconet *pn, uint8_t *afh_map) {
+	int i;
+	// DGS: Unroll this?
+	for(i=0; i<10; i++)
+		pn->afh_map[i] = afh_map[i];
+}
+
 uint8_t *btbb_piconet_get_afh_map(btbb_piconet *pn) {
 	return pn->afh_map;
 }
@@ -732,13 +739,15 @@ int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)
 	return rv;
 }
 
+/* Print AFH map from observed packets */
 void btbb_print_afh_map(btbb_piconet *pn) {
-	// Print AFH map from piconet
-	int i;
-	printf("\tAFH Map: 0x");
-	for(i=0; i<10; i++)
-		printf("%02x", pn->afh_map[i]);
-	printf("\n");	
+	uint8_t *afh_map, i;
+	afh_map = pn->afh_map;
+
+	/* Printed ch78 -> ch0 */
+	printf("\tAFH Map=0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+		   afh_map[9], afh_map[8], afh_map[7], afh_map[6], afh_map[5],
+		   afh_map[4], afh_map[3], afh_map[2], afh_map[1], afh_map[0]);
 }
 
 /* Container for survey piconets */
@@ -750,7 +759,7 @@ typedef struct {
 
 static survey_hash *piconet_survey = NULL;
 
-/* A bit of a hack to make it work for now */
+/* A bit of a hack? to set survey mode */
 static int survey_mode = 0;
 int btbb_init_survey() {
 	survey_mode = 1;
@@ -778,8 +787,8 @@ btbb_piconet *get_piconet(uint32_t lap)
 	return pn;
 }
 
-/* Iterate over survey results */
-btbb_piconet *btbb_next_survey_result(int remove) {
+/* Destructively iterate over survey results */
+btbb_piconet *btbb_next_survey_result() {
 	btbb_piconet *pn = NULL;
 	survey_hash *tmp;
 
@@ -837,15 +846,4 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 		}
 	}
 	return 0;
-}
-
-/* Print AFH map from observed packets */
-void btbb_piconet_print_afh_map(btbb_piconet *pn) {
-	uint8_t *afh_map, i;
-	afh_map = pn->afh_map;
-
-	/* Printed ch78 -> ch0 */
-	printf("\tAFH Map: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-		   afh_map[9], afh_map[8], afh_map[7], afh_map[6], afh_map[5],
-		   afh_map[4], afh_map[3], afh_map[2], afh_map[1], afh_map[0]);
 }

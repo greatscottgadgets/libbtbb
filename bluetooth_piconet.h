@@ -23,6 +23,12 @@
 #define INCLUDED_BLUETOOTH_PICONET_H
 #include "btbb.h"
 
+/* maximum number of hops to remember */
+#define MAX_PATTERN_LENGTH 1000
+
+/* number of channels in use */
+#define BT_NUM_CHANNELS 79
+
 typedef struct btbb_piconet {
 
 	uint32_t refcount;
@@ -117,5 +123,7 @@ char single_hop(int clock, btbb_piconet *pnet);
 
 /* look up channel for a particular hop */
 char hop(int clock, btbb_piconet *pnet);
+
+void try_hop(btbb_packet *pkt, btbb_piconet *pn);
 
 #endif /* INCLUDED_BLUETOOTH_PICONET_H */

@@ -24,21 +24,6 @@
 
 #include <stdint.h>
 
-/* maximum number of symbols */
-#define MAX_SYMBOLS 3125
-
-/* maximum number of payload bits */
-#define MAX_PAYLOAD_LENGTH 2744
-
-/* minimum header bit errors to indicate that this is an ID packet */
-#define ID_THRESHOLD 5
-
-/* maximum number of hops to remember */
-#define MAX_PATTERN_LENGTH 1000
-
-/* number of channels in use */
-#define BT_NUM_CHANNELS 79
-
 #define BTBB_WHITENED    0
 #define BTBB_NAP_VALID   1
 #define BTBB_UAP_VALID   2
@@ -154,6 +139,7 @@ void btbb_piconet_set_flag(btbb_piconet *pn, int flag, int val);
 int btbb_piconet_get_flag(btbb_piconet *pn, int flag);
 
 void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel);
+void btbb_piconet_set_afh_map(btbb_piconet *pn, uint8_t *afh_map);
 uint8_t *btbb_piconet_get_afh_map(btbb_piconet *pn);
 
 /* Extract as much information (LAP/UAP/CLK) as possible from received packet */
@@ -175,16 +161,11 @@ void btbb_init_piconet(btbb_piconet *pn);
 /* returns number of initial candidates for CLK1-27 */
 int btbb_init_hop_reversal(int aliased, btbb_piconet *pn);
 
-void try_hop(btbb_packet *pkt, btbb_piconet *pn);
-
 /* narrow a list of candidate clock values based on all observed hops */
 int btbb_winnow(btbb_piconet *pn);
 
 int btbb_init_survey(void);
-/* Iterate over survey results - optionally remove elements */
-btbb_piconet *btbb_next_survey_result(int remove);
-
-/* Print AFH map from observed packets */
-void btbb_piconet_print_afh_map(btbb_piconet *pn);
+/* Destructively iterate over survey results - optionally remove elements */
+btbb_piconet *btbb_next_survey_result(void);
 
 #endif /* INCLUDED_BTBB_H */

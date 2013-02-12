@@ -1,7 +1,6 @@
 /* -*- c -*- */
 /*
- * Copyright 2007 - 2010 Dominic Spill, Michael Ossmann                                                                                            
- * Copyright 2005, 2006 Free Software Foundation, Inc.
+ * Copyright 2007 - 2013 Dominic Spill, Michael Ossmann, Will Code
  * 
  * This file is part of libbtbb
  * 
@@ -20,10 +19,6 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>

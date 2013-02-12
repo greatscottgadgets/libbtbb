@@ -1,7 +1,6 @@
 /* -*- c -*- */
 /*
- * Copyright 2007 - 2010 Dominic Spill, Michael Ossmann                                                                                            
- * Copyright 2005, 2006 Free Software Foundation, Inc.
+ * Copyright 2007 - 2013 Dominic Spill, Michael Ossmann, Will Code
  * 
  * This file is part of libbtbb
  * 
@@ -23,6 +22,15 @@
 #ifndef INCLUDED_BLUETOOTH_PACKET_H
 #define INCLUDED_BLUETOOTH_PACKET_H
 #include "btbb.h"
+
+/* maximum number of symbols */
+#define MAX_SYMBOLS 3125
+
+/* maximum number of payload bits */
+#define MAX_PAYLOAD_LENGTH 2744
+
+/* minimum header bit errors to indicate that this is an ID packet */
+#define ID_THRESHOLD 5
 
 typedef struct btbb_packet {
 
