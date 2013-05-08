@@ -138,7 +138,6 @@ void le_print(le_packet_t *p) {
 		switch(p->adv_type) {
 			case ADV_IND:
 				_dump_addr("AdvA:  ", p->symbols, 6, p->adv_tx_add);
-				_dump_addr("InitA: ", p->symbols, 12, p->adv_rx_add);
 				break;
 			case SCAN_REQ:
 				_dump_addr("ScanA: ", p->symbols, 6, p->adv_tx_add);
