@@ -146,7 +146,7 @@ void le_print(le_packet_t *p) {
 			case SCAN_RSP:
 				_dump_addr("AdvA:  ", p->symbols, 6, p->adv_tx_add);
 				printf("    ScanRspData:");
-				for (i = 0; i < p->length - 12; ++i)
+				for (i = 0; i < p->length - 6; ++i)
 					printf(" %02x", p->symbols[12+i]);
 				printf("\n");
 				break;
