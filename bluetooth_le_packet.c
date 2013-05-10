@@ -113,6 +113,69 @@ static void _dump_32(char *name, uint8_t *buf, int offset) {
 	printf("    %s%08x\n", name, val);
 }
 
+// Refer to pg 1735 of Bluetooth Core Spec 4.0
+static void _dump_scan_rsp_data(uint8_t *buf, int len) {
+	int pos = 0;
+	int sublen, i;
+	uint8_t type;
+	uint16_t val;
+	char *cval;
+
+	while (pos < len) {
+		sublen = buf[pos];
+		++pos;
+		if (pos + sublen > len) {
+			printf("Error: attempt to read past end of buffer (%d + %d > %d)\n", pos, sublen, len);
+			return;
+		}
+		if (sublen == 0) {
+			printf("Early return due to 0 length\n");
+			return;
+		}
+		type = buf[pos];
+		printf("        Type %02x", type);
+		switch (type) {
+			case 0x09:
+				printf(" (Complete Local Name)\n");
+				printf("           ");
+				for (i = 1; i < sublen; ++i)
+					printf("%c", isprint(buf[pos+i]) ? buf[pos+i] : '.');
+				printf("\n");
+				break;
+			case 0x0a:
+				printf(" (Tx Power Level)\n");
+				printf("           ");
+				if (sublen-1 == 1) {
+					cval = (char *)&buf[pos+1];
+					printf("%d dBm\n", *cval);
+				} else {
+					printf("Wrong length (%d, should be 1)\n", sublen-1);
+				}
+				break;
+			case 0x12:
+				printf(" (Slave Connection Interval Range)\n");
+				printf("           ");
+				if (sublen-1 == 4) {
+					val = (buf[pos+2] << 8) | buf[pos+1];
+					printf("(%0.2f, ", val * 1.25);
+					val = (buf[pos+4] << 8) | buf[pos+3];
+					printf("%0.2f) ms\n", val * 1.25);
+				}
+				else {
+					printf("Wrong length (%d, should be 4)\n", sublen-1);
+				}
+				break;
+			default:
+				printf("\n");
+				printf("           ");
+				for (i = 1; i < sublen; ++i)
+					printf(" %02x", buf[pos+i]);
+				printf("\n");
+		}
+		pos += sublen;
+	}
+}
+
 void le_print(le_packet_t *p) {
 	int i;
 	if (le_packet_is_data(p)) {
@@ -149,6 +212,7 @@ void le_print(le_packet_t *p) {
 				for (i = 0; i < p->length - 6; ++i)
 					printf(" %02x", p->symbols[12+i]);
 				printf("\n");
+				_dump_scan_rsp_data(&p->symbols[12], p->length-6);
 				break;
 			case CONNECT_REQ:
 				_dump_addr("InitA: ", p->symbols, 6, p->adv_tx_add);
