@@ -113,10 +113,28 @@ static void _dump_32(char *name, uint8_t *buf, int offset) {
 	printf("    %s%08x\n", name, val);
 }
 
+static void _dump_uuid(uint8_t *uuid) {
+	int i;
+	for (i = 0; i < 4; ++i)
+		printf("%02x", uuid[i]);
+	printf("-");
+	for (i = 4; i < 6; ++i)
+		printf("%02x", uuid[i]);
+	printf("-");
+	for (i = 6; i < 8; ++i)
+		printf("%02x", uuid[i]);
+	printf("-");
+	for (i = 8; i < 10; ++i)
+		printf("%02x", uuid[i]);
+	printf("-");
+	for (i = 10; i < 16; ++i)
+		printf("%02x", uuid[i]);
+}
+
 // Refer to pg 1735 of Bluetooth Core Spec 4.0
 static void _dump_scan_rsp_data(uint8_t *buf, int len) {
 	int pos = 0;
-	int sublen, i;
+	int sublen, i, j;
 	uint8_t type;
 	uint16_t val;
 	char *cval;
@@ -135,6 +153,30 @@ static void _dump_scan_rsp_data(uint8_t *buf, int len) {
 		type = buf[pos];
 		printf("        Type %02x", type);
 		switch (type) {
+			case 0x01:
+				printf(" (Flags)\n");
+				printf("           ");
+				for (i = 0; i < 8; ++i)
+					printf("%d", buf[pos+1] & (1 << (7-i)) ? 1 : 0);
+				printf("\n");
+				break;
+			case 0x07:
+				printf(" (128-bit Service UUIDs)\n");
+				if ((sublen - 1) % 16 == 0) {
+					uint8_t uuid[16];
+					for (i = 0; i < sublen - 1; ++i) {
+						uuid[15 - (i % 16)] = buf[pos+1+i];
+						if ((i & 15) == 15) {
+							printf("           ");
+							_dump_uuid(uuid);
+							printf("\n");
+						}
+					}
+				}
+				else {
+					printf("Wrong length (%d, must be divisible by 16)\n", sublen-1);
+				}
+				break;
 			case 0x09:
 				printf(" (Complete Local Name)\n");
 				printf("           ");
@@ -201,6 +243,13 @@ void le_print(le_packet_t *p) {
 		switch(p->adv_type) {
 			case ADV_IND:
 				_dump_addr("AdvA:  ", p->symbols, 6, p->adv_tx_add);
+				if (p->length-6 > 0) {
+					printf("    AdvData:");
+					for (i = 0; i < p->length - 6; ++i)
+						printf(" %02x", p->symbols[12+i]);
+					printf("\n");
+					_dump_scan_rsp_data(&p->symbols[12], p->length-6);
+				}
 				break;
 			case SCAN_REQ:
 				_dump_addr("ScanA: ", p->symbols, 6, p->adv_tx_add);
