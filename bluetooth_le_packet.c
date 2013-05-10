@@ -207,6 +207,23 @@ static void _dump_scan_rsp_data(uint8_t *buf, int len) {
 					printf("Wrong length (%d, should be 4)\n", sublen-1);
 				}
 				break;
+			case 0x16:
+				printf(" (Service Data)\n");
+				printf("           ");
+				if (sublen-1 >= 2) {
+					val = (buf[pos+2] << 8) | buf[pos+1];
+					printf("UUID: %02x", val);
+					if (sublen-1 > 2) {
+						printf(", Additional:");
+						for (i = 3; i < sublen; ++i)
+							printf(" %02x", buf[pos+i]);
+					}
+					printf("\n");
+				}
+				else {
+					printf("Wrong length (%d, should be >= 2)\n", sublen-1);
+				}
+				break;
 			default:
 				printf("\n");
 				printf("           ");
