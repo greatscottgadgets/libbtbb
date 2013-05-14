@@ -126,11 +126,145 @@ static void _dump_32(char *name, uint8_t *buf, int offset) {
 	printf("    %s%08x\n", name, val);
 }
 
+static void _dump_uuid(uint8_t *uuid) {
+	int i;
+	for (i = 0; i < 4; ++i)
+		printf("%02x", uuid[i]);
+	printf("-");
+	for (i = 4; i < 6; ++i)
+		printf("%02x", uuid[i]);
+	printf("-");
+	for (i = 6; i < 8; ++i)
+		printf("%02x", uuid[i]);
+	printf("-");
+	for (i = 8; i < 10; ++i)
+		printf("%02x", uuid[i]);
+	printf("-");
+	for (i = 10; i < 16; ++i)
+		printf("%02x", uuid[i]);
+}
+
+// Refer to pg 1735 of Bluetooth Core Spec 4.0
+static void _dump_scan_rsp_data(uint8_t *buf, int len) {
+	int pos = 0;
+	int sublen, i, j;
+	uint8_t type;
+	uint16_t val;
+	char *cval;
+
+	while (pos < len) {
+		sublen = buf[pos];
+		++pos;
+		if (pos + sublen > len) {
+			printf("Error: attempt to read past end of buffer (%d + %d > %d)\n", pos, sublen, len);
+			return;
+		}
+		if (sublen == 0) {
+			printf("Early return due to 0 length\n");
+			return;
+		}
+		type = buf[pos];
+		printf("        Type %02x", type);
+		switch (type) {
+			case 0x01:
+				printf(" (Flags)\n");
+				printf("           ");
+				for (i = 0; i < 8; ++i)
+					printf("%d", buf[pos+1] & (1 << (7-i)) ? 1 : 0);
+				printf("\n");
+				break;
+			case 0x07:
+				printf(" (128-bit Service UUIDs)\n");
+				if ((sublen - 1) % 16 == 0) {
+					uint8_t uuid[16];
+					for (i = 0; i < sublen - 1; ++i) {
+						uuid[15 - (i % 16)] = buf[pos+1+i];
+						if ((i & 15) == 15) {
+							printf("           ");
+							_dump_uuid(uuid);
+							printf("\n");
+						}
+					}
+				}
+				else {
+					printf("Wrong length (%d, must be divisible by 16)\n", sublen-1);
+				}
+				break;
+			case 0x09:
+				printf(" (Complete Local Name)\n");
+				printf("           ");
+				for (i = 1; i < sublen; ++i)
+					printf("%c", isprint(buf[pos+i]) ? buf[pos+i] : '.');
+				printf("\n");
+				break;
+			case 0x0a:
+				printf(" (Tx Power Level)\n");
+				printf("           ");
+				if (sublen-1 == 1) {
+					cval = (char *)&buf[pos+1];
+					printf("%d dBm\n", *cval);
+				} else {
+					printf("Wrong length (%d, should be 1)\n", sublen-1);
+				}
+				break;
+			case 0x12:
+				printf(" (Slave Connection Interval Range)\n");
+				printf("           ");
+				if (sublen-1 == 4) {
+					val = (buf[pos+2] << 8) | buf[pos+1];
+					printf("(%0.2f, ", val * 1.25);
+					val = (buf[pos+4] << 8) | buf[pos+3];
+					printf("%0.2f) ms\n", val * 1.25);
+				}
+				else {
+					printf("Wrong length (%d, should be 4)\n", sublen-1);
+				}
+				break;
+			case 0x16:
+				printf(" (Service Data)\n");
+				printf("           ");
+				if (sublen-1 >= 2) {
+					val = (buf[pos+2] << 8) | buf[pos+1];
+					printf("UUID: %02x", val);
+					if (sublen-1 > 2) {
+						printf(", Additional:");
+						for (i = 3; i < sublen; ++i)
+							printf(" %02x", buf[pos+i]);
+					}
+					printf("\n");
+				}
+				else {
+					printf("Wrong length (%d, should be >= 2)\n", sublen-1);
+				}
+				break;
+			default:
+				printf("\n");
+				printf("           ");
+				for (i = 1; i < sublen; ++i)
+					printf(" %02x", buf[pos+i]);
+				printf("\n");
+		}
+		pos += sublen;
+	}
+}
+
 void le_print(le_packet_t *p) {
 	int i;
 	if (le_packet_is_data(p)) {
+		int llid = p->symbols[4] & 0x3;
+		static const char *llid_str[] = {
+			"Reserved",
+			"LL Data PDU / empty or L2CAP continuation",
+			"LL Data PDU / L2CAP start",
+			"LL Control PDU",
+		};
+
 		printf("Data / AA %08x / %2d bytes\n", p->access_address, p->length);
 		printf("    Channel Index: %d\n", p->channel_idx);
+		printf("    LLID: %d / %s\n", llid, llid_str[llid]);
+		printf("    NESN: %d  SN: %d  MD: %d\n", (p->symbols[4] >> 2) & 1,
+												 (p->symbols[4] >> 3) & 1,
+												 (p->symbols[4] >> 4) & 1);
 	} else {
 		printf("Advertising / AA %08x / %2d bytes\n", p->access_address, p->length);
 		printf("    Channel Index: %d\n", p->channel_idx);
@@ -139,7 +273,13 @@ void le_print(le_packet_t *p) {
 		switch(p->adv_type) {
 			case ADV_IND:
 				_dump_addr("AdvA:  ", p->symbols, 6, p->adv_tx_add);
-				_dump_addr("InitA: ", p->symbols, 12, p->adv_rx_add);
+				if (p->length-6 > 0) {
+					printf("    AdvData:");
+					for (i = 0; i < p->length - 6; ++i)
+						printf(" %02x", p->symbols[12+i]);
+					printf("\n");
+					_dump_scan_rsp_data(&p->symbols[12], p->length-6);
+				}
 				break;
 			case SCAN_REQ:
 				_dump_addr("ScanA: ", p->symbols, 6, p->adv_tx_add);
@@ -148,9 +288,10 @@ void le_print(le_packet_t *p) {
 			case SCAN_RSP:
 				_dump_addr("AdvA:  ", p->symbols, 6, p->adv_tx_add);
 				printf("    ScanRspData:");
-				for (i = 0; i < p->length - 12; ++i)
+				for (i = 0; i < p->length - 6; ++i)
 					printf(" %02x", p->symbols[12+i]);
 				printf("\n");
+				_dump_scan_rsp_data(&p->symbols[12], p->length-6);
 				break;
 			case CONNECT_REQ:
 				_dump_addr("InitA: ", p->symbols, 6, p->adv_tx_add);
@@ -174,16 +315,16 @@ void le_print(le_packet_t *p) {
 						CONNECT_SCA[p->symbols[37] >> 5]);
 				break;
 		}
-
-		printf("\n");
-		printf("    Data: ");
-		for (i = 6; i < 6 + p->length; ++i)
-			printf(" %02x", p->symbols[i]);
-		printf("\n");
-
-		printf("    CRC:  ");
-		for (i = 0; i < 3; ++i)
-			printf(" %02x", p->symbols[6 + p->length + i]);
-		printf("\n");
 	}
+
+	printf("\n");
+	printf("    Data: ");
+	for (i = 6; i < 6 + p->length; ++i)
+		printf(" %02x", p->symbols[i]);
+	printf("\n");
+
+	printf("    CRC:  ");
+	for (i = 0; i < 3; ++i)
+		printf(" %02x", p->symbols[6 + p->length + i]);
+	printf("\n");
 }
