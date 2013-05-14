@@ -27,6 +27,7 @@
 
 #include <string.h>
 #include "bluetooth_le_packet.h"
+#include <ctype.h>
 
 // count of objects in an array, shamelessly stolen from Chrome
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
@@ -134,7 +135,7 @@ static void _dump_uuid(uint8_t *uuid) {
 // Refer to pg 1735 of Bluetooth Core Spec 4.0
 static void _dump_scan_rsp_data(uint8_t *buf, int len) {
 	int pos = 0;
-	int sublen, i, j;
+	int sublen, i;
 	uint8_t type;
 	uint16_t val;
 	char *cval;
