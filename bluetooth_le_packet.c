@@ -27,6 +27,7 @@
 
 #include <string.h>
 #include "bluetooth_le_packet.h"
+#include <ctype.h>
 
 /* string representations of advertising packet type */
 static const char *ADV_TYPE_NAMES[] = {
@@ -147,7 +148,7 @@ static void _dump_uuid(uint8_t *uuid) {
 // Refer to pg 1735 of Bluetooth Core Spec 4.0
 static void _dump_scan_rsp_data(uint8_t *buf, int len) {
 	int pos = 0;
-	int sublen, i, j;
+	int sublen, i;
 	uint8_t type;
 	uint16_t val;
 	char *cval;
