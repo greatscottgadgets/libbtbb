@@ -43,7 +43,7 @@ $(LIB_FILE): $(OBJECT_FILES)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(SONAME) -o $(LIB_FILE) $(OBJECT_FILES)
 
 osx: $(OBJECT_FILES)
-	$(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl -install_name $(INSTALL_DIR)/$(LIB_FILE) -o $(LIB_FILE) $(OBJECT_FILES)
+	$(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl,-install_name,$(INSTALL_DIR)/$(LIB_FILE) -o $(LIB_FILE) $(OBJECT_FILES)
 
 $(STATIC_LIB_FILE): $(LIB_FILE)
 	$(AR) rcs $(STATIC_LIB_FILE) $(OBJECT_FILES)
