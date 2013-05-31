@@ -78,6 +78,7 @@ int btbb_packet_get_flag(btbb_packet *pkt, int flag);
 uint32_t btbb_packet_get_lap(btbb_packet *pkt);
 void btbb_packet_set_uap(btbb_packet *pkt, uint8_t uap);
 uint8_t btbb_packet_get_uap(btbb_packet *pkt);
+uint16_t btbb_packet_get_nap(btbb_packet *pkt);
 
 uint8_t btbb_packet_get_channel(btbb_packet *pkt);
 uint8_t btbb_packet_get_ac_errors(btbb_packet *pkt);
@@ -97,7 +98,13 @@ int btbb_packet_get_payload_length(btbb_packet* pkt);
 /* Get a pointer to payload. */
 const char *btbb_get_payload(btbb_packet* pkt);
 
-int btbb_packet_get_type(btbb_packet* pkt);
+/* Pack the payload in to bytes */
+int btbb_get_payload_packed(btbb_packet* pkt, char *dst);
+
+uint8_t btbb_packet_get_type(btbb_packet* pkt);
+uint8_t btbb_packet_get_lt_addr(btbb_packet* pkt);
+uint8_t btbb_packet_get_header_flags(btbb_packet* pkt);
+uint8_t btbb_packet_get_hec(btbb_packet *pkt);
 
 /* Generate Sync Word from an LAP */
 uint64_t btbb_gen_syncword(int LAP);

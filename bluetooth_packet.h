@@ -43,8 +43,10 @@ typedef struct btbb_packet {
 	uint16_t NAP;    /* non-significant address part */
 	uint32_t LAP;    /* lower address part found in access code */
 	
-	int packet_type;
+	uint8_t packet_type;
 	uint8_t packet_lt_addr; /* LLID field of payload header (2 bits) */
+	uint8_t packet_flags; /* Flags - FLOW/ARQN/SQEN */
+	uint8_t packet_hec; /* Flags - FLOW/ARQN/SQEN */
 	
 	/* packet header, one bit per char */
 	char packet_header[18];

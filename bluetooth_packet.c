@@ -319,6 +319,11 @@ uint8_t btbb_packet_get_uap(btbb_packet *pkt)
 	return pkt->UAP;
 }
 
+uint16_t btbb_packet_get_nap(btbb_packet *pkt)
+{
+	return pkt->NAP;
+}
+
 uint32_t btbb_packet_get_clkn(btbb_packet *pkt) {
 	return pkt->clkn;
 }
@@ -459,9 +464,32 @@ const char *btbb_get_payload(btbb_packet* pkt)
 	return (const char*) pkt->payload;
 }
 
-int btbb_packet_get_type(btbb_packet* pkt)
+int btbb_get_payload_packed(btbb_packet* pkt, char *dst)
+{
+	int i;
+	for(i=0;i<pkt->payload_length;i++)
+		dst[i] = (char) air_to_host8(&pkt->payload[i*8], 8);
+	return pkt->payload_length;
+}
+
+uint8_t btbb_packet_get_type(btbb_packet* pkt)
 {
 	return pkt->packet_type;
+}
+
+uint8_t btbb_packet_get_lt_addr(btbb_packet* pkt)
+{
+	return pkt->packet_lt_addr;
+}
+
+uint8_t btbb_packet_get_header_flags(btbb_packet* pkt)
+{
+	return pkt->packet_flags;
+}
+
+uint8_t btbb_packet_get_hec(btbb_packet* pkt)
+{
+	return pkt->packet_hec;
 }
 
 /* Compare stream with sync word
@@ -1116,6 +1144,8 @@ int btbb_decode_header(btbb_packet* pkt)
 		if (UAP == pkt->UAP) {
 			pkt->packet_lt_addr = air_to_host8(&pkt->packet_header[0], 3);
 			pkt->packet_type = air_to_host8(&pkt->packet_header[3], 4);
+			pkt->packet_flags = air_to_host8(&pkt->packet_header[7], 3);
+			pkt->packet_hec = hec;
 			return 1;
 		}
 	}
