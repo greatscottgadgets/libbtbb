@@ -51,9 +51,10 @@ btbb_piconet_unref(btbb_piconet *pn)
 		free(pn);
 }
 
-void btbb_init_piconet(btbb_piconet *pn)
+void btbb_init_piconet(btbb_piconet *pn, uint32_t lap)
 {
-	;
+	pn->LAP = lap;
+	btbb_piconet_set_flag(pn, BTBB_LAP_VALID, 1);
 }
 
 void btbb_piconet_set_flag(btbb_piconet *pn, int flag, int val)
@@ -79,12 +80,6 @@ void btbb_piconet_set_uap(btbb_piconet *pn, uint8_t uap)
 uint8_t btbb_piconet_get_uap(btbb_piconet *pn)
 {
 	return pn->UAP;
-}
-
-void btbb_piconet_set_lap(btbb_piconet *pn, uint32_t lap)
-{
-	pn->LAP = lap;
-	btbb_piconet_set_flag(pn, BTBB_LAP_VALID, 1);
 }
 
 uint32_t btbb_piconet_get_lap(btbb_piconet *pn)
@@ -780,7 +775,7 @@ btbb_piconet *get_piconet(uint32_t lap)
 
 	if (s == NULL) {
 		pn = btbb_piconet_new();
-		btbb_piconet_set_lap(pn, lap);
+		btbb_init_piconet(pn, lap);
 
 		s = malloc(sizeof(survey_hash));
 		s->key = lap;

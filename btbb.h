@@ -135,9 +135,11 @@ btbb_piconet *btbb_piconet_new(void);
 void btbb_piconet_ref(btbb_piconet *pn);
 void btbb_piconet_unref(btbb_piconet *pn);
 
+/* initialize the piconet struct */
+void btbb_init_piconet(btbb_piconet *pn, uint32_t lap);
+
 void btbb_piconet_set_uap(btbb_piconet *pn, uint8_t uap);
 uint8_t btbb_piconet_get_uap(btbb_piconet *pn);
-void btbb_piconet_set_lap(btbb_piconet *pn, uint32_t lap);
 uint32_t btbb_piconet_get_lap(btbb_piconet *pn);
 uint16_t btbb_piconet_get_nap(btbb_piconet *pn);
 
@@ -163,8 +165,6 @@ void btbb_print_afh_map(btbb_piconet *pn);
 /* decode a whole packet from the given piconet */
 int btbb_decode(btbb_packet* pkt, btbb_piconet *pn);
 
-/* initialize the piconet struct */
-void btbb_init_piconet(btbb_piconet *pn);
 
 /* initialize the hop reversal process */
 /* returns number of initial candidates for CLK1-27 */
