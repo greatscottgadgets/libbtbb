@@ -41,6 +41,11 @@
 #define BTBB_IS_ALIASED        13
 #define BTBB_FOLLOWING         14
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef struct btbb_packet btbb_packet;
 
 /* Initialize the library. Compute the syndrome. Return 0 on success,
@@ -176,5 +181,9 @@ int btbb_winnow(btbb_piconet *pn);
 int btbb_init_survey(void);
 /* Destructively iterate over survey results - optionally remove elements */
 btbb_piconet *btbb_next_survey_result(void);
+
+#ifdef __cplusplus
+} // __cplusplus defined.
+#endif
 
 #endif /* INCLUDED_BTBB_H */
