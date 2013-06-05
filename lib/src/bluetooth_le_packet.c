@@ -174,8 +174,12 @@ static void _dump_scan_rsp_data(uint8_t *buf, int len) {
 					printf("%d", buf[pos+1] & (1 << (7-i)) ? 1 : 0);
 				printf("\n");
 				break;
+			case 0x06:
+				printf(" (128-bit Service UUIDs, more available)\n");
+				goto print128;
 			case 0x07:
 				printf(" (128-bit Service UUIDs)\n");
+print128:
 				if ((sublen - 1) % 16 == 0) {
 					uint8_t uuid[16];
 					for (i = 0; i < sublen - 1; ++i) {
