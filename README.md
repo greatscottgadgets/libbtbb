@@ -6,8 +6,8 @@ project.  It can be used to extract Bluetooth packet and piconet information
 from Ubertooth devices as well as GR-Bluetooth/USRP.
 
 This code is incomplete, it is still under active development.  Patches and 
-bug reports should be sent to Dominic Spill (dominicgs@gmail.com) or 
-Michael Ossmann (mike@ossmann.com).
+bug reports should be submitted to the bug tracker on SurceForge:
+http://sourceforge.net/p/libbtbb/tickets/
 
 This software has been developed and tested on Linux, it should work on other 
 platforms but this has yet to be tested.
@@ -17,11 +17,13 @@ Build Instructions
 ==================
 
 Libbtbb can be built and installed as follows:
-	$ make
-	$ make install
+    $ mkdir build
+    $ cd build
+    $ cmake ..
+    $ make
+    $ make install
 
-This will install the library to /usr/lib and the headers to /usr/include,
-to install to different locations use:
-	$ make
-	$ INSTALL_DIR=/path/to/install INCLUDE_DIR=/path/to/include make install
+This will install the library to /usr/local/lib and the headers to 
+/usr/local/include, to install to different locations use:
+    $ cmake -DINSTALL_DIR=/path/to/install -DINCLUDE_DIR=/path/to/include ..
 
