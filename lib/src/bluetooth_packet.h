@@ -32,7 +32,7 @@
 /* minimum header bit errors to indicate that this is an ID packet */
 #define ID_THRESHOLD 5
 
-typedef struct btbb_packet {
+struct btbb_packet {
 
 	uint32_t refcount;
 
@@ -91,7 +91,7 @@ typedef struct btbb_packet {
 	uint16_t length; /* number of symbols */
 	char symbols[MAX_SYMBOLS];
 
-} btbb_packet;
+};
 
 /* type-specific CRC checks and decoding */
 int fhs(int clock, btbb_packet* p);

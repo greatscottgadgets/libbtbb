@@ -234,7 +234,7 @@ void perm_table_init(void)
 }
 
 /* drop-in replacement for perm5() using lookup table */
-int fast_perm(int z, int p_high, int p_low, btbb_piconet *pn)
+int fast_perm(int z, int p_high, int p_low)
 {
 	if (!perm_table_initialized) {
 		perm_table_init();
@@ -270,13 +270,13 @@ static void gen_hops(btbb_piconet *pn)
 					for (x = 0; x < 0x20; x++) { /* clock bits 2-6 */
 						perm_in = ((x + a) % 32) ^ pn->b;
 						/* y1 (clock bit 1) = 0, y2 = 0 */
-						perm_out = fast_perm(perm_in, c, d, pn);
+						perm_out = fast_perm(perm_in, c, d);
 						pn->sequence[index] = pn->bank[(perm_out + pn->e + f) % BT_NUM_CHANNELS];
 						if (btbb_piconet_get_flag(pn, BTBB_IS_AFH)) {
 							pn->sequence[index + 1] = pn->sequence[index];
 						} else {
 							/* y1 (clock bit 1) = 1, y2 = 32 */
-							perm_out = fast_perm(perm_in, c_flipped, d, pn);
+							perm_out = fast_perm(perm_in, c_flipped, d);
 							pn->sequence[index + 1] = pn->bank[(perm_out + pn->e + f + 32) % BT_NUM_CHANNELS];
 						}
 						index += 2;
@@ -352,7 +352,7 @@ char single_hop(int clock, btbb_piconet *pn)
 	f = (clock >> 3) & 0x1fffff0;
 
 	/* hop selection */
-	return(pn->bank[(fast_perm(((x + a) % 32) ^ pn->b, (y1 * 0x1f) ^ c, d, pn) + pn->e + f + y2) % BT_NUM_CHANNELS]);
+	return(pn->bank[(fast_perm(((x + a) % 32) ^ pn->b, (y1 * 0x1f) ^ c, d) + pn->e + f + y2) % BT_NUM_CHANNELS]);
 }
 
 /* look up channel for a particular hop */
@@ -741,7 +741,7 @@ int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)
 
 /* Print AFH map from observed packets */
 void btbb_print_afh_map(btbb_piconet *pn) {
-	uint8_t *afh_map, i;
+	uint8_t *afh_map;
 	afh_map = pn->afh_map;
 
 	/* Printed ch78 -> ch0 */

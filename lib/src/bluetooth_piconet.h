@@ -29,7 +29,7 @@
 /* number of channels in use */
 #define BT_NUM_CHANNELS 79
 
-typedef struct btbb_piconet {
+struct btbb_piconet {
 
 	uint32_t refcount;
 
@@ -96,7 +96,7 @@ typedef struct btbb_piconet {
 
 	/* queue of packets to be decoded */
 	pkt_queue *queue;
-} btbb_piconet;
+};
 
 /* number of hops in the hopping sequence (i.e. number of possible values of CLK1-27) */
 #define SEQUENCE_LENGTH 134217728
@@ -111,7 +111,7 @@ void precalc(btbb_piconet *pnet);
 void address_precalc(int address, btbb_piconet *pnet);
 
 /* drop-in replacement for perm5() using lookup table */
-int fast_perm(int z, int p_high, int p_low, btbb_piconet *pnet);
+int fast_perm(int z, int p_high, int p_low);
 
 /* 5 bit permutation */
 /* assumes z is constrained to 5 bits, p_high to 5 bits, p_low to 9 bits */
