@@ -3,6 +3,9 @@
 *.so
 *.pyc
 
+# Output directory
+build/
+
 # wireshark plugins
 CMakeCache.txt
 CMakeFiles
