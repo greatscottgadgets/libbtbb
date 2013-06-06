@@ -31,7 +31,7 @@ add_custom_command(OUTPUT ${OUTPUT}/timestamp
                    DEPENDS ${DEPS})
 
 add_custom_target(pcapdump ALL DEPENDS ${OUTPUT}/timestamp)
-install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} build -b ${OUTPUT} install --prefix=${CMAKE_INSTALL_PREFIX})")
+install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} build -b ${OUTPUT} install --prefix=${BUILD_ROOT}/${CMAKE_INSTALL_PREFIX})")
 
 add_custom_target(btaptap ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/btaptap)
 install(PROGRAMS btaptap DESTINATION ${INSTALL_DEFAULT_BINDIR})
