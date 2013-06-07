@@ -20,29 +20,45 @@
 #
 
 Summary: Bluetooth baseband library
-Name: libbtbb
-Version: 2012.10
-Release: 3
-License: GPL-2.0+
-Source: http://sourceforge.net/projects/libbtbb/files/libbtbb-2012-10-R3.tar.gz
-URL: http://libbtbb.sf.net
-#BuildRoot: %{_tmppath}/%{name}-%{version}-build
+Name:    libbtbb
+Version: 2013.06
+Release: 1
+Summary: A Bluetooth basebad decoding library
+License: GPLv2
+URL:     http://mooedit.sourceforge.net/           
+Source:  %{name}-%{version}.tar.gz
+
+BuildRequires:  cmake gcc python
+
+Autoreqprov:    on
 
 %description
 A library for decoding and processing Bluetooth baseband packets.
 It can be used with any raw bitstream receiver, such as Ubertooth or
 gr-bluetooth.
-%prep
-%setup
-mv libbtbb-2012-10-R3 libbtbb-2012.10
 
+%prep
+%setup -q
 %build
-make %{?_smp_mflags}
+cmake -DCMAKE_SKIP_RPATH=ON \
+      -DCMAKE_INSTALL_PREFIX=%{_prefix} \
+	  -DBUILD_ROOT=%{buildroot}
+
+%{__make} %{?jobs:-j%jobs}
 
 %install
-make DESTDIR=%{buildroot} install
+%{__make} DESTDIR=%{buildroot} install
 
 %files
-/usr/lib/libbtbb.so
-/usr/lib/libbtbb.so.0
-/usr/lib/libbtbb.so.0.1
+%{_prefix}/lib/libbtbb.so
+%{_prefix}/lib/libbtbb.so.0
+%{_prefix}/lib/libbtbb.so.0.2.0
+%{_prefix}/lib/python*
+%{_bindir}/btaptap
+%{_libdir}/../include/libbtbb/bluetooth_le_packet.h
+%{_libdir}/../include/libbtbb/btbb.h
+%doc COPYING README.md
+
+%changelog
+* Thu Jun 06 2013 Dominic Spill <dominincgs@gmail.com> - 0.2.0
+- First binary release
