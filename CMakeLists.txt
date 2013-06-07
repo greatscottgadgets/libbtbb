@@ -29,7 +29,9 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 set(INSTALL_DEFAULT_BINDIR "bin" CACHE STRING "Appended to CMAKE_INSTALL_PREFIX")
 
 add_subdirectory(lib)
-add_subdirectory(python)
+if(NOT DISABLE_PYTHON)
+	add_subdirectory(python)
+endif()
 
 # Comment the following out for releases.
 set(CMAKE_C_FLAGS "$ENV{CFLAGS}")
