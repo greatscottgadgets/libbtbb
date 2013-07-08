@@ -275,7 +275,7 @@ int btbb_init(int max_ac_errors)
 		return -1;
 	}
 
-	if (syndrome_map == NULL)
+	if ((syndrome_map == NULL) && (max_ac_errors))
 		gen_syndrome_map(max_ac_errors);
 
 	return 0;
