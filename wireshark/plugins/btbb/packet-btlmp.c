@@ -761,7 +761,7 @@ dissect_name_req(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	DISSECTOR_ASSERT(len == 2);
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 1);
 
-	proto_tree_add_item(tree, hf_lmp_nameoffset, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_nameoffset, tvb, offset, 1, ENC_NA);
 }
 
 void
@@ -770,10 +770,10 @@ dissect_name_res(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	DISSECTOR_ASSERT(len == 17);
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 16);
 
-	proto_tree_add_item(tree, hf_lmp_nameoffset, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_nameoffset, tvb, offset, 1, ENC_NA);
 	offset += 1;
 
-	proto_tree_add_item(tree, hf_lmp_namelen, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_namelen, tvb, offset, 1, ENC_NA);
 	offset += 1;
 
 	proto_tree_add_item(tree, hf_lmp_namefrag, tvb, offset, 14, TRUE);
@@ -785,7 +785,7 @@ dissect_accepted(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	DISSECTOR_ASSERT(len == 2);
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 1);
 
-	proto_tree_add_item(tree, hf_lmp_opinre, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_opinre, tvb, offset, 1, ENC_NA);
 }
 
 void
@@ -794,10 +794,10 @@ dissect_not_accepted(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	DISSECTOR_ASSERT(len == 3);
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 2);
 
-	proto_tree_add_item(tree, hf_lmp_opinre, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_opinre, tvb, offset, 1, ENC_NA);
 	offset += 1;
 
-	proto_tree_add_item(tree, hf_lmp_err, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_err, tvb, offset, 1, ENC_NA);
 }
 
 void
@@ -821,7 +821,7 @@ dissect_detach(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	DISSECTOR_ASSERT(len == 2);
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 1);
 
-	proto_tree_add_item(tree, hf_lmp_err, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_err, tvb, offset, 1, ENC_NA);
 }
 
 void
@@ -1028,7 +1028,7 @@ dissect_park_req(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	offset += 1;
 
 	proto_tree_add_item(tree, hf_lmp_maccess, tvb, offset, 1, TRUE);
-	proto_tree_add_item(tree, hf_lmp_accscheme, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_accscheme, tvb, offset, 1, ENC_NA);
 }
 
 void
@@ -1106,7 +1106,7 @@ dissect_modify_beacon(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	offset += 1;
 
 	proto_tree_add_item(tree, hf_lmp_maccess, tvb, offset, 1, TRUE);
-	proto_tree_add_item(tree, hf_lmp_accscheme, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_accscheme, tvb, offset, 1, ENC_NA);
 }
 
 void
@@ -1365,7 +1365,7 @@ dissect_remove_sco_link_req(proto_tree *tree, tvbuff_t *tvb, int offset, int len
 	proto_tree_add_item(tree, hf_lmp_scohdl, tvb, offset, 1, TRUE);
 	offset += 1;
 
-	proto_tree_add_item(tree, hf_lmp_err, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_err, tvb, offset, 1, ENC_NA);
 }
 
 void
@@ -1597,7 +1597,7 @@ dissect_accepted_ext(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	proto_tree_add_item(tree, hf_lmp_opinre, tvb, offset, 1, TRUE);
 	offset += 1;
 
-	proto_tree_add_item(tree, hf_lmp_eopinre, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_eopinre, tvb, offset, 1, ENC_NA);
 }
 
 void
@@ -1609,10 +1609,10 @@ dissect_not_accepted_ext(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	proto_tree_add_item(tree, hf_lmp_opinre, tvb, offset, 1, TRUE);
 	offset += 1;
 
-	proto_tree_add_item(tree, hf_lmp_eopinre, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_eopinre, tvb, offset, 1, ENC_NA);
 	offset += 1;
 
-	proto_tree_add_item(tree, hf_lmp_err, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_err, tvb, offset, 1, ENC_NA);
 }
 
 void
@@ -1687,10 +1687,10 @@ dissect_esco_link_req(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	proto_tree_add_item(tree, hf_lmp_wesco, tvb, offset, 1, TRUE);
 	offset += 1;
 
-	proto_tree_add_item(tree, hf_lmp_escotypems, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_escotypems, tvb, offset, 1, ENC_NA);
 	offset += 1;
 
-	proto_tree_add_item(tree, hf_lmp_escotypesm, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_escotypesm, tvb, offset, 1, ENC_NA);
 	offset += 1;
 
 	proto_tree_add_item(tree, hf_lmp_escolenms, tvb, offset, 2, TRUE);
@@ -1714,7 +1714,7 @@ dissect_remove_esco_link_req(proto_tree *tree, tvbuff_t *tvb, int offset, int le
 	proto_tree_add_item(tree, hf_lmp_escohdl, tvb, offset, 1, TRUE);
 	offset += 1;
 
-	proto_tree_add_item(tree, hf_lmp_err, tvb, offset, 1, TRUE);
+	proto_tree_add_item(tree, hf_lmp_err, tvb, offset, 1, ENC_NA);
 }
 
 void
@@ -2117,7 +2117,7 @@ dissect_btlmp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 	case LMP_ESCAPE_4:
 		/* extended opcode */
 		DISSECTOR_ASSERT(len >= 2);
-		proto_tree_add_item(lmp_tree, hf_lmp_eop, tvb, offset, 1, TRUE);
+		proto_tree_add_item(lmp_tree, hf_lmp_eop, tvb, offset, 1, ENC_NA);
 		offset += 1;
 
 		switch (eop) {
@@ -2202,7 +2202,7 @@ proto_register_btlmp(void)
 		{ &hf_lmp_accscheme,
 			{ "Access Scheme", "btlmp.accscheme",
 			FT_UINT8, BASE_DEC, VALS(access_scheme), 0xf0,
-			"Access Scheme", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_afhchmap,
 			{ "AFH Channel Map", "btlmp.afhchmap",
@@ -2244,32 +2244,32 @@ proto_register_btlmp(void)
 		{ &hf_lmp_airmode,
 			{ "Air Mode", "btlmp.airmode",
 			FT_UINT8, BASE_HEX, VALS(air_mode), 0x0,
-			"Air Mode", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_araddr,
 			{ "AR_ADDR", "btlmp.araddr",
 			FT_UINT8, BASE_HEX, NULL, 0xfe,
-			"AR_ADDR", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_authreqs,
 			{ "Authentication Requirements", "btlmp.authreqs",
 			FT_UINT8, BASE_HEX, VALS(auth_requirements), 0xf0,
-			"Authentication Requirements", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_authres,
 			{ "Authentication Response", "btlmp.authres",
 			FT_BYTES, BASE_NONE, NULL, 0x0,
-			"Authentication Response", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_bdaddr,
 			{ "BD_ADDR", "btlmp.bdaddr",
 			FT_UINT64, BASE_HEX, NULL, 0x0000ffffffffffff,
-			"BD_ADDR", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_bdaddr1,
 			{ "BD_ADDR 1", "btlmp.bdaddr",
 			FT_UINT64, BASE_HEX, NULL, 0x0000ffffffffffff,
-			"BD_ADDR 1", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_bdaddr2,
 			{ "BD_ADDR2", "btlmp.bdaddr",
@@ -2289,22 +2289,22 @@ proto_register_btlmp(void)
 		{ &hf_lmp_commit,
 			{ "Commitment Value", "btlmp.commit",
 			FT_BYTES, BASE_NONE, NULL, 0x0,
-			"Commitment Value", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_confirm,
 			{ "Confirmation Value", "btlmp.confirm",
 			FT_BYTES, BASE_NONE, NULL, 0x0,
-			"Confirmation Value", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_compid,
 			{ "Company ID", "btlmp.compid",
 			FT_UINT16, BASE_DEC, VALS(compid), 0x0,
-			"Company ID", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_cryptmode,
 			{ "Encryption Mode", "btlmp.cryptmode",
 			FT_UINT8, BASE_DEC, VALS(encryption_mode), 0x0,
-			"Encryption Mode", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_daccess,
 			{ "Daccess", "btlmp.daccess",
@@ -2319,7 +2319,7 @@ proto_register_btlmp(void)
 		{ &hf_lmp_dbsleep,
 			{ "Dbsleep", "btlmp.dbsleep",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"Dbsleep", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_deltab,
 			{ "Deltab", "btlmp.deltab",
@@ -2349,27 +2349,27 @@ proto_register_btlmp(void)
 		{ &hf_lmp_encdata,
 			{ "Encapsulated Data", "btlmp.encdata",
 			FT_BYTES, BASE_NONE, NULL, 0x0,
-			"Encapsulated Data", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_enclen,
 			{ "Encapsulated Length", "btlmp.enclen",
 			FT_UINT8, BASE_DEC, NULL, 0x0,
-			"Encapsulated Length", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_encmaj,
 			{ "Encapsulated Major Type", "btlmp.encmaj",
 			FT_UINT8, BASE_DEC, NULL, 0x0,
-			"Encapsulated Major Type", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_encmin,
 			{ "Encapsulated Minor Type", "btlmp.encmin",
 			FT_UINT8, BASE_DEC, NULL, 0x0,
-			"Encapsulated Minor Type", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_eop,
 			{ "Extended Opcode", "btlmp.eop",
 			FT_UINT8, BASE_DEC, VALS(ext_opcode), 0x0,
-			"Extended Opcode", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_eopinre,
 			{ "In Response To", "btlmp.eopinre",
@@ -2399,12 +2399,12 @@ proto_register_btlmp(void)
 		{ &hf_lmp_err,
 			{ "Error Code", "btlmp.err",
 			FT_UINT8, BASE_HEX, VALS(error_code), 0x0,
-			"Error Code", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_escohdl,
 			{ "eSCO Handle", "btlmp.escohdl",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"eSCO Handle", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_escoltaddr,
 			{ "eSCO LT_ADDR", "btlmp.escoltaddr",
@@ -2420,7 +2420,7 @@ proto_register_btlmp(void)
 		{ &hf_lmp_fpage,
 			{ "Features Page", "btlmp.fpage",
 			FT_UINT8, BASE_DEC, VALS(features_page), 0x0,
-			"Features Page", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_htime,
 			{ "Hold Time", "btlmp.htime",
@@ -2435,7 +2435,7 @@ proto_register_btlmp(void)
 		{ &hf_lmp_hopmode,
 			{ "Hopping Mode", "btlmp.hopmode",
 			FT_UINT8, BASE_DEC, VALS(hopping_mode), 0x0,
-			"Hopping Mode", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_iocaps,
 			{ "IO Capabilities", "btlmp.iocaps",
@@ -2450,7 +2450,7 @@ proto_register_btlmp(void)
 		{ &hf_lmp_key,
 			{ "Key", "btlmp.key",
 			FT_BYTES, BASE_NONE, NULL, 0x0,
-			"Key", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_keysz,
 			{ "Key Size", "btlmp.keysz",
@@ -2460,7 +2460,7 @@ proto_register_btlmp(void)
 		{ &hf_lmp_ksmask,
 			{ "Key Size Mask", "btlmp.ksmask",
 			FT_UINT16, BASE_HEX, NULL, 0x0,
-			"Key Size Mask", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_ltaddr1,
 			{ "LT_ADDR 1", "btlmp.ltaddr",
@@ -2505,7 +2505,7 @@ proto_register_btlmp(void)
 		{ &hf_lmp_maxslots,
 			{ "Max Slots", "btlmp.maxslots",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"Max Slots", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_maxsp,
 			{ "Max Supported Page", "btlmp.maxsp",
@@ -2515,7 +2515,7 @@ proto_register_btlmp(void)
 		{ &hf_lmp_maxss,
 			{ "Max Sniff Subrate", "btlmp.maxss",
 			FT_UINT8, BASE_DEC, NULL, 0x0,
-			"Max Sniff Subrate", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_minsmt,
 			{ "Min Sniff Mode Timeout", "btlmp.minsmt",
@@ -2525,12 +2525,12 @@ proto_register_btlmp(void)
 		{ &hf_lmp_naccslots,
 			{ "Nacc-slots", "btlmp.naccslots",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"Nacc-slots", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_namefrag,
 			{ "Name Fragment", "btlmp.namefrag",
 			FT_STRING, BASE_NONE, NULL, 0x0,
-			"Name Fragment", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_namelen,
 			{ "Name Length", "btlmp.namelen",
@@ -2545,47 +2545,47 @@ proto_register_btlmp(void)
 		{ &hf_lmp_nb,
 			{ "Nb", "btlmp.nb",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"Nb", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_nbc,
 			{ "Nbc", "btlmp.nbc",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"Nbc", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_nbsleep,
 			{ "Nbsleep", "btlmp.nbsleep",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"Nbsleep", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_negstate,
 			{ "Negotiation State", "btlmp.negstate",
 			FT_UINT8, BASE_DEC, VALS(negotiation_state), 0x0,
-			"Negotiation State", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_nonce,
 			{ "Nonce Value", "btlmp.nonce",
 			FT_BYTES, BASE_NONE, NULL, 0x0,
-			"Nonce Value", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_nottype,
 			{ "Notification Type", "btlmp.nottype",
 			FT_UINT8, BASE_DEC, VALS(notification_value), 0x0,
-			"Notification Type", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_npoll,
 			{ "Npoll", "btlmp.npoll",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"Npoll", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_oobauthdata,
 			{ "OOB Authentication Data", "btlmp.oobauthdata",
 			FT_UINT8, BASE_DEC, VALS(oob_auth_data), 0xfe,
-			"OOB Authentication Data", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_op,
 			{ "Opcode", "btlmp.op",
 			FT_UINT8, BASE_DEC, VALS(opcode), 0xfe,
-			"Opcode", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_opinre,
 			{ "In Response To", "btlmp.opinre",
@@ -2595,12 +2595,12 @@ proto_register_btlmp(void)
 		{ &hf_lmp_pagesch,
 			{ "Paging Scheme", "btlmp.pagesch",
 			FT_UINT8, BASE_DEC, VALS(paging_scheme), 0x0,
-			"Paging Scheme", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pcmode,
 			{ "Power Control Mode", "btlmp.pcmode",
 			FT_UINT8, BASE_DEC, VALS(power_control_mode), 0x0,
-			"Power Control Mode", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pkttype,
 			{ "Packet Type", "btlmp.pkttype",
@@ -2611,47 +2611,47 @@ proto_register_btlmp(void)
 		{ &hf_lmp_pkttypetbl,
 			{ "Packet Type Table", "btlmp.pkttypetbl",
 			FT_UINT8, BASE_DEC, VALS(packet_type_table), 0x0,
-			"Packet Type Table", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pmaddr,
 			{ "PM_ADDR", "btlmp.pmaddr",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"PM_ADDR", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pmaddr1,
 			{ "PM_ADDR 1", "btlmp.pmaddr1",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"PM_ADDR 1", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pmaddr2,
 			{ "PM_ADDR 2", "btlmp.pmaddr2",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"PM_ADDR 2", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pmaddr3,
 			{ "PM_ADDR 3", "btlmp.pmaddr3",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"PM_ADDR 3", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pmaddr4,
 			{ "PM_ADDR 4", "btlmp.pmaddr4",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"PM_ADDR 4", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pmaddr5,
 			{ "PM_ADDR 5", "btlmp.pmaddr5",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"PM_ADDR 5", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pmaddr6,
 			{ "PM_ADDR 6", "btlmp.pmaddr6",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"PM_ADDR 6", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pmaddr7,
 			{ "PM_ADDR 7", "btlmp.pmaddr7",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"PM_ADDR 7", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pollintvl,
 			{ "Poll Interval", "btlmp.pollintvl",
@@ -2666,17 +2666,17 @@ proto_register_btlmp(void)
 		{ &hf_lmp_pssettings,
 			{ "Paging Scheme Settings", "btlmp.pssettings",
 			FT_UINT8, BASE_DEC, VALS(paging_scheme_settings), 0x0,
-			"Paging Scheme Settings", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pwradjreq,
 			{ "Power Adjustment Request", "btlmp.pwradjreq",
 			FT_UINT8, BASE_DEC, VALS(power_adjust_req), 0x0,
-			"Power Adjustment Request", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pwradjres,
 			{ "Power Adjustment Response", "btlmp.pwradjres",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"Power Adjustment Response", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_pwradj_8dpsk,
 			{ "8DPSK", "btlmp.pwradj_8dpsk",
@@ -2696,12 +2696,12 @@ proto_register_btlmp(void)
 		{ &hf_lmp_rand,
 			{ "Random Number", "btlmp.rand",
 			FT_BYTES, BASE_NONE, NULL, 0x0,
-			"Random Number", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_rate,
 			{ "Data Rate", "btlmp.rate",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"Data Rate", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_rate_fec,
 			{ "FEC", "btlmp.rate.fec",
@@ -2731,12 +2731,12 @@ proto_register_btlmp(void)
 		{ &hf_lmp_scohdl,
 			{ "SCO Handle", "btlmp.scohdl",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"SCO Handle", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_scopkt,
 			{ "SCO Packet", "btlmp.scopkt",
 			FT_UINT8, BASE_DEC, VALS(sco_packet), 0x0,
-			"SCO Packet", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_slotoffset,
 			{ "Slot Offset", "btlmp.slotoffset",
@@ -2796,7 +2796,7 @@ proto_register_btlmp(void)
 		{ &hf_lmp_testscen,
 			{ "Test Scenario", "btlmp.testscen",
 			FT_UINT8, BASE_DEC, VALS(test_scenario), 0x0,
-			"Test Scenario", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_tid,
 			{ "TID", "btlmp.tid",
@@ -2806,22 +2806,22 @@ proto_register_btlmp(void)
 		{ &hf_lmp_timectrl,
 			{ "Timing Control Flags", "btlmp.timectrl",
 			FT_UINT8, BASE_HEX, NULL, 0x0,
-			"Timing Control Flags", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_time_change,
 			{ "Timing Change", "btlmp.time.change",
 			FT_BOOLEAN, 8, TFS(&time_change), 0x01,
-			"Timing Change", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_time_init,
 			{ "Initialization", "btlmp.time.init",
 			FT_BOOLEAN, 8, TFS(&time_init), 0x02,
-			"Initialization", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_time_accwin,
 			{ "Access Window", "btlmp.time.accwin",
 			FT_BOOLEAN, 8, TFS(&time_accwin), 0x04,
-			"Access Window", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_lmp_tsco,
 			{ "Tsco", "btlmp.tsco",
@@ -2876,3 +2876,16 @@ void
 proto_reg_handoff_btlmp(void)
 {
 }
+
+/*
+ * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ *
+ * Local variables:
+ * c-basic-offset: 4
+ * tab-width: 8
+ * indent-tabs-mode: nil
+ * End:
+ *
+ * vi: set shiftwidth=4 tabstop=8 expandtab:
+ * :indentSize=4:tabSize=8:noTabs=true:
+ */

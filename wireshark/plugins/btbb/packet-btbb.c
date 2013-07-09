@@ -156,12 +156,12 @@ dissect_payload_header1(proto_tree *tree, tvbuff_t *tvb, int offset)
 
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 1);
 
-	hdr_item = proto_tree_add_item(tree, hf_btbb_pldhdr, tvb, offset, 1, TRUE);
+	hdr_item = proto_tree_add_item(tree, hf_btbb_pldhdr, tvb, offset, 1, ENC_NA);
 	hdr_tree = proto_item_add_subtree(hdr_item, ett_btbb_pldhdr);
 
-	proto_tree_add_item(hdr_tree, hf_btbb_llid, tvb, offset, 1, TRUE);
-	proto_tree_add_item(hdr_tree, hf_btbb_pldflow, tvb, offset, 1, TRUE);
-	proto_tree_add_item(hdr_tree, hf_btbb_length, tvb, offset, 1, TRUE);
+	proto_tree_add_item(hdr_tree, hf_btbb_llid, tvb, offset, 1, ENC_NA);
+	proto_tree_add_item(hdr_tree, hf_btbb_pldflow, tvb, offset, 1, ENC_NA);
+	proto_tree_add_item(hdr_tree, hf_btbb_length, tvb, offset, 1, ENC_NA);
 
 	/* payload length */
 	return tvb_get_guint8(tvb, offset) >> 3;
@@ -175,38 +175,38 @@ dissect_fhs(proto_tree *tree, tvbuff_t *tvb, int offset)
 
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) == 20);
 
-	fhs_item = proto_tree_add_item(tree, hf_btbb_payload, tvb, offset, -1, TRUE);
+	fhs_item = proto_tree_add_item(tree, hf_btbb_payload, tvb, offset, -1, ENC_NA);
 	fhs_tree = proto_item_add_subtree(fhs_item, ett_btbb_payload);
 
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_parity, tvb, offset, 5, TRUE);
+	proto_tree_add_item(fhs_tree, hf_btbb_fhs_parity, tvb, offset, 5, ENC_LITTLE_ENDIAN);
 	offset += 4;
 
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_lap, tvb, offset, 4, TRUE);
+	proto_tree_add_item(fhs_tree, hf_btbb_fhs_lap, tvb, offset, 4, ENC_LITTLE_ENDIAN);
 	offset += 3;
 
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_eir, tvb, offset, 1, TRUE);
+	proto_tree_add_item(fhs_tree, hf_btbb_fhs_eir, tvb, offset, 1, ENC_NA);
 	/* skipping 1 undefined bit */
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_sr, tvb, offset, 1, TRUE);
+	proto_tree_add_item(fhs_tree, hf_btbb_fhs_sr, tvb, offset, 1, ENC_NA);
 	/* skipping 2 reserved bits */
 	offset += 1;
 
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_uap, tvb, offset, 1, TRUE);
+	proto_tree_add_item(fhs_tree, hf_btbb_fhs_uap, tvb, offset, 1, ENC_NA);
 	offset += 1;
 
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_nap, tvb, offset, 2, TRUE);
+	proto_tree_add_item(fhs_tree, hf_btbb_fhs_nap, tvb, offset, 2, ENC_LITTLE_ENDIAN);
 	offset += 2;
 
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_class, tvb, offset, 3, TRUE);
+	proto_tree_add_item(fhs_tree, hf_btbb_fhs_class, tvb, offset, 3, ENC_LITTLE_ENDIAN);
 	offset += 3;
 
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_ltaddr, tvb, offset, 1, TRUE);
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_clk, tvb, offset, 4, TRUE);
+	proto_tree_add_item(fhs_tree, hf_btbb_fhs_ltaddr, tvb, offset, 1, ENC_NA);
+	proto_tree_add_item(fhs_tree, hf_btbb_fhs_clk, tvb, offset, 4, ENC_LITTLE_ENDIAN);
 	offset += 3;
 
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_psmode, tvb, offset, 1, TRUE);
+	proto_tree_add_item(fhs_tree, hf_btbb_fhs_psmode, tvb, offset, 1, ENC_NA);
 	offset += 1;
 
-	proto_tree_add_item(fhs_tree, hf_btbb_crc, tvb, offset, 2, TRUE);
+	proto_tree_add_item(fhs_tree, hf_btbb_crc, tvb, offset, 2, ENC_LITTLE_ENDIAN);
 	offset += 2;
 }
 
@@ -229,7 +229,7 @@ dissect_dm1(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 3);
 
-	dm1_item = proto_tree_add_item(tree, hf_btbb_payload, tvb, offset, -1, TRUE);
+	dm1_item = proto_tree_add_item(tree, hf_btbb_payload, tvb, offset, -1, ENC_NA);
 	dm1_tree = proto_item_add_subtree(dm1_item, ett_btbb_payload);
 
 	len = dissect_payload_header1(dm1_tree, tvb, offset);
@@ -252,14 +252,14 @@ dissect_dm1(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 			call_dissector(btl2cap_handle, pld_tvb, pinfo, dm1_tree);
 		} else {
 			/* start of fragment */
-			proto_tree_add_item(dm1_tree, hf_btbb_pldbody, tvb, offset, len, TRUE);
+			proto_tree_add_item(dm1_tree, hf_btbb_pldbody, tvb, offset, len, ENC_NA);
 		}
 	} else {
-		proto_tree_add_item(dm1_tree, hf_btbb_pldbody, tvb, offset, len, TRUE);
+		proto_tree_add_item(dm1_tree, hf_btbb_pldbody, tvb, offset, len, ENC_NA);
 	}
 	offset += len;
 
-	proto_tree_add_item(dm1_tree, hf_btbb_crc, tvb, offset, 2, TRUE);
+	proto_tree_add_item(dm1_tree, hf_btbb_crc, tvb, offset, 2, ENC_LITTLE_ENDIAN);
 	offset += 2;
 }
 
@@ -267,7 +267,7 @@ dissect_dm1(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 static int
 dissect_btbb(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
-	proto_item *btbb_item, *meta_item, *pkthdr_item, *pld_item;
+	proto_item *btbb_item, *meta_item, *pkthdr_item;
 	proto_tree *btbb_tree, *meta_tree, *pkthdr_tree;
 	int offset;
 	guint8 type;
@@ -301,7 +301,7 @@ dissect_btbb(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 
 		/* create display subtree for the protocol */
 		offset = 0;
-		btbb_item = proto_tree_add_item(tree, proto_btbb, tvb, offset, -1, TRUE);
+		btbb_item = proto_tree_add_item(tree, proto_btbb, tvb, offset, -1, ENC_NA);
 		btbb_tree = proto_item_add_subtree(btbb_item, ett_btbb);
 
 		/* ID packets have no header, no payload */
@@ -309,31 +309,31 @@ dissect_btbb(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 			return 1;
 
 		/* meta data */
-		meta_item = proto_tree_add_item(btbb_tree, hf_btbb_meta, tvb, offset, 3, TRUE);
+		meta_item = proto_tree_add_item(btbb_tree, hf_btbb_meta, tvb, offset, 3, ENC_NA);
 		meta_tree = proto_item_add_subtree(meta_item, ett_btbb_meta);
 
-		proto_tree_add_item(meta_tree, hf_btbb_dir, tvb, offset, 1, TRUE);
-		proto_tree_add_item(meta_tree, hf_btbb_clk, tvb, offset, 4, TRUE);
+		proto_tree_add_item(meta_tree, hf_btbb_dir, tvb, offset, 1, ENC_NA);
+		proto_tree_add_item(meta_tree, hf_btbb_clk, tvb, offset, 4, ENC_LITTLE_ENDIAN);
 		offset += 4;
 
-		proto_tree_add_item(meta_tree, hf_btbb_channel, tvb, offset, 1, TRUE);
+		proto_tree_add_item(meta_tree, hf_btbb_channel, tvb, offset, 1, ENC_NA);
 		offset += 1;
 
-		proto_tree_add_item(meta_tree, hf_btbb_clkbits, tvb, offset, 1, TRUE);
-		proto_tree_add_item(meta_tree, hf_btbb_addrbits, tvb, offset, 1, TRUE);
+		proto_tree_add_item(meta_tree, hf_btbb_clkbits, tvb, offset, 1, ENC_NA);
+		proto_tree_add_item(meta_tree, hf_btbb_addrbits, tvb, offset, 1, ENC_NA);
 		offset += 1;
 
 		/* packet header */
-		pkthdr_item = proto_tree_add_item(btbb_tree, hf_btbb_pkthdr, tvb, offset, 3, TRUE);
+		pkthdr_item = proto_tree_add_item(btbb_tree, hf_btbb_pkthdr, tvb, offset, 3, ENC_NA);
 		pkthdr_tree = proto_item_add_subtree(pkthdr_item, ett_btbb_pkthdr);
 
-		proto_tree_add_item(pkthdr_tree, hf_btbb_ltaddr, tvb, offset, 1, TRUE);
-		proto_tree_add_item(pkthdr_tree, hf_btbb_type, tvb, offset, 1, TRUE);
+		proto_tree_add_item(pkthdr_tree, hf_btbb_ltaddr, tvb, offset, 1, ENC_NA);
+		proto_tree_add_item(pkthdr_tree, hf_btbb_type, tvb, offset, 1, ENC_NA);
 		offset += 1;
 		proto_tree_add_bitmask(pkthdr_tree, tvb, offset, hf_btbb_flags,
-			ett_btbb_flags, flag_fields, TRUE);
+			ett_btbb_flags, flag_fields, ENC_NA);
 		offset += 1;
-		proto_tree_add_item(pkthdr_tree, hf_btbb_hec, tvb, offset, 1, TRUE);
+		proto_tree_add_item(pkthdr_tree, hf_btbb_hec, tvb, offset, 1, ENC_NA);
 		offset += 1;
 
 		/* payload */
@@ -361,7 +361,7 @@ dissect_btbb(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 		case 0xd: /* EV5/3-EV5 */
 		case 0xe: /* DM5/2-DH5 */
 		case 0xf: /* DH5/3-DH5 */
-			pld_item = proto_tree_add_item(btbb_tree, hf_btbb_payload, tvb, offset, -1, TRUE);
+			proto_tree_add_item(btbb_tree, hf_btbb_payload, tvb, offset, -1, ENC_NA);
 			break;
 		default:
 			break;
@@ -376,7 +376,6 @@ dissect_btbb(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 void
 proto_register_btbb(void)
 {
-
 	/* list of fields */
 	static hf_register_info hf[] = {
 		{ &hf_btbb_meta,
@@ -386,7 +385,7 @@ proto_register_btbb(void)
 		},
 		{ &hf_btbb_dir,
 			{ "Direction", "btbb.dir",
-			FT_BOOLEAN, BASE_NONE, TFS(&direction), 0x01,
+			FT_BOOLEAN, 8, TFS(&direction), 0x01,
 			"Direction of Transmission", HFILL }
 		},
 		{ &hf_btbb_clk,
@@ -400,13 +399,13 @@ proto_register_btbb(void)
 			"Channel (0-78)", HFILL }
 		},
 		{ &hf_btbb_clkbits,
-			{ "Known Clock Bits ", "btbb.clkbits",
-			FT_BOOLEAN, BASE_NONE, TFS(&clock_bits), 0x01,
+			{ "Known Clock Bits", "btbb.clkbits",
+			FT_BOOLEAN, 8, TFS(&clock_bits), 0x01,
 			"Number of Known Master CLK Bits (6 or 27)", HFILL }
 		},
 		{ &hf_btbb_addrbits,
-			{ "Known Address Bits ", "btbb.addrbits",
-			FT_BOOLEAN, BASE_NONE, TFS(&address_bits), 0x02,
+			{ "Known Address Bits", "btbb.addrbits",
+			FT_BOOLEAN, 8, TFS(&address_bits), 0x02,
 			"Number of Known Bits of BD_ADDR (32 or 48)", HFILL }
 		},
 		{ &hf_btbb_pkthdr,
@@ -452,7 +451,7 @@ proto_register_btbb(void)
 		{ &hf_btbb_payload,
 			{ "Payload", "btbb.payload",
 			FT_NONE, BASE_NONE, NULL, 0x0,
-			"Payload", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_btbb_llid,
 			{ "LLID", "btbb.llid",
@@ -461,7 +460,7 @@ proto_register_btbb(void)
 		},
 		{ &hf_btbb_pldflow,
 			{ "Flow", "btbb.flow",
-			FT_BOOLEAN, BASE_NONE, NULL, 0x04,
+			FT_BOOLEAN, 8, NULL, 0x04,
 			"Payload Flow indication", HFILL }
 		},
 		{ &hf_btbb_length,
@@ -472,12 +471,12 @@ proto_register_btbb(void)
 		{ &hf_btbb_pldhdr,
 			{ "Payload Header", "btbb.pldhdr",
 			FT_NONE, BASE_NONE, NULL, 0x0,
-			"Payload Header", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_btbb_pldbody,
 			{ "Payload Body", "btbb.pldbody",
 			FT_BYTES, BASE_NONE, NULL, 0x0,
-			"Payload Body", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_btbb_crc,
 			{ "CRC", "btbb.crc",
@@ -497,7 +496,7 @@ proto_register_btbb(void)
 		},
 		{ &hf_btbb_fhs_eir,
 			{ "EIR", "btbb.eir",
-			FT_BOOLEAN, BASE_NONE, NULL, 0x04,
+			FT_BOOLEAN, 8, NULL, 0x04,
 			"Extended Inquiry Response packet may follow", HFILL }
 		},
 		{ &hf_btbb_fhs_sr,
@@ -532,8 +531,8 @@ proto_register_btbb(void)
 		},
 		{ &hf_btbb_fhs_psmode,
 			{ "Page Scan Mode", "btbb.psmode",
-			FT_UINT8, BASE_HEX, RVALS(ps_modes), 0xe0,
-			"Page Scan Mode", HFILL }
+			FT_UINT8, BASE_RANGE_STRING, RVALS(ps_modes), 0xe0,
+			NULL, HFILL }
 		},
 	};
 
@@ -569,7 +568,7 @@ proto_reg_handoff_btbb(void)
 
 		btbb_handle = new_create_dissector_handle(dissect_btbb, proto_btbb);
 		/* hijacking this ethertype */
-		dissector_add("ethertype", 0xFFF0, btbb_handle);
+		dissector_add_uint("ethertype", 0xFFF0, btbb_handle);
 
 		btlmp_handle = find_dissector("btlmp");
 		btl2cap_handle = find_dissector("btl2cap");
@@ -577,3 +576,16 @@ proto_reg_handoff_btbb(void)
 		inited = TRUE;
 	}
 }
+
+/*
+ * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ *
+ * Local variables:
+ * c-basic-offset: 4
+ * tab-width: 8
+ * indent-tabs-mode: nil
+ * End:
+ *
+ * vi: set shiftwidth=4 tabstop=8 expandtab:
+ * :indentSize=4:tabSize=8:noTabs=true:
+ */
