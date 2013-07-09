@@ -517,7 +517,7 @@ proto_register_btbb(void)
 		{ &hf_btbb_fhs_class, /* FIXME break out further */
 			{ "Class of Device", "btbb.class",
 			FT_UINT24, BASE_HEX, NULL, 0x0,
-			"Class of Device", HFILL }
+			NULL, HFILL }
 		},
 		{ &hf_btbb_fhs_ltaddr,
 			{ "LT_ADDR", "btbb.lt_addr",
