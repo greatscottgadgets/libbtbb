@@ -549,7 +549,7 @@ proto_register_btbb(void)
 	/* register the protocol name and description */
 	proto_btbb = proto_register_protocol(
 		"Bluetooth Baseband",	/* full name */
-		"btbb",			/* short name */
+		"BT Baseband",			/* short name */
 		"btbb"			/* abbreviation (e.g. for filters) */
 		);
 
@@ -561,20 +561,14 @@ proto_register_btbb(void)
 void
 proto_reg_handoff_btbb(void)
 {
-	static gboolean inited = FALSE;
+	dissector_handle_t btbb_handle;
 
-	if (!inited) {
-		dissector_handle_t btbb_handle;
+	btbb_handle = new_create_dissector_handle(dissect_btbb, proto_btbb);
+	/* hijacking this ethertype */
+	dissector_add_uint("ethertype", 0xFFF0, btbb_handle);
 
-		btbb_handle = new_create_dissector_handle(dissect_btbb, proto_btbb);
-		/* hijacking this ethertype */
-		dissector_add_uint("ethertype", 0xFFF0, btbb_handle);
-
-		btlmp_handle = find_dissector("btlmp");
-		btl2cap_handle = find_dissector("btl2cap");
-
-		inited = TRUE;
-	}
+	btlmp_handle = find_dissector("btlmp");
+	btl2cap_handle = find_dissector("btl2cap");
 }
 
 /*
