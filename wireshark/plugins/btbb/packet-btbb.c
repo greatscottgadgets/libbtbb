@@ -24,10 +24,9 @@
  */
 
 #ifdef HAVE_CONFIG_H
-# include "config.h"
+#include "config.h"
 #endif
 
-#include <wireshark/config.h> /* needed for epan/gcc-4.x */
 #include <epan/packet.h>
 #include <epan/prefs.h>
 
@@ -170,15 +169,19 @@ dissect_payload_header1(proto_tree *tree, tvbuff_t *tvb, int offset)
 void
 dissect_fhs(proto_tree *tree, tvbuff_t *tvb, int offset)
 {
-	proto_item *fhs_item;
+	proto_item *fhs_item, *psmode_item;
 	proto_tree *fhs_tree;
+    const gchar *description;
+	guint8 psmode;
 
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) == 20);
 
 	fhs_item = proto_tree_add_item(tree, hf_btbb_payload, tvb, offset, -1, ENC_NA);
 	fhs_tree = proto_item_add_subtree(fhs_item, ett_btbb_payload);
 
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_parity, tvb, offset, 5, ENC_LITTLE_ENDIAN);
+	/* Use proto_tree_add_bits_item() to get around 32bit limit on bitmasks */
+	proto_tree_add_bits_item(fhs_tree, hf_btbb_fhs_parity, tvb, offset*8, 34, ENC_LITTLE_ENDIAN);
+	/* proto_tree_add_item(fhs_tree, hf_btbb_fhs_parity, tvb, offset, 5, ENC_LITTLE_ENDIAN); */
 	offset += 4;
 
 	proto_tree_add_item(fhs_tree, hf_btbb_fhs_lap, tvb, offset, 4, ENC_LITTLE_ENDIAN);
@@ -203,7 +206,11 @@ dissect_fhs(proto_tree *tree, tvbuff_t *tvb, int offset)
 	proto_tree_add_item(fhs_tree, hf_btbb_fhs_clk, tvb, offset, 4, ENC_LITTLE_ENDIAN);
 	offset += 3;
 
-	proto_tree_add_item(fhs_tree, hf_btbb_fhs_psmode, tvb, offset, 1, ENC_NA);
+	psmode = tvb_get_guint8(tvb, offset);
+	description = try_rval_to_str(psmode, ps_modes);
+	psmode_item = proto_tree_add_item(fhs_tree, hf_btbb_fhs_psmode, tvb, offset, 1, ENC_NA);
+	if (description)
+        proto_item_append_text(psmode_item, " (%s)", description);
 	offset += 1;
 
 	proto_tree_add_item(fhs_tree, hf_btbb_crc, tvb, offset, 2, ENC_LITTLE_ENDIAN);
@@ -265,13 +272,14 @@ dissect_dm1(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 
 /* dissect a packet */
 static int
-dissect_btbb(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
+dissect_btbb(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 {
 	proto_item *btbb_item, *meta_item, *pkthdr_item;
 	proto_tree *btbb_tree, *meta_tree, *pkthdr_tree;
 	int offset;
-	guint8 type;
-	char *info;
+	/* Avoid error: 'type' may be used uninitialized in this function */
+	guint8 type = 0xff;
+	const gchar *info;
 
 	/* sanity check: length */
 	if (tvb_length(tvb) > 0 && tvb_length(tvb) < 9)
@@ -288,7 +296,7 @@ dissect_btbb(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 		info = "ID";
 	} else {
 		type = (tvb_get_guint8(tvb, 6) >> 3) & 0x0f;
-		info = match_strval(type, packet_types);
+		info = val_to_str(type, packet_types, "Unknown type: 0x%x");
 	}
 
 	if (check_col(pinfo->cinfo, COL_INFO)) {
@@ -485,8 +493,8 @@ proto_register_btbb(void)
 		},
 		{ &hf_btbb_fhs_parity,
 			{ "Parity", "btbb.parity",
-			/* FIXME not sure why this mask doesn't have an effect.  bug? */
-			FT_UINT64, BASE_HEX, NULL, 0x00000003ffffffff,
+			/* FIXME this doesn't work because bitmasks can only be 32 bits */
+			FT_UINT64, BASE_HEX, NULL, /*0x00000003ffffffffULL,*/ 0x0,
 			"LAP parity", HFILL }
 		},
 		{ &hf_btbb_fhs_lap,
@@ -531,7 +539,7 @@ proto_register_btbb(void)
 		},
 		{ &hf_btbb_fhs_psmode,
 			{ "Page Scan Mode", "btbb.psmode",
-			FT_UINT8, BASE_RANGE_STRING, RVALS(ps_modes), 0xe0,
+			FT_UINT8, BASE_HEX, NULL, 0xe0,
 			NULL, HFILL }
 		},
 	};
@@ -566,6 +574,7 @@ proto_reg_handoff_btbb(void)
 	btbb_handle = new_create_dissector_handle(dissect_btbb, proto_btbb);
 	/* hijacking this ethertype */
 	dissector_add_uint("ethertype", 0xFFF0, btbb_handle);
+	/* dissector_add_uint("wtap_encap", WTAP_ENCAP_BLUETOOTH_BASEBAND, btbb_handle); */
 
 	btlmp_handle = find_dissector("btlmp");
 	btl2cap_handle = find_dissector("btl2cap");

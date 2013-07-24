@@ -776,7 +776,7 @@ dissect_name_res(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 	proto_tree_add_item(tree, hf_lmp_namelen, tvb, offset, 1, ENC_NA);
 	offset += 1;
 
-	proto_tree_add_item(tree, hf_lmp_namefrag, tvb, offset, 14, ENC_ASCII);
+	proto_tree_add_item(tree, hf_lmp_namefrag, tvb, offset, 14, ENC_ASCII|ENC_NA);
 }
 
 void
