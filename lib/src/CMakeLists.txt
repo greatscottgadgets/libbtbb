@@ -27,7 +27,6 @@ set(c_headers ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_le_packet.h
               ${CMAKE_CURRENT_SOURCE_DIR}/btbb.h
 			  CACHE INTERNAL "List of C headers")
 
-
 # For cygwin just force UNIX OFF and WIN32 ON
 if( ${CYGWIN} )
 	SET(UNIX OFF)
@@ -48,13 +47,21 @@ endif()
 
 set_target_properties(btbb PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
+# Conditional libpcap support
+find_package(PCAP)
+if( ${PCAP_FOUND} )
+	include_directories(${PCAP_INCLUDE_DIRS})
+	target_link_libraries(btbb ${PCAP_LIBRARIES})
+	add_definitions( -DUSE_PCAP )
+endif( ${PCAP_FOUND} )
+
 if( ${UNIX} )
    install(TARGETS btbb
            LIBRARY DESTINATION lib${LIB_SUFFIX}
            COMPONENT sharedlibs
            )
    install(FILES ${c_headers}
-           DESTINATION include/${PROJECT_NAME}
+           DESTINATION include
            COMPONENT headers
            )
 endif( ${UNIX} )
@@ -65,7 +72,7 @@ if( ${WIN32} )
            COMPONENT staticlibs
            )
    install(FILES ${c_headers}
-           DESTINATION include/${PROJECT_NAME}
+           DESTINATION include
            COMPONENT headers
            )
 endif( ${WIN32} )

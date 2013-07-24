@@ -24,10 +24,9 @@ else (LIBBTBB_INCLUDE_DIR AND LIBBTBB_LIBRARIES)
   FIND_PATH(LIBBTBB_INCLUDE_DIR
     NAMES btbb.h
     HINTS $ENV{LIBBTBB_DIR}/include ${PC_LIBBTBB_INCLUDEDIR}
-    PATHS /usr/include /usr/local/include /usr/include/libbtbb
-    /usr/local/include/libbtbb
-    /usr/include ${CMAKE_SOURCE_DIR}/../libbtbb/src
-    /opt/local/include/libbtbb
+    PATHS /usr/include /usr/local/include
+    /opt/local/include
+    ${CMAKE_SOURCE_DIR}/../libbtbb/src
     ${LIBBTBB_INCLUDE_DIR}
   )
 
