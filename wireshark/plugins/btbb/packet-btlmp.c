@@ -24,7 +24,9 @@
  */
 
 #ifdef HAVE_CONFIG_H
-# include "config.h"
+#include "config.h"
+#else
+#include <wireshark/config.h>
 #endif
 
 #include <wireshark/config.h> /* needed for epan/gcc-4.x */
