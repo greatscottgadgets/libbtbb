@@ -17,13 +17,16 @@ Build Instructions
 ==================
 
 Libbtbb can be built and installed as follows:
-    $ mkdir build
-    $ cd build
-    $ cmake ..
-    $ make
-    $ make install
+```
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+$ make install
+```
 
 This will install the library to /usr/local/lib and the headers to 
 /usr/local/include, to install to different locations use:
-    $ cmake -DINSTALL_DIR=/path/to/install -DINCLUDE_DIR=/path/to/include ..
-
+```
+$ cmake -DINSTALL_DIR=/path/to/install -DINCLUDE_DIR=/path/to/include ..
+```
