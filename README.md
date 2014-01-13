@@ -6,8 +6,8 @@ project.  It can be used to extract Bluetooth packet and piconet information
 from Ubertooth devices as well as GR-Bluetooth/USRP.
 
 This code is incomplete, it is still under active development.  Patches and 
-bug reports should be submitted to the bug tracker on SurceForge:
-http://sourceforge.net/p/libbtbb/tickets/
+bug reports should be submitted to the bug tracker on GitHub:
+https://github.com/greatscottgadgets/libbtbb/issues
 
 This software has been developed and tested on Linux, it should work on other 
 platforms but this has yet to be tested.
