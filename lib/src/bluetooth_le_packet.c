@@ -314,10 +314,10 @@ void le_print(le_packet_t *p) {
 					printf(" %02x", p->symbols[34+i]);
 				printf("\n");
 
-				printf("    Hop: %d\n", p->symbols[37] & 0x1f);
+				printf("    Hop: %d\n", p->symbols[39] & 0x1f);
 				printf("    SCA: %d, %s\n",
-						p->symbols[37] >> 5,
-						CONNECT_SCA[p->symbols[37] >> 5]);
+						p->symbols[39] >> 5,
+						CONNECT_SCA[p->symbols[39] >> 5]);
 				break;
 		}
 	}
