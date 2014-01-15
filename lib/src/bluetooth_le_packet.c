@@ -254,7 +254,7 @@ print128:
 }
 
 void le_print(le_packet_t *p) {
-	int i;
+	int i, opcode;
 	if (le_packet_is_data(p)) {
 		int llid = p->symbols[4] & 0x3;
 		static const char *llid_str[] = {
@@ -270,6 +270,31 @@ void le_print(le_packet_t *p) {
 		printf("    NESN: %d  SN: %d  MD: %d\n", (p->symbols[4] >> 2) & 1,
 												 (p->symbols[4] >> 3) & 1,
 												 (p->symbols[4] >> 4) & 1);
+		switch (llid) {
+		case 3: // LL Control PDU
+			opcode = p->symbols[6];
+			static const char *opcode_str[] = {
+				"LL_CONNECTION_UPDATE_REQ",
+				"LL_CHANNEL_MAP_REQ",
+				"LL_TERMINATE_IND",
+				"LL_ENC_REQ",
+				"LL_ENC_RSP",
+				"LL_START_ENC_REQ",
+				"LL_START_ENC_RSP",
+				"LL_UNKNOWN_RSP",
+				"LL_FEATURE_REQ",
+				"LL_FEATURE_RSP",
+				"LL_PAUSE_ENC_REQ",
+				"LL_PAUSE_ENC_RSP",
+				"LL_VERSION_IND",
+				"LL_REJECT_IND",
+				"Reserved for Future Use",
+			};
+			printf("    Opcode: %d / %s\n", opcode, opcode_str[(opcode<0x0E)?opcode:0x0E]);
+			break;
+		default:
+			break;
+		}
 	} else {
 		printf("Advertising / AA %08x / %2d bytes\n", p->access_address, p->length);
 		printf("    Channel Index: %d\n", p->channel_idx);
