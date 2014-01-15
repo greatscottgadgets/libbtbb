@@ -288,6 +288,12 @@ void le_print(le_packet_t *p) {
 				"LL_PAUSE_ENC_RSP",
 				"LL_VERSION_IND",
 				"LL_REJECT_IND",
+				"LL_SLAVE_FEATURE_REQ",
+				"LL_CONNECTION_PARAM_REQ",
+				"LL_CONNECTION_PARAM_RSP",
+				"LL_REJECT_IND_EXT",
+				"LL_PING_REQ",
+				"LL_PING_RSP",
 				"Reserved for Future Use",
 			};
 			printf("    Opcode: %d / %s\n", opcode, opcode_str[(opcode<0x0E)?opcode:0x0E]);
