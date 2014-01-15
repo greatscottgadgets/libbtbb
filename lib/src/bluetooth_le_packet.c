@@ -296,7 +296,7 @@ void le_print(le_packet_t *p) {
 				"LL_PING_RSP",
 				"Reserved for Future Use",
 			};
-			printf("    Opcode: %d / %s\n", opcode, opcode_str[(opcode<0x0E)?opcode:0x0E]);
+			printf("    Opcode: %d / %s\n", opcode, opcode_str[(opcode<0x14)?opcode:0x14]);
 			break;
 		default:
 			break;
