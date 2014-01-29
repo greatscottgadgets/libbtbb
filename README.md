@@ -30,3 +30,14 @@ This will install the library to /usr/local/lib and the headers to
 ```
 $ cmake -DINSTALL_DIR=/path/to/install -DINCLUDE_DIR=/path/to/include ..
 ```
+
+If you have previous versions of libbtbb, libubertooth or the Ubertooth tools
+installed, you can use the cleanup script to remove them:
+```
+$ sudo cmake/cleanup.sh -d
+```
+
+To list the installed files without removing them, use:
+```
+$ cmake/cleanup.sh
+```
