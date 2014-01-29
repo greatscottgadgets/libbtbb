@@ -2,6 +2,10 @@
 
 # A quick and dirty script to remove old installs of
 # libbtbb, libubertooth and associated Ubertooth tools
+# Copyright 2014 Dominic Spill
+# License: GPL v2
+
+FIND=`which find`
 
 INSTALL_DIRS="/usr /usr/local"
 
@@ -26,9 +30,10 @@ fi
 
 for dir in $INSTALL_DIRS; do
 	for lib in $LIBS; do
-		find ${dir}/lib -name "lib$lib.so*" $EXEC
+		$FIND ${dir}/lib -maxdepth 1 -name "lib$lib.so*" $EXEC
 	done
 	for header in $HEADERS; do
-		find ${dir}/include -name "$header" $EXEC
+		$FIND ${dir}/include -maxdepth 1 -name "$header" $EXEC
 	done
+	$FIND ${dir}/bin -maxdepth 1 -name "ubertooth-*" $EXEC
 done
