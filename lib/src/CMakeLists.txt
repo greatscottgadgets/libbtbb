@@ -42,7 +42,7 @@ if( ${WIN32} )
 else()
 	# Dynamic library
 	add_library(btbb SHARED ${c_sources})
-	set_target_properties(btbb PROPERTIES VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.0 SOVERSION 0)
+	set_target_properties(btbb PROPERTIES VERSION ${MAJOR_VERSION}.${MINOR_VERSION} SOVERSION 0)
 endif()
 
 set_target_properties(btbb PROPERTIES CLEAN_DIRECT_OUTPUT 1)
