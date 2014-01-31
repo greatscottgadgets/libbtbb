@@ -10,6 +10,7 @@ class Libbtbb < Formula
   option :universal
 
   depends_on 'cmake' => :build
+  depends_on 'python'
 
   def install
     if build.universal?
