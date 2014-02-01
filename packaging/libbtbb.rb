@@ -4,6 +4,7 @@ class Libbtbb < Formula
   homepage 'https://github.com/greatscottgadgets/libbtbb'
   url 'https://github.com/greatscottgadgets/libbtbb/archive/2014-02-R1.tar.gz'
   sha256 '91a0dafcb9911d6ca4959fdd8d2aaa5d2cfa76c9754757505898def08da7d5a3'
+  version '2014-02-R1'
 
   head 'https://github.com/greatscottgadgets/libbtbb.git'
 
