@@ -336,80 +336,92 @@ uint8_t btbb_packet_get_ac_errors(btbb_packet *pkt) {
 	return pkt->ac_errors;
 }
 
-int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors, btbb_packet **pkt_ptr) {
-
-	/* Looks for an AC in the stream */
-	int count;
-	uint8_t ac_errors;
+int promiscuous_packet_search(char *stream, int search_length, uint32_t lap, int max_ac_errors, uint8_t *ac_errors) {
 	uint64_t syncword, codeword, syndrome, corrected_barker, ac;
 	syndrome_struct *errors;
 	char *symbols;
-	int offset = -1;
+	int count, offset = -1;
+	
+	/* Barker code at end of sync word (includes
+	 * MSB of LAP) is used as a rough filter.
+	 */
+	uint8_t barker = air_to_host8(&stream[57], 6);
+	barker <<= 1;
 
-	/* Matching any LAP */
-	if (lap == LAP_ANY) {
+	for (count = 0; count < search_length; count++) {
+		symbols = &stream[count];
+		barker >>= 1;
+		barker |= (symbols[63] << 6);
+		if (BARKER_DISTANCE[barker] <= MAX_BARKER_ERRORS) {
+			// Error correction
+			syncword = air_to_host64(symbols, 64);
+			
+			/* correct the barker code with a simple comparison */
+			corrected_barker = barker_correct[(uint8_t)(syncword >> 57)];
+			syncword = (syncword & 0x01ffffffffffffffULL) | corrected_barker;
+			
+			codeword = syncword ^ pn;
 
-		/* Barker code at end of sync word (includes MSB of
-		 * LAP) is used as a rough filter. */
-		uint8_t barker = air_to_host8(&stream[57], 6);
-		barker <<= 1;
+			/* Zero syndrome -> good codeword. */
+			syndrome = gen_syndrome(codeword);
+			*ac_errors = 0;
 
-		for (count = 0; count < search_length; count++) {
-			symbols = &stream[count];
-			barker >>= 1;
-			barker |= (symbols[63] << 6);
-			if (BARKER_DISTANCE[barker] <= MAX_BARKER_ERRORS) {
-				// Error correction
-				syncword = air_to_host64(symbols, 64);
-				
-				/* correct the barker code with a simple comparison */
-				corrected_barker = barker_correct[(uint8_t)(syncword >> 57)];
-				syncword = (syncword & 0x01ffffffffffffffULL) | corrected_barker;
-				
-				codeword = syncword ^ pn;
-
-				/* Zero syndrome -> good codeword. */
-				syndrome = gen_syndrome(codeword);
-				ac_errors = 0;
-
-				/* Try to fix errors in bad codeword. */
-				if (syndrome) {
-					errors = find_syndrome(syndrome);
-					if (errors != NULL) {
-						syncword ^= errors->error;
-						ac_errors = count_bits(errors->error);
-						syndrome = 0;
-					}
-					else {
-						ac_errors = 0xff;  // fail
-					}
+			/* Try to fix errors in bad codeword. */
+			if (syndrome) {
+				errors = find_syndrome(syndrome);
+				if (errors != NULL) {
+					syncword ^= errors->error;
+					*ac_errors = count_bits(errors->error);
+					syndrome = 0;
 				}
-				
-				if (ac_errors <= max_ac_errors) {
-					lap = (syncword >> 34) & 0xffffff;
-					offset = count;
-					break;
+				else {
+					*ac_errors = 0xff;  // fail
 				}
 			}
-		}
-	}
-
-	/* Matching a specific LAP. Error limit is ignored, since the
-	 * goal is to find all packets. */
-	else {
-		ac = btbb_gen_syncword(lap);
-		for (count = 0; count < search_length; count++) {
-			symbols = &stream[count];
-			syncword = air_to_host64(symbols, 64);
-			ac_errors = count_bits(syncword ^ ac);
-
-			if (ac_errors <= MAX_SYNCWORD_ERRS) {
+			
+			if (*ac_errors <= max_ac_errors) {
+				lap = (syncword >> 34) & 0xffffff;
 				offset = count;
 				break;
 			}
 		}
-
 	}
+	return offset;
+}
+
+/* Matching a specific LAP */
+int find_known_lap(char *stream, int search_length, uint32_t lap, int max_ac_errors, uint8_t *ac_errors) {
+	uint64_t syncword, codeword, syndrome, corrected_barker, ac;
+	syndrome_struct *errors;
+	char *symbols;
+	int count, offset = -1;
+	
+	ac = btbb_gen_syncword(lap);
+	for (count = 0; count < search_length; count++) {
+		symbols = &stream[count];
+		syncword = air_to_host64(symbols, 64);
+		*ac_errors = count_bits(syncword ^ ac);
+
+		if (*ac_errors <= max_ac_errors) {
+			offset = count;
+			break;
+		}
+	}
+	return offset;
+}
+
+/* Looks for an AC in the stream */
+int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors, btbb_packet **pkt_ptr) {
+	int offset;
+	uint8_t ac_errors;
+
+	/* Matching any LAP */
+	if (lap == LAP_ANY)
+		offset = promiscuous_packet_search(stream, search_length, lap,
+										   max_ac_errors, &ac_errors);
+	else
+		offset = find_known_lap(stream, search_length, lap,
+								max_ac_errors, &ac_errors);
 
 	if (offset >= 0) {
 		if (*pkt_ptr == NULL)
