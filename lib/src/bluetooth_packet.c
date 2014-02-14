@@ -657,7 +657,7 @@ static uint16_t crcgen(char *payload, int length, int UAP)
 }
 
 /* extract UAP by reversing the HEC computation */
-static int btbb_uap_from_hec(uint16_t data, uint8_t hec)
+static uint8_t uap_from_hec(uint16_t data, uint8_t hec)
 {
         int i;
 
@@ -1121,7 +1121,7 @@ uint8_t try_clock(int clock, btbb_packet* pkt)
 	unwhiten(header, unwhitened, clock, 18, 0, pkt);
 	uint16_t hdr_data = air_to_host16(unwhitened, 10);
 	uint8_t hec = air_to_host8(&unwhitened[10], 8);
-	pkt->UAP = btbb_uap_from_hec(hdr_data, hec);
+	pkt->UAP = uap_from_hec(hdr_data, hec);
 	pkt->packet_type = air_to_host8(&unwhitened[3], 4);
 
 	return pkt->UAP;
@@ -1140,7 +1140,7 @@ int btbb_decode_header(btbb_packet* pkt)
 		unwhiten(header, pkt->packet_header, pkt->clock, 18, 0, pkt);
 		uint16_t hdr_data = air_to_host16(pkt->packet_header, 10);
 		uint8_t hec = air_to_host8(&pkt->packet_header[10], 8);
-		UAP = btbb_uap_from_hec(hdr_data, hec);
+		UAP = uap_from_hec(hdr_data, hec);
 		if (UAP == pkt->UAP) {
 			pkt->packet_lt_addr = air_to_host8(&pkt->packet_header[0], 3);
 			pkt->packet_type = air_to_host8(&pkt->packet_header[3], 4);
