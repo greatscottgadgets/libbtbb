@@ -336,7 +336,7 @@ uint8_t btbb_packet_get_ac_errors(btbb_packet *pkt) {
 	return pkt->ac_errors;
 }
 
-int promiscuous_packet_search(char *stream, int search_length, uint32_t lap, int max_ac_errors, uint8_t *ac_errors) {
+int promiscuous_packet_search(char *stream, int search_length, uint32_t *lap, int max_ac_errors, uint8_t *ac_errors) {
 	uint64_t syncword, codeword, syndrome, corrected_barker, ac;
 	syndrome_struct *errors;
 	char *symbols;
@@ -380,7 +380,7 @@ int promiscuous_packet_search(char *stream, int search_length, uint32_t lap, int
 			}
 			
 			if (*ac_errors <= max_ac_errors) {
-				lap = (syncword >> 34) & 0xffffff;
+				*lap = (syncword >> 34) & 0xffffff;
 				offset = count;
 				break;
 			}
@@ -418,7 +418,7 @@ int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_error
 
 	/* Matching any LAP */
 	if (lap == LAP_ANY)
-		offset = promiscuous_packet_search(stream, search_length, lap,
+		offset = promiscuous_packet_search(stream, search_length, &lap,
 										   max_ac_errors, &ac_errors);
 	else
 		offset = find_known_lap(stream, search_length, lap,
