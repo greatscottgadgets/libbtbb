@@ -404,6 +404,7 @@ int find_known_lap(char *stream, int search_length, uint32_t lap, int max_ac_err
 
 		if (*ac_errors <= max_ac_errors) {
 			offset = count;
+			//printf("Offset = %d\n", offset);
 			break;
 		}
 	}
@@ -899,7 +900,7 @@ int DM(int clock, btbb_packet* pkt)
 		return 10;
 
 	/* could be encrypted */
-	return 1;
+	return 2;
 }
 
 /* DH 1/3/5 packet (and AUX1) */
@@ -946,13 +947,13 @@ int DH(int clock, btbb_packet* pkt)
 	
 	/* AUX1 has no CRC */
 	if (pkt->packet_type == 9)
-		return 1;
+		return 2;
 
 	if (payload_crc(pkt))
 		return 10;
 
 	/* could be encrypted */
-	return 1;
+	return 2;
 }
 
 int EV3(int clock, btbb_packet* pkt)
@@ -983,7 +984,7 @@ int EV3(int clock, btbb_packet* pkt)
 		if ((pkt->payload_length > 2) && (payload_crc(pkt)))
 				return 10;
 	}
-	return 1;
+	return 2;
 }
 
 int EV4(int clock, btbb_packet* pkt)
@@ -1038,7 +1039,7 @@ int EV4(int clock, btbb_packet* pkt)
 		syms += 15;
 		bits += 10;
 	}
-	return 1;
+	return 2;
 }
 
 int EV5(int clock, btbb_packet* pkt)
@@ -1069,7 +1070,7 @@ int EV5(int clock, btbb_packet* pkt)
 		if ((pkt->payload_length > 2) && (payload_crc(pkt)))
 				return 10;
 	}
-	return 1;
+	return 2;
 }
 
 /* HV packet type payload parser */
@@ -1115,7 +1116,7 @@ int HV(int clock, btbb_packet* pkt)
 		break;
 	}
 
-	return 1;
+	return 2;
 }
 /* try a clock value (CLK1-6) to unwhiten packet header,
  * sets resultant p->packet_type and p->UAP, returns UAP.

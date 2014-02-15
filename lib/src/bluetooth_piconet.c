@@ -701,42 +701,64 @@ static btbb_packet *dequeue(btbb_piconet *pn)
 int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)
 {
 	btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 0);
-	uint8_t clk6, i;
-	int rv = 0;
+	uint8_t clk6, i, best_clk;
+	int rv = 0, max_rv = 0;
 	if (btbb_piconet_get_flag(pn, BTBB_CLK27_VALID)) {
-		if(pn->sequence == NULL)
-			get_hop_pattern(pn);
-		clk6 = pkt->clock & 0x3f;
-		for(i=0; i<64; i++) {
-			pkt->clock = (pkt->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
-			if ((pn->sequence[pkt->clock] == pkt->channel) && (btbb_decode_header(pkt))) {
-				rv =  btbb_decode_payload(pkt);
-				if(rv > 0) {
-					printf("Packet decoded with clock 0x%07x (rv=%d)\n", pkt->clock, rv);
-					btbb_print_packet(pkt);
-				}
-				// TODO: make sure we use best result
-			}
-		}
-		if(rv == 0) {
+		/* Removing this section until we can more reliably handle AFH */
+		//if(pn->sequence == NULL)
+		//	get_hop_pattern(pn);
+		//clk6 = pkt->clock & 0x3f;
+		//for(i=0; i<64; i++) {
+		//	pkt->clock = (pkt->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
+		//	if ((pn->sequence[pkt->clock] == pkt->channel) && (btbb_decode_header(pkt))) {
+		//		rv =  btbb_decode_payload(pkt);
+		//		if(rv > max_rv) {
+		//			max_rv = rv;
+		//			best_clk = (clk6 + i) & 0x3f;
+		//		}
+		//	}
+		//}
+
+		// If we found nothing, try again, ignoring channel
+		if(max_rv <= 1) {
 			clk6 = pkt->clock & 0x3f;
 			for(i=0; i<64; i++) {
 				pkt->clock = (pkt->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
 				if (btbb_decode_header(pkt)) {
 					rv =  btbb_decode_payload(pkt);
-					if(rv > 0) {
-						printf("Packet decoded with clock 0x%07x (rv=%d)\n", pkt->clock, rv);
-						btbb_print_packet(pkt);
+					if(rv > max_rv) {
+						//printf("Packet decoded with clock 0x%07x (rv=%d)\n", pkt->clock, rv);
+						//btbb_print_packet(pkt);
+						max_rv = rv;
+						best_clk = (clk6 + i) & 0x3f;
 					}
-					// TODO: make sure we use best result
 				}
 			}
 		}
 	} else
-		if (btbb_decode_header(pkt))
-			rv = btbb_decode_payload(pkt);
+		if (btbb_decode_header(pkt)) {
+			for(i=0; i<64; i++) {
+				pkt->clock = (pkt->clock & 0xffffffc0) | (i & 0x3f);
+				if (btbb_decode_header(pkt)) {
+					rv =  btbb_decode_payload(pkt);
+					if(rv > max_rv) {
+						//printf("Packet decoded with clock 0x%02x (rv=%d)\n", i, rv);
+						//btbb_print_packet(pkt);
+						max_rv = rv;
+						best_clk = i & 0x3f;
+					}
+				}
+			}
+		}
+	/* If we were successful, print the packet */
+	if(max_rv > 0) {
+		pkt->clock = (pkt->clock & 0xffffffc0) | (best_clk & 0x3f);
+		btbb_decode_payload(pkt);
+		printf("Packet decoded with clock 0x%02x (rv=%d)\n", i, rv);
+		btbb_print_packet(pkt);
+	}
 
-	return rv;
+	return max_rv;
 }
 
 /* Print AFH map from observed packets */
@@ -809,7 +831,6 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 			btbb_uap_from_header(pkt, pn);
 		return 0;
 	}
-
 	/* If piconet structure is given, a LAP is given, and packet
 	 * header is readable, do further analysis. If UAP has not yet
 	 * been determined, attempt to calculate it from headers. Once
