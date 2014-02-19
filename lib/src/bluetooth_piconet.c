@@ -570,7 +570,7 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 	int remaining = 0;
 	uint32_t clkn = pkt->clkn;
 
-	if (!pn->got_first_packet)
+	if (!btbb_piconet_get_flag(pn, BTBB_GOT_FIRST_PACKET))
 		pn->first_pkt_time = clkn;
 
 	// Set afh channel map
@@ -590,7 +590,8 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 	/* try every possible first packet clock value */
 	for (count = 0; count < 64; count++) {
 		/* skip eliminated candidates unless this is our first time through */
-		if (pn->clock6_candidates[count] > -1 || !pn->got_first_packet) {
+		if (pn->clock6_candidates[count] > -1
+			|| !btbb_piconet_get_flag(pn, BTBB_GOT_FIRST_PACKET)) {
 			/* clock value for the current packet assuming count was the clock of the first packet */
 			int clock = (count + clkn - pn->first_pkt_time) % 64;
 			starting++;
@@ -599,7 +600,8 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 
 			/* if this is the first packet: populate the candidate list */
 			/* if not: check CRCs if UAPs match */
-			if (!pn->got_first_packet || UAP == pn->clock6_candidates[count])
+			if (!btbb_piconet_get_flag(pn, BTBB_GOT_FIRST_PACKET)
+				|| UAP == pn->clock6_candidates[count])
 				crc_chk = crc_check(clock, pkt);
 
 			if (btbb_piconet_get_flag(pn, BTBB_UAP_VALID) &&
@@ -613,6 +615,7 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 				break;
 
 			case 1: /* inconclusive result */
+			case 2: /* Inconclusive, but looks better */
 				pn->clock6_candidates[count] = UAP;
 				/* remember this count because it may be the correct clock of the first packet */
 				first_clock = count;
@@ -636,7 +639,7 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 		}
 	}
 
-	pn->got_first_packet = 1;
+	btbb_piconet_set_flag(pn, BTBB_GOT_FIRST_PACKET, 1);
 
 	//printf("reduced from %d to %d CLK1-6 candidates\n", starting, remaining);
 

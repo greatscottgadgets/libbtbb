@@ -69,9 +69,6 @@ struct btbb_piconet {
 	/* number of candidates for CLK1-27 */
 	int num_candidates;
 
-	/* have we collected the first packet in a UAP discovery attempt? */
-	int got_first_packet;
-
 	/* number of packets observed during one attempt at UAP/clock discovery */
 	int packets_observed;
 
