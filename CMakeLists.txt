@@ -39,7 +39,7 @@ if(NOT PACKAGE_MANAGER)
   find_package(BTBB)
   if(LIBBTBB_FOUND)
     message( FATAL_ERROR
-      "An existing installation of libbtbb is already present on this system. Please remove it, and any depending applications before building. A helper script is provided, run\n$ sudo cmake/cleanup.sh -d\nto find and remove libbtbb and libubertooth and the ubertooth tools")
+      "An existing installation of libbtbb is already present on this system. Please remove it, and any depending applications before building. A helper script is provided, run\n$ sudo ../cmake/cleanup.sh -d\nto find and remove libbtbb and libubertooth and the ubertooth tools")
   endif()
 endif()
 
