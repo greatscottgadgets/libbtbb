@@ -5,7 +5,7 @@ PortSystem          1.0
 PortGroup           cmake 1.0
 PortGroup           github 1.0
 
-github.setup        GreatScottGadgets libbtbb 2014-02-R1
+github.setup        greatscottgadgets libbtbb 2014-02-R1
 categories          net security
 platforms           darwin
 maintainers         gmail.com:dominicgs
@@ -15,7 +15,7 @@ description         Bluetooth Baseband Decoding Library
 
 long_description \
     LibBTBB is a Bluetooth Baseband processing library that supports Basic \
-    Rate and Bluetooth Smart (BLE) packets. It is used by the Ubertooth and
+    Rate and Bluetooth Smart (BLE) packets. It is used by the Ubertooth and \
     gr-bluetooth packet sniffer implementations.
 
 homepage            https://github.com/greatscottgadgets/libbtbb
@@ -29,3 +29,6 @@ build.dir           ${configure.dir}
 post-extract {
     file mkdir ${configure.dir}
 }
+
+configure.post_args ../${name}-${version}
+configure.args-append -DPACKAGE_MANAGER=1
