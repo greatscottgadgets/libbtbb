@@ -20,8 +20,8 @@ long_description \
 
 homepage            https://github.com/greatscottgadgets/libbtbb
 
-checksums           rmd160  255dc57646be0b824cfe9ef4347e133384eaac35 \
-                    sha256  91a0dafcb9911d6ca4959fdd8d2aaa5d2cfa76c9754757505898def08da7d5a3
+checksums           rmd160  0adc5d59e611509cdcf8959be8b6e31704529e48 \
+                    sha256  04a187b6f17836437e5f9deecb0b643c75ec0eafce671e373d1d4c13fc104984
 
 configure.dir       ${workpath}/build
 build.dir           ${configure.dir}
