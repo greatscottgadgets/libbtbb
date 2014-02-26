@@ -26,6 +26,8 @@ from pcapdump.pcapdump import *
 
 DLT_EN10MB = 1
 DLT_BLUETOOTH_HCI_H4 = 187
+ELLISYS_CSV_HDR = "\"Depth\",\"Time\",\"Name\",\"Data\"\x0d\x0a"
+ELLISYS_HID_INPUT = "HID Input 1"
 USBHID_MAP = {
     0x04 : "a",
     0x05 : "b",
@@ -318,7 +320,7 @@ def hid2ascii(scancode, shift):
     return code
 
 def usage():
-    print >>sys.stderr, "Usage: btaptap [-r pcapfile.pcap] [-c count] [-h]\n"
+    print >>sys.stderr, "Usage: btaptap [-r pcapfile.pcap | -e ellisysfile.csv] [-c count] [-h]\n"
     sys.exit(0)
 
 def parse_l2cap_keydata(l2cappkt):
@@ -365,7 +367,8 @@ def parse_l2cap_keydata(l2cappkt):
 
     # up to six keys can be reported at once
     keycodes = []
-    for byte in range(8,14):
+    #for byte in range(8,14):
+    for byte in range(8,11):
         keystroke = ord(l2cappkt[byte])
         if keystroke != 0x00:
             keycodes.append(keystroke)
@@ -384,6 +387,42 @@ def parse_l2cap_keydata(l2cappkt):
             sys.stdout.write(hid2ascii(keystroke, mod & SHIFT))
 
     active_keys = keycodes
+
+def parse_ellisys_export(exportfile):
+    try:
+        cap = open(exportfile, "r")
+    except (OSError, IOError) as e:
+        print >>sys.stderr, "Unable to open Ellisys capture file."
+        return
+
+    # Check to make sure the CSV file header matches out expectations
+    hdr=cap.readline()
+    if (hdr != ELLISYS_CSV_HDR):
+        print >>sys.stderr, "Invalid CSV file (does not match Ellisys export format)"
+        return
+
+    for packetline in cap.xreadlines():
+        try:
+            (edepth, etime, ename, edata) = packetline.replace('"', '').strip().split(",")
+        except ValueError:
+            continue
+
+        # We are only interedted in HID Input data
+        if (ename != ELLISYS_HID_INPUT): continue
+
+        parse_ellisys_keydata(edata)
+
+def parse_ellisys_keydata(payload):
+    TRANS_HDR_IN_DATA = "\xA1"
+    DEST_CHANNEL_ID = "\x06\x03"
+
+    # Convert space-separated hex into string
+    payload = payload.replace(' ','').decode("hex")
+
+    # The Ellisys CSV file format doesn't give us the L2CAP data, so we fake it here by adding
+    # a 2-byte length field, destination CID, and transaction header
+    packet = chr(len(payload)+1) + "\x00" + DEST_CHANNEL_ID + TRANS_HDR_IN_DATA + payload
+    parse_l2cap_keydata(packet)
 
 def parse_bb_keydata(packet):
 
@@ -434,6 +473,7 @@ def parse_hci_keydata(packet):
 if __name__ == '__main__':
 
     arg_pcapfile = None
+    arg_ellisysfile = None
     arg_count = -1
     packetcount = 0
 
@@ -443,31 +483,38 @@ if __name__ == '__main__':
             arg_pcapfile = sys.argv.pop(1)
         if op == '-c':
             arg_count = int(sys.argv.pop(1))
+        if op == '-e':
+            arg_ellisysfile = sys.argv.pop(1)
         if op == '-h':
             usage()
             sys.exit(0)
 
-    if arg_pcapfile == None:
-        print >>sys.stderr, "Must specify a libpcap filename."
+    if (arg_ellisysfile == None and arg_pcapfile == None):
+        print >>sys.stderr, "Must specify a libpcap capture or an Ellisys CSV file"
         usage()
-        sys.exit(1)
+        sys.exit(0)
 
-    cap = PcapReader(arg_pcapfile)
-
-    while arg_count != packetcount:
-        try:
-            (pheader, packet) = cap.pnext()
-            pkttime = pheader[0]
-            packetcount+=1
+    if arg_pcapfile != None:
+        cap = PcapReader(arg_pcapfile)
     
-            if cap.datalink() == DLT_EN10MB:
-                parse_bb_keydata(packet)
-            elif cap.datalink() == DLT_BLUETOOTH_HCI_H4:
-                parse_hci_keydata(packet)
-            else:
-                print >>sys.stderr, "Unsupported libpcap data link layer: %d\n" % cap.datalink()
-        except TypeError: # raised when pnext returns Null (end of capture)
-            break
+        while arg_count != packetcount:
+            try:
+                (pheader, packet) = cap.pnext()
+                pkttime = pheader[0]
+                packetcount+=1
+        
+                if cap.datalink() == DLT_EN10MB:
+                    parse_bb_keydata(packet)
+                elif cap.datalink() == DLT_BLUETOOTH_HCI_H4:
+                    parse_hci_keydata(packet)
+                else:
+                    print >>sys.stderr, "Unsupported libpcap data link layer: %d\n" % cap.datalink()
+            except TypeError: # raised when pnext returns Null (end of capture)
+                break
+    
+        cap.close()
 
-    cap.close()
+    if arg_ellisysfile != None:
+        parse_ellisys_export(arg_ellisysfile)
+
     print
