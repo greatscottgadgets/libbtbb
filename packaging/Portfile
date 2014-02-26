@@ -5,7 +5,7 @@ PortSystem          1.0
 PortGroup           cmake 1.0
 PortGroup           github 1.0
 
-github.setup        greatscottgadgets libbtbb 2014-02-R1
+github.setup        greatscottgadgets libbtbb 2014-02-R2
 categories          net security
 platforms           darwin
 maintainers         gmail.com:dominicgs
