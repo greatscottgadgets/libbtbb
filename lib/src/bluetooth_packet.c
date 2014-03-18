@@ -194,7 +194,7 @@ static void gen_syndrome_map(int bit_errors)
 }
 
 /* Generate Sync Word from an LAP */
-uint64_t btbb_gen_syncword(int LAP)
+uint64_t btbb_gen_syncword(const int LAP)
 {
 	int i;
 	uint64_t codeword = DEFAULT_CODEWORD;
@@ -217,7 +217,7 @@ static void init_packet(btbb_packet *pkt, uint32_t lap, uint8_t ac_errors)
 }
 
 /* Convert some number of bits of an air order array to a host order integer */
-static uint8_t air_to_host8(char *air_order, int bits)
+static uint8_t air_to_host8(const char *air_order, const int bits)
 {
 	int i;
 	uint8_t host_order = 0;
@@ -225,7 +225,7 @@ static uint8_t air_to_host8(char *air_order, int bits)
 		host_order |= ((uint8_t)air_order[i] << i);
 	return host_order;
 }
-static uint16_t air_to_host16(char *air_order, int bits)
+static uint16_t air_to_host16(const char *air_order, const int bits)
 {
 	int i;
 	uint16_t host_order = 0;
@@ -233,7 +233,7 @@ static uint16_t air_to_host16(char *air_order, int bits)
 		host_order |= ((uint16_t)air_order[i] << i);
 	return host_order;
 }
-static uint32_t air_to_host32(char *air_order, int bits)
+static uint32_t air_to_host32(const char *air_order, const int bits)
 {
 	int i;
 	uint32_t host_order = 0;
@@ -241,7 +241,7 @@ static uint32_t air_to_host32(char *air_order, int bits)
 		host_order |= ((uint32_t)air_order[i] << i);
 	return host_order;
 }
-static uint64_t air_to_host64(char *air_order, int bits)
+static uint64_t air_to_host64(const char *air_order, const int bits)
 {
 	int i;
 	uint64_t host_order = 0;
@@ -251,7 +251,7 @@ static uint64_t air_to_host64(char *air_order, int bits)
 }
 
 /* Convert some number of bits in a host order integer to an air order array */
-static void host_to_air(uint8_t host_order, char *air_order, int bits)
+static void host_to_air(const uint8_t host_order, char *air_order, const int bits)
 {
     int i;
     for (i = 0; i < bits; i++)
@@ -303,7 +303,7 @@ btbb_packet_unref(btbb_packet *pkt)
 		free(pkt);
 }
 
-uint32_t btbb_packet_get_lap(btbb_packet *pkt)
+uint32_t btbb_packet_get_lap(const btbb_packet *pkt)
 {
 	return pkt->LAP;
 }
@@ -314,25 +314,25 @@ void btbb_packet_set_uap(btbb_packet *pkt, uint8_t uap)
 	btbb_packet_set_flag(pkt, BTBB_UAP_VALID, 1);
 }
 
-uint8_t btbb_packet_get_uap(btbb_packet *pkt)
+uint8_t btbb_packet_get_uap(const btbb_packet *pkt)
 {
 	return pkt->UAP;
 }
 
-uint16_t btbb_packet_get_nap(btbb_packet *pkt)
+uint16_t btbb_packet_get_nap(const btbb_packet *pkt)
 {
 	return pkt->NAP;
 }
 
-uint32_t btbb_packet_get_clkn(btbb_packet *pkt) {
+uint32_t btbb_packet_get_clkn(const btbb_packet *pkt) {
 	return pkt->clkn;
 }
 
-uint8_t btbb_packet_get_channel(btbb_packet *pkt) {
+uint8_t btbb_packet_get_channel(const btbb_packet *pkt) {
 	return pkt->channel;
 }
 
-uint8_t btbb_packet_get_ac_errors(btbb_packet *pkt) {
+uint8_t btbb_packet_get_ac_errors(const btbb_packet *pkt) {
 	return pkt->ac_errors;
 }
 
@@ -456,28 +456,28 @@ void btbb_packet_set_flag(btbb_packet *pkt, int flag, int val)
 		pkt->flags |= mask;
 }
 
-int btbb_packet_get_flag(btbb_packet *pkt, int flag)
+int btbb_packet_get_flag(const btbb_packet *pkt, int flag)
 {
 	uint32_t mask = 1L << flag;
 	return ((pkt->flags & mask) != 0);
 }
 
-const char *btbb_get_symbols(btbb_packet* pkt)
+const char *btbb_get_symbols(const btbb_packet* pkt)
 {
 	return (const char*) pkt->symbols;
 }
 
-int btbb_packet_get_payload_length(btbb_packet* pkt)
+int btbb_packet_get_payload_length(const btbb_packet* pkt)
 {
 	return pkt->payload_length;
 }
 
-const char *btbb_get_payload(btbb_packet* pkt)
+const char *btbb_get_payload(const btbb_packet* pkt)
 {
 	return (const char*) pkt->payload;
 }
 
-int btbb_get_payload_packed(btbb_packet* pkt, char *dst)
+int btbb_get_payload_packed(const btbb_packet* pkt, char *dst)
 {
 	int i;
 	for(i=0;i<pkt->payload_length;i++)
@@ -485,24 +485,29 @@ int btbb_get_payload_packed(btbb_packet* pkt, char *dst)
 	return pkt->payload_length;
 }
 
-uint8_t btbb_packet_get_type(btbb_packet* pkt)
+uint8_t btbb_packet_get_type(const btbb_packet* pkt)
 {
 	return pkt->packet_type;
 }
 
-uint8_t btbb_packet_get_lt_addr(btbb_packet* pkt)
+uint8_t btbb_packet_get_lt_addr(const btbb_packet* pkt)
 {
 	return pkt->packet_lt_addr;
 }
 
-uint8_t btbb_packet_get_header_flags(btbb_packet* pkt)
+uint8_t btbb_packet_get_header_flags(const btbb_packet* pkt)
 {
 	return pkt->packet_flags;
 }
 
-uint8_t btbb_packet_get_hec(btbb_packet* pkt)
+uint8_t btbb_packet_get_hec(const btbb_packet* pkt)
 {
 	return pkt->packet_hec;
+}
+
+uint32_t btbb_packet_get_header_packed(const btbb_packet* pkt)
+{
+	return air_to_host32(&pkt->packet_header[0], 18);
 }
 
 /* Compare stream with sync word
@@ -1242,7 +1247,7 @@ int btbb_decode_payload(btbb_packet* pkt)
 }
 
 /* print packet information */
-void btbb_print_packet(btbb_packet* pkt)
+void btbb_print_packet(const btbb_packet* pkt)
 {
 	if (btbb_packet_get_flag(pkt, BTBB_HAS_PAYLOAD)) {
 		printf("  Type: %s\n", TYPE_NAMES[pkt->packet_type]);
@@ -1293,10 +1298,10 @@ char *tun_format(btbb_packet* pkt)
 }
 
 /* check to see if the packet has a header */
-int btbb_header_present(btbb_packet* pkt)
+int btbb_header_present(const btbb_packet* pkt)
 {
 	/* skip to last bit of sync word */
-	char *stream = pkt->symbols + 63;
+	const char *stream = pkt->symbols + 63;
 	int be = 0; /* bit errors */
 	char msb;   /* most significant (last) bit of sync word */
 	int a, b, c;

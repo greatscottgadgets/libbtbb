@@ -22,9 +22,11 @@
 set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
               ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_piconet.c
               ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_le_packet.c
+              ${CMAKE_CURRENT_SOURCE_DIR}/pcap.c
+              ${CMAKE_CURRENT_SOURCE_DIR}/pcapng.c
+              ${CMAKE_CURRENT_SOURCE_DIR}/pcapng-bt.c
 			  CACHE INTERNAL "List of C sources")
-set(c_headers ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_le_packet.h
-              ${CMAKE_CURRENT_SOURCE_DIR}/btbb.h
+set(c_headers ${CMAKE_CURRENT_SOURCE_DIR}/btbb.h
 			  CACHE INTERNAL "List of C headers")
 
 # For cygwin just force UNIX OFF and WIN32 ON
