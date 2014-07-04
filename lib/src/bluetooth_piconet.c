@@ -65,7 +65,7 @@ void btbb_piconet_set_flag(btbb_piconet *pn, int flag, int val)
 		pn->flags |= mask;
 }
 
-int btbb_piconet_get_flag(btbb_piconet *pn, int flag)
+int btbb_piconet_get_flag(const btbb_piconet *pn, const int flag)
 {
 	uint32_t mask = 1L << flag;
 	return ((pn->flags & mask) != 0);
@@ -77,22 +77,22 @@ void btbb_piconet_set_uap(btbb_piconet *pn, uint8_t uap)
 	btbb_piconet_set_flag(pn, BTBB_UAP_VALID, 1);
 }
 
-uint8_t btbb_piconet_get_uap(btbb_piconet *pn)
+uint8_t btbb_piconet_get_uap(const btbb_piconet *pn)
 {
 	return pn->UAP;
 }
 
-uint32_t btbb_piconet_get_lap(btbb_piconet *pn)
+uint32_t btbb_piconet_get_lap(const btbb_piconet *pn)
 {
 	return pn->LAP;
 }
 
-uint16_t btbb_piconet_get_nap(btbb_piconet *pn)
+uint16_t btbb_piconet_get_nap(const btbb_piconet *pn)
 {
 	return pn->NAP;
 }
 
-int btbb_piconet_get_clk_offset(btbb_piconet *pn)
+int btbb_piconet_get_clk_offset(const btbb_piconet *pn)
 {
 	return pn->clk_offset;
 }

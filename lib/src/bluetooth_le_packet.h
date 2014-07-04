@@ -37,7 +37,7 @@
 #define CONNECT_REQ		5
 #define ADV_SCAN_IND	6
 
-typedef struct _le_packet_t {
+struct lell_packet {
 	// raw unwhitened bytes of packet, including access address
 	uint8_t symbols[MAX_LE_SYMBOLS];
 
@@ -45,6 +45,7 @@ typedef struct _le_packet_t {
 
 	// channel index
 	uint8_t channel_idx;
+	uint8_t channel_k;
 
 	// number of symbols
 	int length;
@@ -55,21 +56,17 @@ typedef struct _le_packet_t {
 	uint8_t adv_type;
 	int adv_tx_add;
 	int adv_rx_add;
-} le_packet_t;
 
-/* decode payload */
-void decode_le(uint8_t *stream, uint16_t phys_channel, uint32_t clk100ns, le_packet_t *p);
+	unsigned access_address_offenses;
+	uint32_t refcount;
 
-/* returns true if this is a data packet, false if advertising */
-int le_packet_is_data(le_packet_t *p);
-
-/* returns the channel index of a physical channel */
-uint8_t le_channel_index(uint16_t phys_channel);
-
-/* returns a string representing advertising packet type */
-const char *le_adv_type(le_packet_t *p);
-
-/* print LE packet information */
-void le_print(le_packet_t *p);
+	/* flags */
+	union {
+		struct {
+			uint32_t access_address_ok : 1;
+		} as_bits;
+		uint32_t as_word;
+	} flags;
+};
 
 #endif /* INCLUDED_BLUETOOTH_LE_PACKET_H */

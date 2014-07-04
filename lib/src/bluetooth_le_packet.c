@@ -25,9 +25,10 @@
 #include "config.h"
 #endif
 
-#include <string.h>
+#include "btbb.h"
 #include "bluetooth_le_packet.h"
 #include <ctype.h>
+#include <string.h>
 
 /* string representations of advertising packet type */
 static const char *ADV_TYPE_NAMES[] = {
@@ -45,35 +46,239 @@ static const char *CONNECT_SCA[] = {
 // count of objects in an array, shamelessly stolen from Chrome
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 
-void decode_le(uint8_t *stream, uint16_t phys_channel, uint32_t clk100ns, le_packet_t *p) {
-	memcpy(p->symbols, stream, MAX_LE_SYMBOLS);
-
-	p->channel_idx = le_channel_index(phys_channel);
-	p->clk100ns = clk100ns;
-
-	p->access_address = 0;
-	p->access_address |= p->symbols[0];
-	p->access_address |= p->symbols[1] << 8;
-	p->access_address |= p->symbols[2] << 16;
-	p->access_address |= p->symbols[3] << 24;
-
-	if (le_packet_is_data(p)) {
-		// data PDU
-		p->length = p->symbols[5] & 0x1f;
-	} else {
-		// advertising PDU
-		p->length = p->symbols[5] & 0x3f;
-		p->adv_type = p->symbols[4] & 0xf;
-		p->adv_tx_add = p->symbols[4] & 0x40 ? 1 : 0;
-		p->adv_rx_add = p->symbols[4] & 0x80 ? 1 : 0;
+static int aa_access_channel_off_by_one(const uint32_t aa) {
+	int retval = 0;
+	switch(aa) {
+		/* single zero->one flips */
+	case 0x8e89bed7:
+	case 0x8e89bede:
+	case 0x8e89bef6:
+	case 0x8e89bfd6:
+	case 0x8e89fed6:
+	case 0x8e8bbed6:
+	case 0x8e8dbed6:
+	case 0x8e99bed6:
+	case 0x8ea9bed6:
+	case 0x8ec9bed6:
+	case 0x8f89bed6:
+	case 0x9e89bed6:
+	case 0xae89bed6:
+	case 0xce89bed6:
+		/* single one->zero flips */
+	case 0x8e89bed4:
+	case 0x8e89bed2:
+	case 0x8e89bec6:
+	case 0x8e89be96:
+	case 0x8e89be56:
+	case 0x8e89bcd6:
+	case 0x8e89bad6:
+	case 0x8e89b6d6:
+	case 0x8e89aed6:
+	case 0x8e899ed6:
+	case 0x8e893ed6:
+	case 0x8e88bed6:
+	case 0x8e81bed6:
+	case 0x8e09bed6:
+	case 0x8c89bed6:
+	case 0x8a89bed6:
+	case 0x8689bed6:
+	case 0x0e89bed6:
+		retval = 1;
+		break;
 	}
+	return retval;
 }
 
-int le_packet_is_data(le_packet_t *p) {
-	return p->channel_idx < 37;
+/*
+ * A helper function for filtering bogus packets on data channels.
+ *
+ * If a candidate capture packet is random noise we would expect its
+ * Access Address to be a randomly distributed 32-bit number.  An
+ * exhaustive software analysis reveals that of 4294967296 possible
+ * 32-bit Access Address values, 2900629660 (67.5%) are acceptable and
+ * 1394337636 (32.5%) are invalid.  This function will identify which
+ * category a candidate Access Address falls into by returning the
+ * number of offenses contained.
+ *
+ * Refer to BT 4.x, Vol 6, Par B, Section 2.1.2.
+ *
+ * The Access Address in data channel packets meet the
+ * following requirements:
+ *  - It shall have no more than six consecutive zeros or ones.
+ *  - It shall not be the advertising channel packets’ Access Address.
+ *  - It shall not be a sequence that differs from the advertising channel packets’
+ *    Access Address by only one bit.
+ *  - It shall not have all four octets equal.
+ *  - It shall have no more than 24 transitions.
+ *  - It shall have a minimum of two transitions in the most significant six bits.
+ */
+static int aa_data_channel_offenses(const uint32_t aa) {
+	int retval = 0, transitions = 0;
+	unsigned shift, odd = (unsigned) (aa & 1);
+	uint8_t aab3, aab2, aab1, aab0 = (uint8_t) (aa & 0xff);
+
+	const uint8_t EIGHT_BIT_TRANSITIONS_EVEN[256] = {
+		0, 2, 2, 2, 2, 4, 2, 2, 2, 4, 4, 4, 2, 4, 2, 2,
+		2, 4, 4, 4, 4, 6, 4, 4, 2, 4, 4, 4, 2, 4, 2, 2,
+		2, 4, 4, 4, 4, 6, 4, 4, 4, 6, 6, 6, 4, 6, 4, 4,
+		2, 4, 4, 4, 4, 6, 4, 4, 2, 4, 4, 4, 2, 4, 2, 2,
+		2, 4, 4, 4, 4, 6, 4, 4, 4, 6, 6, 6, 4, 6, 4, 4,
+		4, 6, 6, 6, 6, 8, 6, 6, 4, 6, 6, 6, 4, 6, 4, 4,
+		2, 4, 4, 4, 4, 6, 4, 4, 4, 6, 6, 6, 4, 6, 4, 4,
+		2, 4, 4, 4, 4, 6, 4, 4, 2, 4, 4, 4, 2, 4, 2, 2,
+		1, 3, 3, 3, 3, 5, 3, 3, 3, 5, 5, 5, 3, 5, 3, 3,
+		3, 5, 5, 5, 5, 7, 5, 5, 3, 5, 5, 5, 3, 5, 3, 3,
+		3, 5, 5, 5, 5, 7, 5, 5, 5, 7, 7, 7, 5, 7, 5, 5,
+		3, 5, 5, 5, 5, 7, 5, 5, 3, 5, 5, 5, 3, 5, 3, 3,
+		1, 3, 3, 3, 3, 5, 3, 3, 3, 5, 5, 5, 3, 5, 3, 3,
+		3, 5, 5, 5, 5, 7, 5, 5, 3, 5, 5, 5, 3, 5, 3, 3,
+		1, 3, 3, 3, 3, 5, 3, 3, 3, 5, 5, 5, 3, 5, 3, 3,
+		1, 3, 3, 3, 3, 5, 3, 3, 1, 3, 3, 3, 1, 3, 1, 1
+	};
+
+	const uint8_t EIGHT_BIT_TRANSITIONS_ODD[256] = {
+		1, 1, 3, 1, 3, 3, 3, 1, 3, 3, 5, 3, 3, 3, 3, 1,
+		3, 3, 5, 3, 5, 5, 5, 3, 3, 3, 5, 3, 3, 3, 3, 1,
+		3, 3, 5, 3, 5, 5, 5, 3, 5, 5, 7, 5, 5, 5, 5, 3,
+		3, 3, 5, 3, 5, 5, 5, 3, 3, 3, 5, 3, 3, 3, 3, 1,
+		3, 3, 5, 3, 5, 5, 5, 3, 5, 5, 7, 5, 5, 5, 5, 3,
+		5, 5, 7, 5, 7, 7, 7, 5, 5, 5, 7, 5, 5, 5, 5, 3,
+		3, 3, 5, 3, 5, 5, 5, 3, 5, 5, 7, 5, 5, 5, 5, 3,
+		3, 3, 5, 3, 5, 5, 5, 3, 3, 3, 5, 3, 3, 3, 3, 1,
+		2, 2, 4, 2, 4, 4, 4, 2, 4, 4, 6, 4, 4, 4, 4, 2,
+		4, 4, 6, 4, 6, 6, 6, 4, 4, 4, 6, 4, 4, 4, 4, 2,
+		4, 4, 6, 4, 6, 6, 6, 4, 6, 6, 8, 6, 6, 6, 6, 4,
+		4, 4, 6, 4, 6, 6, 6, 4, 4, 4, 6, 4, 4, 4, 4, 2,
+		2, 2, 4, 2, 4, 4, 4, 2, 4, 4, 6, 4, 4, 4, 4, 2,
+		4, 4, 6, 4, 6, 6, 6, 4, 4, 4, 6, 4, 4, 4, 4, 2,
+		2, 2, 4, 2, 4, 4, 4, 2, 4, 4, 6, 4, 4, 4, 4, 2,
+		2, 2, 4, 2, 4, 4, 4, 2, 2, 2, 4, 2, 2, 2, 2, 0
+	};
+
+	transitions += (odd ? EIGHT_BIT_TRANSITIONS_ODD[aab0] : EIGHT_BIT_TRANSITIONS_EVEN[aab0] );
+	odd = (unsigned) (aab0 & 0x80);
+	aab1 = (uint8_t) (aa >> 8);
+	transitions += (odd ? EIGHT_BIT_TRANSITIONS_ODD[aab1] : EIGHT_BIT_TRANSITIONS_EVEN[aab1] );
+	odd = (unsigned) (aab1 & 0x80);
+	aab2 = (uint8_t) (aa >> 16);
+	transitions += (odd ? EIGHT_BIT_TRANSITIONS_ODD[aab2] : EIGHT_BIT_TRANSITIONS_EVEN[aab2] );
+	odd = (unsigned) (aab2 & 0x80);
+	aab3 = (uint8_t) (aa >> 24);
+	transitions += (odd ? EIGHT_BIT_TRANSITIONS_ODD[aab3] : EIGHT_BIT_TRANSITIONS_EVEN[aab3] );
+
+	/* consider excessive transitions as offenses */
+	if (transitions > 24) {
+		retval += (transitions - 24);
+	}
+
+	const uint8_t AA_MSB6_ALLOWED[64] = {
+		0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+		0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0
+	};
+
+	/* consider excessive transitions in the 6 MSBs as an offense */
+	retval += (1 - AA_MSB6_ALLOWED[aab3>>2]);
+
+	/* consider all bytes as being equal an offense */
+	retval += (((aab0 == aab1) && (aab0 == aab2) && (aab0 == aab3)) ? 1 : 0);
+
+	/* access-channel address and off-by-ones are illegal */
+	retval += ((aa == 0x8e89bed6) ? 1 : 0);
+	retval += aa_access_channel_off_by_one(aa);
+
+	/* inspect nibble triples for insufficient bit transitions */
+	for(shift=0; shift<=20; shift+=4) {
+		uint16_t twelvebits = (uint16_t) ((aa >> shift) & 0xfff);
+		switch( twelvebits ) {
+			/* seven consecutive zeroes */
+		case 0x080: case 0x180: case 0x280: case 0x380: case 0x480:
+		case 0x580: case 0x680: case 0x780: case 0x880: case 0x980:
+		case 0xa80: case 0xb80: case 0xc80: case 0xd80: case 0xe80:
+		case 0xf80: case 0x101: case 0x301: case 0x501: case 0x701:
+		case 0x901: case 0xb01: case 0xd01: case 0xf01: case 0x202:
+		case 0x602: case 0xa02: case 0xe02: case 0x203: case 0x603:
+		case 0xa03: case 0xe03: case 0x404: case 0xc04: case 0x405:
+		case 0xc05: case 0x406: case 0xc06: case 0x407: case 0xc07:
+		case 0x808: case 0x809: case 0x80a: case 0x80b: case 0x80c:
+		case 0x80d: case 0x80e: case 0x80f: case 0x010: case 0x011:
+		case 0x012: case 0x013: case 0x014: case 0x015: case 0x016:
+		case 0x017: case 0x018: case 0x019: case 0x01a: case 0x01b:
+		case 0x01c: case 0x01d: case 0x01e: case 0x01f:
+			/* eight consecutive zeroes */
+		case 0x100: case 0x300: case 0x500: case 0x700: case 0x900:
+		case 0xb00: case 0xd00: case 0xf00: case 0x201: case 0x601:
+		case 0xa01: case 0xe01: case 0x402: case 0xc02: case 0x403:
+		case 0xc03: case 0x804: case 0x805: case 0x806: case 0x807:
+		case 0x008: case 0x009: case 0x00a: case 0x00b: case 0x00c:
+		case 0x00d: case 0x00e: case 0x00f:
+			/* nine consecutive zeroes */
+		case 0xe00: case 0xc01: case 0x802: case 0x803: case 0x004:
+		case 0x005: case 0x006: case 0x007:
+			/* ten consecutive zeroes */
+		case 0x400: case 0xc00: case 0x801: case 0x002: case 0x003:
+			/* eleven consecutive zeroes */
+		case 0x800: case 0x001:
+			/* twelve consecutive zeroes */
+		case 0x000:
+			/* seven consecutive ones */
+		case 0x07f: case 0x0fe: case 0x2fe: case 0x4fe: case 0x6fe:
+		case 0x8fe: case 0xafe: case 0xcfe: case 0xefe: case 0x1fc:
+		case 0x5fc: case 0x9fc: case 0xdfc: case 0x1fd: case 0x5fd:
+		case 0x9fd: case 0xdfd: case 0x3f8: case 0xbf8: case 0x3f9:
+		case 0xbf9: case 0x3fa: case 0xbfa: case 0x3fb: case 0xbfb:
+		case 0x7f4: case 0x7f5: case 0x7f6: case 0x7f7: case 0xfe0:
+			/* eight consecutive ones */
+		case 0x0ff: case 0x2ff: case 0x4ff: case 0x6ff: case 0x8ff:
+		case 0xaff: case 0xcff: case 0xeff: case 0x1fe: case 0x5fe:
+		case 0x9fe: case 0xdfe: case 0x3fc: case 0xbfc: case 0x3fd:
+		case 0xbfd: case 0x7f8: case 0x7f9: case 0x7fa: case 0x7fb:
+		case 0xff0: case 0xff1: case 0xff2: case 0xff3: case 0xff4:
+		case 0xff5: case 0xff6: case 0xff7:
+			/* nine consecutive ones */
+		case 0x1ff: case 0x5ff: case 0x9ff: case 0xdff: case 0x3fe:
+		case 0xbfe: case 0x7fc: case 0x7fd: case 0xff8: case 0xff9:
+		case 0xffa: case 0xffb:
+			/* ten consecutive ones */
+		case 0x3ff: case 0xbff: case 0x7fe: case 0xffc: case 0xffd:
+			/* eleven consecutive ones */
+		case 0x7ff: case 0xffe:
+			/* all ones */
+		case 0xfff:
+			retval++;
+			break;
+		default:
+			break;
+		}
+	}
+
+	return retval;
 }
 
-uint8_t le_channel_index(uint16_t phys_channel) {
+lell_packet *
+lell_packet_new(void)
+{
+	lell_packet *pkt = (lell_packet *)calloc(1, sizeof(lell_packet));
+	pkt->refcount = 1;
+	return pkt;
+}
+
+void
+lell_packet_ref(lell_packet *pkt)
+{
+	pkt->refcount++;
+}
+
+void
+lell_packet_unref(lell_packet *pkt)
+{
+	pkt->refcount--;
+	if (pkt->refcount == 0)
+		free(pkt);
+}
+
+static uint8_t le_channel_index(uint16_t phys_channel) {
 	uint8_t ret;
 	if (phys_channel == 2402) {
 		ret = 37;
@@ -89,15 +294,73 @@ uint8_t le_channel_index(uint16_t phys_channel) {
 	return ret;
 }
 
-const char *le_adv_type(le_packet_t *p) {
-	if (le_packet_is_data(p))
+void lell_allocate_and_decode(const uint8_t *stream, uint16_t phys_channel, uint32_t clk100ns, lell_packet **pkt)
+{
+	*pkt = lell_packet_new( );
+	memcpy((*pkt)->symbols, stream, MAX_LE_SYMBOLS);
+
+	(*pkt)->channel_idx = le_channel_index(phys_channel);
+	(*pkt)->channel_k = (phys_channel-2402)/2;
+	(*pkt)->clk100ns = clk100ns;
+
+	(*pkt)->access_address = 0;
+	(*pkt)->access_address |= (*pkt)->symbols[0];
+	(*pkt)->access_address |= (*pkt)->symbols[1] << 8;
+	(*pkt)->access_address |= (*pkt)->symbols[2] << 16;
+	(*pkt)->access_address |= (*pkt)->symbols[3] << 24;
+
+	if (lell_packet_is_data(*pkt)) {
+		// data PDU
+		(*pkt)->length = (*pkt)->symbols[5] & 0x1f;
+		(*pkt)->access_address_offenses = aa_data_channel_offenses((*pkt)->access_address);
+		(*pkt)->flags.as_bits.access_address_ok = (*pkt)->access_address_offenses ? 0 : 1;
+	} else {
+		// advertising PDU
+		(*pkt)->length = (*pkt)->symbols[5] & 0x3f;
+		(*pkt)->adv_type = (*pkt)->symbols[4] & 0xf;
+		(*pkt)->adv_tx_add = (*pkt)->symbols[4] & 0x40 ? 1 : 0;
+		(*pkt)->adv_rx_add = (*pkt)->symbols[4] & 0x80 ? 1 : 0;
+		(*pkt)->flags.as_bits.access_address_ok = ((*pkt)->access_address == 0x8e89bed6);
+		(*pkt)->access_address_offenses = (*pkt)->flags.as_bits.access_address_ok ? 0 :
+			(aa_access_channel_off_by_one((*pkt)->access_address) ? 1 : 32);
+	}
+}
+
+unsigned lell_packet_is_data(const lell_packet *pkt)
+{
+	return (unsigned) (pkt->channel_idx < 37);
+}
+
+uint32_t lell_get_access_address(const lell_packet *pkt)
+{
+	return pkt->access_address;
+}
+
+unsigned lell_get_access_address_offenses(const lell_packet *pkt)
+{
+	return pkt->access_address_offenses;
+}
+
+unsigned lell_get_channel_index(const lell_packet *pkt)
+{
+	return pkt->channel_idx;
+}
+
+unsigned lell_get_channel_k(const lell_packet *pkt)
+{
+	return pkt->channel_k;
+}
+
+const char * lell_get_adv_type_str(const lell_packet *pkt)
+{
+	if (lell_packet_is_data(pkt))
 		return NULL;
-	if (p->adv_type < COUNT_OF(ADV_TYPE_NAMES))
-		return ADV_TYPE_NAMES[p->adv_type];
+	if (pkt->adv_type < COUNT_OF(ADV_TYPE_NAMES))
+		return ADV_TYPE_NAMES[pkt->adv_type];
 	return "UNKNOWN";
 }
 
-static void _dump_addr(char *name, uint8_t *buf, int offset, int random) {
+static void _dump_addr(const char *name, const uint8_t *buf, int offset, int random) {
 	int i;
 	printf("    %s%02x", name, buf[offset+5]);
 	for (i = 4; i >= 0; --i)
@@ -105,21 +368,21 @@ static void _dump_addr(char *name, uint8_t *buf, int offset, int random) {
 	printf(" (%s)\n", random ? "random" : "public");
 }
 
-static void _dump_8(char *name, uint8_t *buf, int offset) {
+static void _dump_8(const char *name, const uint8_t *buf, int offset) {
 	printf("    %s%02x (%d)\n", name, buf[offset], buf[offset]);
 }
 
-static void _dump_16(char *name, uint8_t *buf, int offset) {
+static void _dump_16(const char *name, const uint8_t *buf, int offset) {
 	uint16_t val = buf[offset+1] << 8 | buf[offset];
 	printf("    %s%04x (%d)\n", name, val, val);
 }
 
-static void _dump_24(char *name, uint8_t *buf, int offset) {
+static void _dump_24(const char *name, const uint8_t *buf, int offset) {
 	uint16_t val = buf[offset+2] << 16 | buf[offset+1] << 8 | buf[offset];
 	printf("    %s%06x\n", name, val);
 }
 
-static void _dump_32(char *name, uint8_t *buf, int offset) {
+static void _dump_32(const char *name, const uint8_t *buf, int offset) {
 	uint32_t val = buf[offset+3] << 24 |
 				   buf[offset+2] << 16 |
 				   buf[offset+1] << 8 |
@@ -127,7 +390,7 @@ static void _dump_32(char *name, uint8_t *buf, int offset) {
 	printf("    %s%08x\n", name, val);
 }
 
-static void _dump_uuid(uint8_t *uuid) {
+static void _dump_uuid(const uint8_t *uuid) {
 	int i;
 	for (i = 0; i < 4; ++i)
 		printf("%02x", uuid[i]);
@@ -146,7 +409,7 @@ static void _dump_uuid(uint8_t *uuid) {
 }
 
 // Refer to pg 1735 of Bluetooth Core Spec 4.0
-static void _dump_scan_rsp_data(uint8_t *buf, int len) {
+static void _dump_scan_rsp_data(const uint8_t *buf, int len) {
 	int pos = 0;
 	int sublen, i;
 	uint8_t type;
@@ -253,10 +516,11 @@ print128:
 	}
 }
 
-void le_print(le_packet_t *p) {
+void lell_print(const lell_packet *pkt)
+{
 	int i, opcode;
-	if (le_packet_is_data(p)) {
-		int llid = p->symbols[4] & 0x3;
+	if (lell_packet_is_data(pkt)) {
+		int llid = pkt->symbols[4] & 0x3;
 		static const char *llid_str[] = {
 			"Reserved",
 			"LL Data PDU / empty or L2CAP continuation",
@@ -264,15 +528,17 @@ void le_print(le_packet_t *p) {
 			"LL Control PDU",
 		};
 
-		printf("Data / AA %08x / %2d bytes\n", p->access_address, p->length);
-		printf("    Channel Index: %d\n", p->channel_idx);
+		printf("Data / AA %08x (%s) / %2d bytes\n", pkt->access_address,
+		       pkt->flags.as_bits.access_address_ok ? "valid" : "invalid",
+		       pkt->length);
+		printf("    Channel Index: %d\n", pkt->channel_idx);
 		printf("    LLID: %d / %s\n", llid, llid_str[llid]);
-		printf("    NESN: %d  SN: %d  MD: %d\n", (p->symbols[4] >> 2) & 1,
-												 (p->symbols[4] >> 3) & 1,
-												 (p->symbols[4] >> 4) & 1);
+		printf("    NESN: %d  SN: %d  MD: %d\n", (pkt->symbols[4] >> 2) & 1,
+												 (pkt->symbols[4] >> 3) & 1,
+												 (pkt->symbols[4] >> 4) & 1);
 		switch (llid) {
 		case 3: // LL Control PDU
-			opcode = p->symbols[6];
+			opcode = pkt->symbols[6];
 			static const char *opcode_str[] = {
 				"LL_CONNECTION_UPDATE_REQ",
 				"LL_CHANNEL_MAP_REQ",
@@ -302,65 +568,67 @@ void le_print(le_packet_t *p) {
 			break;
 		}
 	} else {
-		printf("Advertising / AA %08x / %2d bytes\n", p->access_address, p->length);
-		printf("    Channel Index: %d\n", p->channel_idx);
-		printf("    Type:  %s\n", le_adv_type(p));
+		printf("Advertising / AA %08x (%s)/ %2d bytes\n", pkt->access_address, 
+		       pkt->flags.as_bits.access_address_ok ? "valid" : "invalid",
+		       pkt->length);
+		printf("    Channel Index: %d\n", pkt->channel_idx);
+		printf("    Type:  %s\n", lell_get_adv_type_str(pkt));
 
-		switch(p->adv_type) {
+		switch(pkt->adv_type) {
 			case ADV_IND:
-				_dump_addr("AdvA:  ", p->symbols, 6, p->adv_tx_add);
-				if (p->length-6 > 0) {
+				_dump_addr("AdvA:  ", pkt->symbols, 6, pkt->adv_tx_add);
+				if (pkt->length-6 > 0) {
 					printf("    AdvData:");
-					for (i = 0; i < p->length - 6; ++i)
-						printf(" %02x", p->symbols[12+i]);
+					for (i = 0; i < pkt->length - 6; ++i)
+						printf(" %02x", pkt->symbols[12+i]);
 					printf("\n");
-					_dump_scan_rsp_data(&p->symbols[12], p->length-6);
+					_dump_scan_rsp_data(&pkt->symbols[12], pkt->length-6);
 				}
 				break;
 			case SCAN_REQ:
-				_dump_addr("ScanA: ", p->symbols, 6, p->adv_tx_add);
-				_dump_addr("AdvA:  ", p->symbols, 12, p->adv_rx_add);
+				_dump_addr("ScanA: ", pkt->symbols, 6, pkt->adv_tx_add);
+				_dump_addr("AdvA:  ", pkt->symbols, 12, pkt->adv_rx_add);
 				break;
 			case SCAN_RSP:
-				_dump_addr("AdvA:  ", p->symbols, 6, p->adv_tx_add);
+				_dump_addr("AdvA:  ", pkt->symbols, 6, pkt->adv_tx_add);
 				printf("    ScanRspData:");
-				for (i = 0; i < p->length - 6; ++i)
-					printf(" %02x", p->symbols[12+i]);
+				for (i = 0; i < pkt->length - 6; ++i)
+					printf(" %02x", pkt->symbols[12+i]);
 				printf("\n");
-				_dump_scan_rsp_data(&p->symbols[12], p->length-6);
+				_dump_scan_rsp_data(&pkt->symbols[12], pkt->length-6);
 				break;
 			case CONNECT_REQ:
-				_dump_addr("InitA: ", p->symbols, 6, p->adv_tx_add);
-				_dump_addr("AdvA:  ", p->symbols, 12, p->adv_rx_add);
-				_dump_32("AA:    ", p->symbols, 18);
-				_dump_24("CRCInit: ", p->symbols, 22);
-				_dump_8("WinSize: ", p->symbols, 25);
-				_dump_16("WinOffset: ", p->symbols, 26);
-				_dump_16("Interval: ", p->symbols, 28);
-				_dump_16("Latency: ", p->symbols, 30);
-				_dump_16("Timeout: ", p->symbols, 32);
+				_dump_addr("InitA: ", pkt->symbols, 6, pkt->adv_tx_add);
+				_dump_addr("AdvA:  ", pkt->symbols, 12, pkt->adv_rx_add);
+				_dump_32("AA:    ", pkt->symbols, 18);
+				_dump_24("CRCInit: ", pkt->symbols, 22);
+				_dump_8("WinSize: ", pkt->symbols, 25);
+				_dump_16("WinOffset: ", pkt->symbols, 26);
+				_dump_16("Interval: ", pkt->symbols, 28);
+				_dump_16("Latency: ", pkt->symbols, 30);
+				_dump_16("Timeout: ", pkt->symbols, 32);
 
 				printf("    ChM:");
 				for (i = 0; i < 5; ++i)
-					printf(" %02x", p->symbols[34+i]);
+					printf(" %02x", pkt->symbols[34+i]);
 				printf("\n");
 
-				printf("    Hop: %d\n", p->symbols[39] & 0x1f);
+				printf("    Hop: %d\n", pkt->symbols[39] & 0x1f);
 				printf("    SCA: %d, %s\n",
-						p->symbols[39] >> 5,
-						CONNECT_SCA[p->symbols[39] >> 5]);
+						pkt->symbols[39] >> 5,
+						CONNECT_SCA[pkt->symbols[39] >> 5]);
 				break;
 		}
 	}
 
 	printf("\n");
 	printf("    Data: ");
-	for (i = 6; i < 6 + p->length; ++i)
-		printf(" %02x", p->symbols[i]);
+	for (i = 6; i < 6 + pkt->length; ++i)
+		printf(" %02x", pkt->symbols[i]);
 	printf("\n");
 
 	printf("    CRC:  ");
 	for (i = 0; i < 3; ++i)
-		printf(" %02x", p->symbols[6 + p->length + i]);
+		printf(" %02x", pkt->symbols[6 + pkt->length + i]);
 	printf("\n");
 }
