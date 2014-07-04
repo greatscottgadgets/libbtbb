@@ -46,45 +46,18 @@ static const char *CONNECT_SCA[] = {
 // count of objects in an array, shamelessly stolen from Chrome
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 
+static uint8_t count_bits(uint32_t n)
+{
+	uint8_t i = 0;
+	for (i = 0; n != 0; i++)
+		n &= n - 1;
+	return i;
+}
+
 static int aa_access_channel_off_by_one(const uint32_t aa) {
 	int retval = 0;
-	switch(aa) {
-		/* single zero->one flips */
-	case 0x8e89bed7:
-	case 0x8e89bede:
-	case 0x8e89bef6:
-	case 0x8e89bfd6:
-	case 0x8e89fed6:
-	case 0x8e8bbed6:
-	case 0x8e8dbed6:
-	case 0x8e99bed6:
-	case 0x8ea9bed6:
-	case 0x8ec9bed6:
-	case 0x8f89bed6:
-	case 0x9e89bed6:
-	case 0xae89bed6:
-	case 0xce89bed6:
-		/* single one->zero flips */
-	case 0x8e89bed4:
-	case 0x8e89bed2:
-	case 0x8e89bec6:
-	case 0x8e89be96:
-	case 0x8e89be56:
-	case 0x8e89bcd6:
-	case 0x8e89bad6:
-	case 0x8e89b6d6:
-	case 0x8e89aed6:
-	case 0x8e899ed6:
-	case 0x8e893ed6:
-	case 0x8e88bed6:
-	case 0x8e81bed6:
-	case 0x8e09bed6:
-	case 0x8c89bed6:
-	case 0x8a89bed6:
-	case 0x8689bed6:
-	case 0x0e89bed6:
+	if(count_bits(aa ^ LE_ADV_AA) == 1) {
 		retval = 1;
-		break;
 	}
 	return retval;
 }
@@ -185,7 +158,7 @@ static int aa_data_channel_offenses(const uint32_t aa) {
 	retval += (((aab0 == aab1) && (aab0 == aab2) && (aab0 == aab3)) ? 1 : 0);
 
 	/* access-channel address and off-by-ones are illegal */
-	retval += ((aa == 0x8e89bed6) ? 1 : 0);
+	retval += ((aa == LE_ADV_AA) ? 1 : 0);
 	retval += aa_access_channel_off_by_one(aa);
 
 	/* inspect nibble triples for insufficient bit transitions */

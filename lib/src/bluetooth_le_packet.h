@@ -29,6 +29,8 @@
 
 #define MAX_LE_SYMBOLS 64
 
+#define LE_ADV_AA 0x8E89BED6
+
 #define ADV_IND			0
 #define ADV_DIRECT_IND	1
 #define ADV_NONCONN_IND	2
