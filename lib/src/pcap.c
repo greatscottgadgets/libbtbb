@@ -49,9 +49,13 @@ btbb_pcap_create_file(const char *filename, btbb_pcap_handle ** ph)
 	btbb_pcap_handle * handle = malloc( sizeof(btbb_pcap_handle) );
 	if (handle) {
 		memset(handle, 0, sizeof(*handle));
+#ifdef PCAP_TSTAMP_PRECISION_NANO
 		handle->pcap = pcap_open_dead_with_tstamp_precision(DLT_BLUETOOTH_BREDR_BB,
 								    400,
 								    PCAP_TSTAMP_PRECISION_NANO);
+#else
+                handle->pcap = pcap_open_dead(DLT_BLUETOOTH_BREDR_BB, 400);
+#endif
 		if (handle->pcap) {
 			handle->dumper = pcap_dump_open(handle->pcap, filename);
 			if (handle->dumper) {
@@ -201,9 +205,13 @@ lell_pcap_create_file_dlt(const char *filename, int dlt, lell_pcap_handle ** ph)
 	lell_pcap_handle * handle = malloc( sizeof(lell_pcap_handle) );
 	if (handle) {
 		memset(handle, 0, sizeof(*handle));
+#ifdef PCAP_TSTAMP_PRECISION_NANO
 		handle->pcap = pcap_open_dead_with_tstamp_precision(dlt,
 								    400,
 								    PCAP_TSTAMP_PRECISION_NANO);
+#else
+                handle->pcap = pcap_open_dead(dlt, 400);
+#endif
 		if (handle->pcap) {
 			handle->dumper = pcap_dump_open(handle->pcap, filename);
 			if (handle->dumper) {
