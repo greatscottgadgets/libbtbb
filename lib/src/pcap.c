@@ -367,7 +367,7 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 	    (h->dlt == DLT_PPI)) {
 		pcap_ppi_le_packet pcap_pkt;
 		uint32_t pcap_caplen = 
-			ppi_packet_header_sz+ppi_fieldheader_sz+le_ll_ppi_header_sz+pkt->length;
+			ppi_packet_header_sz+ppi_fieldheader_sz+le_ll_ppi_header_sz+pkt->length+9;
 		uint16_t MHz = 2402 + 2*lell_get_channel_k(pkt);
 
 		pcap_pkt.pcap_header.ts.tv_sec  = ns / 1000000000ull;
@@ -392,7 +392,7 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 		pcap_pkt.le_ll_ppi_header.rssi_avg = rssi_avg;
 		pcap_pkt.le_ll_ppi_header.rssi_count = rssi_count;
 		(void) memcpy( &pcap_pkt.le_packet[0], &pkt->symbols[0], pcap_caplen );
-		pcap_dump((u_char *)h->dumper, &pcap_pkt.pcap_header, (u_char *)&pcap_pkt.le_ll_ppi_header);
+		pcap_dump((u_char *)h->dumper, &pcap_pkt.pcap_header, (u_char *)&pcap_pkt.ppi_packet_header);
 		return 0;
 	}
 	return -PCAP_INVALID_HANDLE;
