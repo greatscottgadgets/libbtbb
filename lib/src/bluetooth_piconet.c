@@ -92,6 +92,11 @@ uint16_t btbb_piconet_get_nap(const btbb_piconet *pn)
 	return pn->NAP;
 }
 
+uint64_t btbb_piconet_get_bdaddr(const btbb_piconet *pn)
+{
+	return ((uint64_t) pn->NAP) << 32 | pn->UAP << 24 | pn->LAP;
+}
+
 int btbb_piconet_get_clk_offset(const btbb_piconet *pn)
 {
 	return pn->clk_offset;
