@@ -26,14 +26,12 @@ set(PACKAGE libbtbb)
 
 add_subdirectory(src)
 
-# Create uninstall target
-if(NOT libbtbb_all_SOURCE_DIR)
-configure_file(
-    ${PROJECT_SOURCE_DIR}/../cmake/cmake_uninstall.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+CONFIGURE_FILE(
+    ${CMAKE_CURRENT_SOURCE_DIR}/libbtbb.pc.in
+    ${CMAKE_CURRENT_BINARY_DIR}/libbtbb.pc
 @ONLY)
 
-add_custom_target(uninstall
-    ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+INSTALL(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/libbtbb.pc
+    DESTINATION lib/pkgconfig
 )
-endif()
