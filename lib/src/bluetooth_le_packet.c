@@ -89,6 +89,22 @@ uint8_t le_channel_index(uint16_t phys_channel) {
 	return ret;
 }
 
+uint8_t le_channel_number(uint8_t channel_index) {
+	uint8_t ret = 0;
+	if (channel_index <= 10) {
+		ret = channel_index + 1;
+	} else if (channel_index <= 36) {
+		ret = channel_index + 2;
+	} else if (channel_index == 37) {
+		ret = 0;
+	} else if (channel_index == 38) {
+		ret  = 12;
+	} else if (channel_index == 39) {
+		ret = 39;
+	}
+	return ret;
+}
+
 const char *le_adv_type(le_packet_t *p) {
 	if (le_packet_is_data(p))
 		return NULL;
@@ -104,6 +120,15 @@ static void _dump_addr(char *name, uint8_t *buf, int offset, int random) {
 		printf(":%02x", buf[offset+i]);
 	printf(" (%s)\n", random ? "random" : "public");
 }
+
+static void _dump_addr_norev(char *name, uint8_t *buf, int random) {
+	int i;
+	printf("    %s%02x", name, buf[0]);
+	for (i = 1; i < 6; ++i)
+		printf(":%02x", buf[i]);
+	printf(" (%s)\n", random ? "random" : "public");
+}
+
 
 static void _dump_8(char *name, uint8_t *buf, int offset) {
 	printf("    %s%02x (%d)\n", name, buf[offset], buf[offset]);
@@ -363,4 +388,171 @@ void le_print(le_packet_t *p) {
 	for (i = 0; i < 3; ++i)
 		printf(" %02x", p->symbols[6 + p->length + i]);
 	printf("\n");
+}
+
+static void memcpy_reverse(void *dst, void *src, size_t len) {
+	size_t i;
+	for (i = 0; i < len; ++i)
+		((uint8_t *)dst)[i] = ((uint8_t *)src)[len - i - 1];
+}
+
+
+int le_air_packet_init(le_air_packet_t *p, uint8_t *packet, size_t length, uint8_t channel) {
+	if (length > MAX_LE_SYMBOLS)
+		return 0;
+
+	memset(p, 0, sizeof(*p));
+	memcpy(p->symbols, packet, length);
+	p->length = length;
+	p->channel_idx = le_channel_index(2402 + channel * 2);
+
+	return 1;
+}
+
+#define GRAB8(dst, offset)  (dst) = data[offset]
+#define GRAB16(dst, offset) (dst) = *(uint16_t *)&data[offset]
+#define GRAB32(dst, offset) (dst) = *(uint32_t *)&data[offset]
+
+void le_adv_print(le_adv_t *adv) {
+	int i;
+	le_adv_ind_t *ai;
+	le_scan_req_t *scan_req;
+	le_scan_rsp_t *scan_rsp;
+	le_adv_direct_ind_t *adi;
+	le_connect_req_t *c;
+
+	switch (adv->PDU_Type) {
+		case ADV_IND:
+		case ADV_NONCONN_IND:
+		case ADV_SCAN_IND:
+			ai = &adv->payload.adv_ind;
+			_dump_addr_norev("AdvA:  ", ai->AdvA, adv->TxAdd);
+			if (ai->data_len > 0) {
+				printf("    AdvData:");
+				for (i = 0; i < ai->data_len; ++i)
+					printf(" %02x", ai->data[i]);
+				printf("\n");
+				_dump_scan_rsp_data(ai->data, ai->data_len);
+			}
+			break;
+		case ADV_DIRECT_IND:
+			adi = &adv->payload.adv_direct_ind;
+			_dump_addr_norev("AdvA:  ", adi->AdvA,  adv->TxAdd);
+			_dump_addr_norev("InitA: ", adi->InitA, adv->RxAdd);
+			break;
+		case SCAN_REQ:
+			scan_req = &adv->payload.scan_req;
+			_dump_addr_norev("ScanA: ", scan_req->ScanA, adv->TxAdd);
+			_dump_addr_norev("AdvA:  ", scan_req->AdvA,  adv->RxAdd);
+			break;
+		case SCAN_RSP:
+			scan_rsp = &adv->payload.scan_rsp;
+			_dump_addr_norev("AdvA:  ", scan_rsp->AdvA,  adv->TxAdd);
+			if (scan_rsp->data_len > 0) {
+				printf("    ScanData:");
+				for (i = 0; i < scan_rsp->data_len; ++i)
+					printf(" %02x", scan_rsp->data[i]);
+				printf("\n");
+				_dump_scan_rsp_data(scan_rsp->data, scan_rsp->data_len);
+			}
+			break;
+		case CONNECT_REQ:
+			c = &adv->payload.connect_req;
+			_dump_addr_norev("InitA: ", c->InitA, adv->TxAdd);
+			_dump_addr_norev("Adva:  ", c->AdvA,  adv->RxAdd);
+			printf("    AA:    %08x\n", c->AA);
+			printf("    CRCInit: %06x\n", c->CRCInit);
+			printf("    WinSize: %02x (%u)\n", c->WinSize, c->WinSize);
+			printf("    WinOffset: %04x (%u)\n", c->WinOffset, c->WinOffset);
+			printf("    Interval: %04x (%u)\n", c->Interval, c->Interval);
+			printf("    Latency: %04x (%u)\n", c->Latency, c->Latency);
+			printf("    Timeout: %04x (%u)\n", c->Timeout, c->Timeout);
+
+			printf("    ChM:");
+			for (i = 0; i < 5; ++i)
+				printf(" %02x", c->ChM[i]);
+			printf("\n");
+
+			printf("    Hop: %d\n", c->Hop);
+			printf("    SCA: %d, %s\n", c->SCA, CONNECT_SCA[c->SCA]);
+			break;
+	}
+}
+
+int le_parse_advertising(le_air_packet_t *p, le_adv_t *adv) {
+	le_adv_ind_t *ai;
+	le_adv_direct_ind_t *adi;
+	le_scan_req_t *scan_req;
+	le_scan_rsp_t *scan_rsp;
+	le_connect_req_t *c;
+
+	if (p->length < 2)
+		return 0;
+
+	uint8_t *data = p->symbols;
+
+	adv->Length = data[1] & 0x3f;
+	if (adv->Length > p->length)
+		return 0;
+
+	adv->PDU_Type = data[0] & 0xf;
+	adv->TxAdd = data[0] & 0x40 ? 1 : 0;
+	adv->RxAdd = data[0] & 0x80 ? 1 : 0;
+
+	switch (adv->PDU_Type) {
+		case ADV_IND:
+		case ADV_NONCONN_IND:
+		case ADV_SCAN_IND:
+			if (adv->Length < 8)
+				return 0;
+			ai = &adv->payload.adv_ind;
+			memcpy_reverse(ai->AdvA, &data[2], 6);
+			ai->data_len = adv->Length - 6;
+			ai->data = ai->data_len > 0 ? &data[8] : NULL;
+			break;
+		case ADV_DIRECT_IND:
+			if (adv->Length != 2 + 6 + 6)
+				return 0;
+			adi = &adv->payload.adv_direct_ind;
+			memcpy_reverse(adi->AdvA,  &data[2], 6);
+			memcpy_reverse(adi->InitA, &data[8], 6);
+			break;
+		case SCAN_REQ:
+			if (adv->Length != 2 + 6 + 6)
+				return 0;
+			scan_req = &adv->payload.scan_req;
+			memcpy_reverse(scan_req->ScanA, &data[2], 6);
+			memcpy_reverse(scan_req->AdvA,  &data[8], 6);
+			break;
+		case SCAN_RSP:
+			if (adv->Length < 8)
+				return 0;
+			scan_rsp = &adv->payload.scan_rsp;
+			memcpy_reverse(scan_rsp->AdvA, &data[2], 6);
+			scan_rsp->data_len = adv->Length - 6;
+			scan_rsp->data = scan_rsp->data_len > 0 ? &data[8] : NULL;
+			break;
+		case CONNECT_REQ:
+			if (adv->Length != 34)
+				return 0;
+			c = &adv->payload.connect_req;
+			memcpy_reverse(c->InitA, &data[2], 6);
+			memcpy_reverse(c->AdvA, &data[8], 6);
+			GRAB32(c->AA, 14);
+			GRAB32(c->CRCInit, 18);
+			c->CRCInit &= 0xffffff; // hack, because it's on 24 bits long
+			GRAB8 (c->WinSize, 21);
+			GRAB16(c->WinOffset, 22);
+			GRAB16(c->Interval, 24);
+			GRAB16(c->Latency, 26);
+			GRAB16(c->Timeout, 28);
+			memcpy_reverse(c->ChM, &data[30], 5);
+			c->Hop = data[35] & 0x1f;
+			c->SCA = data[35] >> 5;
+			break;
+		default:
+			return 0;
+	}
+
+	return 1;
 }
