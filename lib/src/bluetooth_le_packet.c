@@ -350,8 +350,8 @@ static void _dump_16(const char *name, const uint8_t *buf, int offset) {
 	printf("    %s%04x (%d)\n", name, val, val);
 }
 
-static void _dump_24(const char *name, const uint8_t *buf, int offset) {
-	uint16_t val = buf[offset+2] << 16 | buf[offset+1] << 8 | buf[offset];
+static void _dump_24(char *name, const uint8_t *buf, int offset) {
+	uint32_t val = buf[offset+2] << 16 | buf[offset+1] << 8 | buf[offset];
 	printf("    %s%06x\n", name, val);
 }
 
