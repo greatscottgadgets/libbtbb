@@ -115,7 +115,7 @@ static void _dump_16(char *name, uint8_t *buf, int offset) {
 }
 
 static void _dump_24(char *name, uint8_t *buf, int offset) {
-	uint16_t val = buf[offset+2] << 16 | buf[offset+1] << 8 | buf[offset];
+	uint32_t val = buf[offset+2] << 16 | buf[offset+1] << 8 | buf[offset];
 	printf("    %s%06x\n", name, val);
 }
 
