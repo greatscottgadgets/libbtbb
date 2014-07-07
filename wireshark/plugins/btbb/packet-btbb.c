@@ -291,8 +291,7 @@ dissect_btbb(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_
 	/* maybe should verify HEC */
 
 	/* make entries in protocol column and info column on summary display */
-	if (check_col(pinfo->cinfo, COL_PROTOCOL))
-		col_set_str(pinfo->cinfo, COL_PROTOCOL, "Bluetooth");
+	col_set_str(pinfo->cinfo, COL_PROTOCOL, "Bluetooth");
 
 	if (tvb_length(tvb) == 0) {
 		info = "ID";
@@ -301,10 +300,8 @@ dissect_btbb(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_
 		info = val_to_str(type, packet_types, "Unknown type: 0x%x");
 	}
 
-	if (check_col(pinfo->cinfo, COL_INFO)) {
-		col_clear(pinfo->cinfo, COL_INFO);
-		col_add_str(pinfo->cinfo, COL_INFO, info);
-	}
+	col_clear(pinfo->cinfo, COL_INFO);
+	col_add_str(pinfo->cinfo, COL_INFO, info);
 
 	/* see if we are being asked for details */
 	if (tree) {
