@@ -2,8 +2,6 @@
  * Routines for Bluetooth LMP dissection
  * Copyright 2009, Michael Ossmann <mike@ossmann.com>
  *
- * $Id$
- *
  * Wireshark - Network traffic analyzer
  * By Gerald Combs <gerald@wireshark.org>
  * Copyright 1998 Gerald Combs
@@ -1885,12 +1883,10 @@ dissect_btlmp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 	DISSECTOR_ASSERT(len >= 1);
 
 	/* make entries in protocol column and info column on summary display */
-	if (check_col(pinfo->cinfo, COL_PROTOCOL))
-		col_set_str(pinfo->cinfo, COL_PROTOCOL, "LMP");
+	col_set_str(pinfo->cinfo, COL_PROTOCOL, "LMP");
 
 	/* clear the info column first just in case of type fetching failure. */
-	if (check_col(pinfo->cinfo, COL_INFO))
-		col_clear(pinfo->cinfo, COL_INFO);
+	col_clear(pinfo->cinfo, COL_INFO);
 
 	op = tvb_get_guint8(tvb, offset) >> 1;
 
@@ -1899,13 +1895,11 @@ dissect_btlmp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 
 		eop = tvb_get_guint8(tvb, offset + 1);
 
-		if (check_col(pinfo->cinfo, COL_INFO))
-			col_add_str(pinfo->cinfo, COL_INFO, val_to_str(eop,
-				opcode, "Unknown Extended Opcode (%d)"));
+		col_add_str(pinfo->cinfo, COL_INFO, val_to_str(eop,
+			opcode, "Unknown Extended Opcode (%d)"));
 	} else {
-		if (check_col(pinfo->cinfo, COL_INFO))
-			col_add_str(pinfo->cinfo, COL_INFO, val_to_str(op,
-				opcode, "Unknown Opcode (%d)"));
+		col_add_str(pinfo->cinfo, COL_INFO, val_to_str(op,
+			opcode, "Unknown Opcode (%d)"));
 	}
 
 	/* see if we are being asked for details */
