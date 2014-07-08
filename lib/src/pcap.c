@@ -62,6 +62,7 @@ btbb_pcap_create_file(const char *filename, btbb_pcap_handle ** ph)
 				*ph = handle;
 			}
 			else {
+				pcap_perror(handle->pcap, "PCAP error:");
 				retval = -PCAP_FILE_NOT_ALLOWED;
 				goto fail;
 			}

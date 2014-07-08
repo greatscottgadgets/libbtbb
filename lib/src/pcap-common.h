@@ -62,6 +62,7 @@ inline uint64_t le64toh(uint64_t little_endian_64bits) { return little_endian_64
 
 #if !defined( DLT_BLUETOOTH_BREDR_BB )
 #define DLT_BLUETOOTH_BREDR_BB 255
+#endif
 typedef struct __attribute__((packed)) _pcap_bluetooth_bredr_bb_header {
         uint8_t rf_channel;
         int8_t signal_power;
@@ -76,7 +77,6 @@ typedef struct __attribute__((packed)) _pcap_bluetooth_bredr_bb_header {
         uint16_t flags;
         uint8_t  br_edr_payload[0];
 } pcap_bluetooth_bredr_bb_header;
-#endif
 
 #define BREDR_GFSK              0x00
 #define BREDR_PI_OVER_2_DQPSK   0x01
@@ -106,6 +106,7 @@ typedef struct __attribute__((packed)) _pcap_bluetooth_bredr_bb_header {
 
 #if !defined( DLT_BLUETOOTH_LE_LL_WITH_PHDR )
 #define DLT_BLUETOOTH_LE_LL_WITH_PHDR 256
+#endif
 typedef struct __attribute__((packed)) _pcap_bluetooth_le_ll_header {
         uint8_t rf_channel;
         int8_t signal_power;
@@ -115,7 +116,6 @@ typedef struct __attribute__((packed)) _pcap_bluetooth_le_ll_header {
         uint16_t flags;
         uint8_t le_packet[0];
 } pcap_bluetooth_le_ll_header;
-#endif
 
 #define LE_DEWHITENED        0x0001
 #define LE_SIGPOWER_VALID    0x0002
