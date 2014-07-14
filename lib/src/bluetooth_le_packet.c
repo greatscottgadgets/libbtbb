@@ -503,7 +503,7 @@ int le_parse_advertising(le_air_packet_t *p, le_adv_t *adv) {
 		case ADV_IND:
 		case ADV_NONCONN_IND:
 		case ADV_SCAN_IND:
-			if (adv->Length < 8)
+			if (adv->Length < 6)
 				return 0;
 			ai = &adv->payload.adv_ind;
 			memcpy_reverse(ai->AdvA, &data[2], 6);
@@ -511,21 +511,21 @@ int le_parse_advertising(le_air_packet_t *p, le_adv_t *adv) {
 			ai->data = ai->data_len > 0 ? &data[8] : NULL;
 			break;
 		case ADV_DIRECT_IND:
-			if (adv->Length != 2 + 6 + 6)
+			if (adv->Length != 6 + 6)
 				return 0;
 			adi = &adv->payload.adv_direct_ind;
 			memcpy_reverse(adi->AdvA,  &data[2], 6);
 			memcpy_reverse(adi->InitA, &data[8], 6);
 			break;
 		case SCAN_REQ:
-			if (adv->Length != 2 + 6 + 6)
+			if (adv->Length != 6 + 6)
 				return 0;
 			scan_req = &adv->payload.scan_req;
 			memcpy_reverse(scan_req->ScanA, &data[2], 6);
 			memcpy_reverse(scan_req->AdvA,  &data[8], 6);
 			break;
 		case SCAN_RSP:
-			if (adv->Length < 8)
+			if (adv->Length < 6)
 				return 0;
 			scan_rsp = &adv->payload.scan_rsp;
 			memcpy_reverse(scan_rsp->AdvA, &data[2], 6);
