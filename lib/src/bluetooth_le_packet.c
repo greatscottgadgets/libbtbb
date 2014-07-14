@@ -413,6 +413,19 @@ int le_air_packet_init(le_air_packet_t *p, uint8_t *packet, size_t length, uint8
 #define GRAB16(dst, offset) (dst) = *(uint16_t *)&data[offset]
 #define GRAB32(dst, offset) (dst) = *(uint32_t *)&data[offset]
 
+const char *pdu_type_str(uint8_t PDU_Type) {
+	static const char *type_str[] = {
+		"ADV_IND", "ADV_DIRECT_IND", "ADV_NONCONN_IND",
+		"SCAN_REQ", "SCAN_RSP", "CONNECT_REQ",
+		"ADV_SCAN_IND",
+	};
+
+	if (PDU_Type < sizeof(type_str) / sizeof(*type_str)) {
+		return type_str[PDU_Type];
+	}
+	return "Reserved";
+}
+
 void le_adv_print(le_adv_t *adv) {
 	int i;
 	le_adv_ind_t *ai;
@@ -420,6 +433,8 @@ void le_adv_print(le_adv_t *adv) {
 	le_scan_rsp_t *scan_rsp;
 	le_adv_direct_ind_t *adi;
 	le_connect_req_t *c;
+
+	printf("    Type: %s\n", pdu_type_str(adv->PDU_Type));
 
 	switch (adv->PDU_Type) {
 		case ADV_IND:
