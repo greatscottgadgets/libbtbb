@@ -392,7 +392,7 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 		pcap_pkt.le_ll_ppi_header.rssi_min = rssi_min;
 		pcap_pkt.le_ll_ppi_header.rssi_avg = rssi_avg;
 		pcap_pkt.le_ll_ppi_header.rssi_count = rssi_count;
-		(void) memcpy( &pcap_pkt.le_packet[0], &pkt->symbols[0], pcap_caplen );
+		(void) memcpy( &pcap_pkt.le_packet[0], &pkt->symbols[0], pkt->length + 9 ); // FIXME where does the 9 come from?
 		pcap_dump((u_char *)h->dumper, &pcap_pkt.pcap_header, (u_char *)&pcap_pkt.ppi_packet_header);
 		return 0;
 	}
