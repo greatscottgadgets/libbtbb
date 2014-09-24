@@ -298,8 +298,7 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 #endif
 
 	/* make entries in protocol column and info column on summary display */
-	if (check_col(pinfo->cinfo, COL_PROTOCOL))
-		col_set_str(pinfo->cinfo, COL_PROTOCOL, "Bluetooth LE");
+	col_set_str(pinfo->cinfo, COL_PROTOCOL, "Bluetooth LE");
 
 	aa = tvb_get_letohl(tvb, 0);
 
@@ -331,12 +330,10 @@ dissect_btle(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 			proto_tree_add_item(pkthdr_tree, hf_btle_length, tvb, offset, 1, TRUE);
 			offset += 1;
 
-			if (check_col(pinfo->cinfo, COL_INFO)) {
-				if (type <= 0x6) {
-					col_set_str(pinfo->cinfo, COL_INFO, packet_types[type].strptr);
-				} else {
-					col_set_str(pinfo->cinfo, COL_INFO, "Unknown");
-				}
+			if (type <= 0x6) {
+				col_set_str(pinfo->cinfo, COL_INFO, packet_types[type].strptr);
+			} else {
+				col_set_str(pinfo->cinfo, COL_INFO, "Unknown");
 			}
 
 			/* payload */

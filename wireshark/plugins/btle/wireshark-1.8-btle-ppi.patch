@@ -4,20 +4,20 @@ Index: wireshark-1.8.2/epan/dissectors/packet-ppi.c
 +++ wireshark-1.8.2/epan/dissectors/packet-ppi.c	2013-02-01 12:18:50.000000000 -0800
 @@ -181,6 +181,7 @@
      PPI_VECTOR_INFO              = 30003, /* currently available in draft from. jellch@harris.com */
-     PPI_SENSOR_INFO              = 30004, 
+     PPI_SENSOR_INFO              = 30004,
      PPI_ANTENNA_INFO             = 30005,
 +    PPI_BTLE                     = 30006,
      CACE_PRIVATE                 = 0xCACE
      /* All others RESERVED.  Contact the WinPcap team for an assignment */
  } ppi_field_type;
 @@ -319,7 +320,7 @@
- 
+
  static dissector_handle_t data_handle;
  static dissector_handle_t ieee80211_ht_handle;
 -static dissector_handle_t ppi_gps_handle, ppi_vector_handle, ppi_sensor_handle, ppi_antenna_handle;
 +static dissector_handle_t ppi_gps_handle, ppi_vector_handle, ppi_sensor_handle, ppi_antenna_handle, ppi_btle_handle;
- 
- 
+
+
  static const true_false_string tfs_ppi_head_flag_alignment = { "32-bit aligned", "Not aligned" };
 @@ -881,7 +882,19 @@
                  call_dissector(ppi_antenna_handle, next_tvb, pinfo, ppi_tree);
@@ -45,7 +45,7 @@ Index: wireshark-1.8.2/epan/dissectors/packet-ppi.c
      ppi_sensor_handle = find_dissector("ppi_sensor");
      ppi_antenna_handle = find_dissector("ppi_antenna");
 +    ppi_btle_handle = find_dissector("ppi_btle");
- 
+
      dissector_add_uint("wtap_encap", WTAP_ENCAP_PPI, ppi_handle);
  }
 Index: wireshark-1.8.2/epan/dissectors/packet-ppi-btle.c
@@ -123,8 +123,7 @@ Index: wireshark-1.8.2/epan/dissectors/packet-ppi-btle.c
 +    col_clear(pinfo->cinfo,COL_INFO);
 +
 +    /* Setup basic column info */
-+    if (check_col(pinfo->cinfo, COL_INFO))
-+        col_add_fstr(pinfo->cinfo, COL_INFO, "PPI_BTLE Capture");
++    col_add_fstr(pinfo->cinfo, COL_INFO, "PPI_BTLE Capture");
 +
 +    /* Create the basic dissection tree*/
 +    if (tree)
