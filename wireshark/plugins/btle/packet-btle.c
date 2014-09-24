@@ -633,11 +633,11 @@ proto_register_btle(void)
 	/* register the protocol name and description */
 	proto_btle = proto_register_protocol(
 		"Bluetooth Low Energy",	/* full name */
-		"BTLE",			/* short name */
-		"btle"			/* abbreviation (e.g. for filters) */
+		"BLE",			/* short name */
+		"ble"			/* abbreviation (e.g. for filters) */
 		);
 
-	register_dissector("btle", dissect_btle, proto_btle);
+	register_dissector("ble", dissect_btle, proto_btle);
 
 	/* register the header fields and subtrees used */
 	proto_register_field_array(proto_btle, hf, array_length(hf));
