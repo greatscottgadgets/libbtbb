@@ -1,6 +1,10 @@
 BTLE Wireshark plugin
 =====================
 
+This plugin is no longer in use, it has been merged in to the Wireshark source
+tree as of release 1.12.
+
+
 This is the Bluetooth Low Energy plugin for Wireshark.
 
 To build this on Debian/Ubuntu/BackTrack linux distributions:
