@@ -33,5 +33,5 @@ CONFIGURE_FILE(
 
 INSTALL(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/libbtbb.pc
-    DESTINATION lib/pkgconfig
+    DESTINATION lib${LIB_SUFFIX}/pkgconfig
 )
