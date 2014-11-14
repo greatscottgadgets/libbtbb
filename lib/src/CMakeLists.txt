@@ -18,6 +18,21 @@
 #
 # Based slightly upon the hackrf cmake setup.
 
+# FIXME Set static release version here to avoid pulling from git
+set(RELEASE "")
+
+if ( "${RELEASE}" STREQUAL "" )
+	# automatic git version when working out of git
+	include(GetGitRevisionDescription)
+	get_git_head_revision(GIT_REFSPEC RELEASE)
+endif()
+
+add_definitions( -DRELEASE="${RELEASE}" )
+
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.c.in"
+               "${CMAKE_CURRENT_BINARY_DIR}/version.c"
+               @ONLY)
+
 # Source
 set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
               ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_piconet.c
@@ -25,6 +40,7 @@ set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
               ${CMAKE_CURRENT_SOURCE_DIR}/pcap.c
               ${CMAKE_CURRENT_SOURCE_DIR}/pcapng.c
               ${CMAKE_CURRENT_SOURCE_DIR}/pcapng-bt.c
+			  ${CMAKE_CURRENT_BINARY_DIR}/version.c
 			  CACHE INTERNAL "List of C sources")
 set(c_headers ${CMAKE_CURRENT_SOURCE_DIR}/btbb.h
 			  CACHE INTERNAL "List of C headers")

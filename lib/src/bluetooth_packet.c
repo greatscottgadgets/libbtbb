@@ -26,6 +26,7 @@
 #include "bluetooth_packet.h"
 #include "uthash.h"
 #include "sw_check_tables.h"
+#include "version.h"
 
 /* Maximum number of AC errors supported by library. Caller may
  * specify any value <= AC_ERROR_LIMIT in btbb_init(). */
