@@ -28,21 +28,6 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 
 set(INSTALL_DEFAULT_BINDIR "bin" CACHE STRING "Appended to CMAKE_INSTALL_PREFIX")
 
-## Instruct user to remove previous versions, unless using a package manager
-#if(NOT PACKAGE_MANAGER)
-#  # Unset variables to force the recheck next time
-#  # (there has to be a better way to do it than this)
-#  UNSET(LIBBTBB_FOUND CACHE)
-#  UNSET(LIBBTBB_INCLUDE_DIR CACHE)
-#  UNSET(LIBBTBB_LIBRARIES CACHE)
-#
-#  find_package(BTBB)
-#  if(LIBBTBB_FOUND)
-#    message( FATAL_ERROR
-#      "An existing installation of libbtbb is already present on this system. Please remove it, and any depending applications before building. A helper script is provided, run\n$ sudo ../cmake/cleanup.sh -d\nto find and remove libbtbb and libubertooth and the ubertooth tools")
-#  endif()
-#endif()
-
 set( VERSION ${MAJOR_VERSION}.${MINOR_VERSION} )
 add_definitions( -DVERSION="${VERSION}" )
 
