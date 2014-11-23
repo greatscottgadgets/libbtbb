@@ -27,6 +27,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdio.h>
 
 /* generic section options indicating libbtbb */
 const struct {
@@ -106,7 +107,7 @@ create_bredr_capture_file_single_interface( PCAPNG_HANDLE * handle,
 				(const option_header *) &libbtbb_section_options, 
 				(size_t) getpagesize( ),
 				DLT_BLUETOOTH_BREDR_BB,
-				400,
+				BREDR_MAX_PAYLOAD,
 				interface_options,
 				(size_t) getpagesize( ) );
 
@@ -187,7 +188,7 @@ assemble_pcapng_bredr_packet( pcapng_bredr_packet * pkt,
                               const uint8_t ref_uap,
 			      const uint32_t bt_header,
 			      const uint16_t flags,
-			      const uint8_t * payload )
+			      const char * payload )
 {
 	uint32_t pcapng_caplen = sizeof(pcap_bluetooth_bredr_bb_header)+caplen;
 	uint32_t block_length  = 4*((36+pcapng_caplen+3)/4);
@@ -231,8 +232,10 @@ int btbb_pcapng_append_packet(btbb_pcapng_handle * h, const uint64_t ns,
 		((noisedbm < sigdbm) ? BREDR_NOISEPOWER_VALID : 0) |
 		((reflap != LAP_ANY) ? BREDR_REFLAP_VALID : 0) |
 		((refuap != UAP_ANY) ? BREDR_REFUAP_VALID : 0);
-	uint8_t payload_bytes[400];
-	uint32_t caplen = (uint32_t) btbb_get_payload_packed( pkt, (char *) &payload_bytes[0] );
+	int caplen = btbb_packet_get_payload_length(pkt);
+	char payload_bytes[caplen];
+	btbb_get_payload_packed( pkt, &payload_bytes[0] );
+	caplen = MIN(BREDR_MAX_PAYLOAD, caplen);
 	pcapng_bredr_packet pcapng_pkt;
 	assemble_pcapng_bredr_packet( &pcapng_pkt,
 				      0,

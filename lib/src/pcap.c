@@ -51,10 +51,10 @@ btbb_pcap_create_file(const char *filename, btbb_pcap_handle ** ph)
 		memset(handle, 0, sizeof(*handle));
 #ifdef PCAP_TSTAMP_PRECISION_NANO
 		handle->pcap = pcap_open_dead_with_tstamp_precision(DLT_BLUETOOTH_BREDR_BB,
-								    400,
+								    BREDR_MAX_PAYLOAD,
 								    PCAP_TSTAMP_PRECISION_NANO);
 #else
-                handle->pcap = pcap_open_dead(DLT_BLUETOOTH_BREDR_BB, 400);
+                handle->pcap = pcap_open_dead(DLT_BLUETOOTH_BREDR_BB, BREDR_MAX_PAYLOAD);
 #endif
 		if (handle->pcap) {
 			handle->dumper = pcap_dump_open(handle->pcap, filename);
@@ -85,7 +85,7 @@ fail:
 typedef struct {
 	struct pcap_pkthdr pcap_header;
 	pcap_bluetooth_bredr_bb_header bredr_bb_header;
-	uint8_t bredr_payload[400];
+	uint8_t bredr_payload[BREDR_MAX_PAYLOAD];
 } pcap_bredr_packet;
 
 static void
@@ -147,8 +147,10 @@ btbb_pcap_append_packet(btbb_pcap_handle * h, const uint64_t ns,
 			((noisedbm < sigdbm) ? BREDR_NOISEPOWER_VALID : 0) |
 			((reflap != LAP_ANY) ? BREDR_REFLAP_VALID : 0) |
 			((refuap != UAP_ANY) ? BREDR_REFUAP_VALID : 0);
-		uint8_t payload_bytes[400];
-		uint32_t caplen = (uint32_t) btbb_get_payload_packed( pkt, (char *) &payload_bytes[0] );
+		uint32_t caplen = (uint32_t) btbb_packet_get_payload_length(pkt);
+		uint8_t payload_bytes[caplen];
+		btbb_get_payload_packed( pkt, (char *) &payload_bytes[0] );
+		caplen = MIN(BREDR_MAX_PAYLOAD, caplen);
 		pcap_bredr_packet pcap_pkt;
 		assemble_pcapng_bredr_packet( &pcap_pkt,
 					      0,
@@ -208,10 +210,10 @@ lell_pcap_create_file_dlt(const char *filename, int dlt, lell_pcap_handle ** ph)
 		memset(handle, 0, sizeof(*handle));
 #ifdef PCAP_TSTAMP_PRECISION_NANO
 		handle->pcap = pcap_open_dead_with_tstamp_precision(dlt,
-								    400,
+								    BREDR_MAX_PAYLOAD,
 								    PCAP_TSTAMP_PRECISION_NANO);
 #else
-                handle->pcap = pcap_open_dead(dlt, 400);
+                handle->pcap = pcap_open_dead(dlt, BREDR_MAX_PAYLOAD);
 #endif
 		if (handle->pcap) {
 			handle->dumper = pcap_dump_open(handle->pcap, filename);
@@ -259,7 +261,7 @@ lell_pcap_ppi_create_file(const char *filename, int btle_ppi_version,
 typedef struct {
 	struct pcap_pkthdr pcap_header;
 	pcap_bluetooth_le_ll_header le_ll_header;
-	uint8_t le_packet[48];
+	uint8_t le_packet[LE_MAX_PAYLOAD];
 } pcap_le_packet;
 
 static void
@@ -350,7 +352,7 @@ typedef struct __attribute__((packed)) {
         ppi_packet_header_t ppi_packet_header;
 	ppi_fieldheader_t ppi_fieldheader;
 	ppi_btle_t le_ll_ppi_header;
-	uint8_t le_packet[48];
+	uint8_t le_packet[LE_MAX_PAYLOAD];
 } pcap_ppi_le_packet;
 
 int 

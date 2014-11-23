@@ -58,6 +58,8 @@ inline uint64_t le64toh(uint64_t little_endian_64bits) { return little_endian_64
 #endif /* __GNUC__ */
 #endif /* htole16 */
 
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+
 /* --------------------------------- BR/EDR ----------------------------- */
 
 #if !defined( DLT_BLUETOOTH_BREDR_BB )
@@ -102,6 +104,8 @@ typedef struct __attribute__((packed)) _pcap_bluetooth_bredr_bb_header {
 #define BREDR_MIC_CHECKED       0x1000
 #define BREDR_MIC_VALID         0x2000
 
+#define BREDR_MAX_PAYLOAD       400
+
 /* --------------------------------- Low Energy ---------------------------- */
 
 #if !defined( DLT_BLUETOOTH_LE_LL_WITH_PHDR )
@@ -128,5 +132,7 @@ typedef struct __attribute__((packed)) _pcap_bluetooth_le_ll_header {
 #define LE_CRC_VALID         0x0800
 #define LE_MIC_CHECKED       0x1000
 #define LE_MIC_VALID         0x2000
+
+#define LE_MAX_PAYLOAD       48
 
 #endif /* PCAP_COMMON_DOT_H */

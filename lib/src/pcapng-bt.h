@@ -44,7 +44,7 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
   enhanced_packet_block blk_header;
   pcap_bluetooth_bredr_bb_header bredr_bb_header;
-  uint8_t bredr_payload[400];
+  uint8_t bredr_payload[BREDR_MAX_PAYLOAD];
 } pcapng_bredr_packet;
 
 typedef struct __attribute__((packed)) {
@@ -78,7 +78,7 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
   enhanced_packet_block blk_header;
   pcap_bluetooth_le_ll_header le_ll_header;
-  uint8_t le_packet[48];
+  uint8_t le_packet[LE_MAX_PAYLOAD];
 } pcapng_le_packet;
 
 typedef struct __attribute__((packed)) {
