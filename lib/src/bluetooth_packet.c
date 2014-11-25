@@ -28,6 +28,8 @@
 #include "sw_check_tables.h"
 #include "version.h"
 
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+
 /* Maximum number of AC errors supported by library. Caller may
  * specify any value <= AC_ERROR_LIMIT in btbb_init(). */
 #define AC_ERROR_LIMIT 5
@@ -717,34 +719,34 @@ int crc_check(int clock, btbb_packet* pkt)
 
 	switch(pkt->packet_type)
 	{
-		case 2:/* FHS */
+		case PACKET_TYPE_FHS:
 			retval = fhs(clock, pkt);
 			break;
 
-		case 8:/* DV */
-		case 3:/* DM1 */
-		case 10:/* DM3 */
-		case 14:/* DM5 */
+		case PACKET_TYPE_DV:
+		case PACKET_TYPE_DM1:
+		case PACKET_TYPE_DM3:
+		case PACKET_TYPE_DM5:
 			retval = DM(clock, pkt);
 			break;
 
-		case 4:/* DH1 */
-		case 11:/* DH3 */
-		case 15:/* DH5 */
+		case PACKET_TYPE_DH1:
+		case PACKET_TYPE_DH3:
+		case PACKET_TYPE_DH5:
 			retval = DH(clock, pkt);
 			break;
 
-		case 7:/* EV3 */
+		case PACKET_TYPE_HV3: /* EV3 */
 			retval = EV3(clock, pkt);
 			break;
-		case 12:/* EV4 */
+		case PACKET_TYPE_EV4:
 			retval = EV4(clock, pkt);
 			break;
-		case 13:/* EV5 */
+		case PACKET_TYPE_EV5:
 			retval = EV5(clock, pkt);
 			break;
 		
-		case 5:/* HV1 */
+		case PACKET_TYPE_HV1:
 			retval = HV(clock, pkt);
 			break;
 
@@ -854,6 +856,40 @@ static int decode_payload_header(char *stream, int clock, int header_bytes, int 
 		/* payload length is payload body length + 1 byte payload header + 2 bytes CRC */
 		pkt->payload_length = air_to_host8(&pkt->payload_header[3], 5) + 3;
 	}
+	/* Try to set the max payload length to a sensible value,
+	 * especially when using strange data
+	 */
+	int max_length = 0;
+	switch(pkt->packet_type) {
+		case PACKET_TYPE_DM1:
+			max_length = 20;
+			break;
+		case PACKET_TYPE_DH1:
+			/* assuming DH1 but could be 2-DH1 (58) */
+			max_length = 30;
+			break;
+		case PACKET_TYPE_DV:
+			/* assuming DV but could be 3-DH1 (87) */
+			max_length = 12; /* + 10bytes of voice data */
+			break;
+		case PACKET_TYPE_DM3:
+			/* assuming DM3 but could be 2-DH3 (371) */
+			max_length = 125;
+			break;
+		case PACKET_TYPE_DH3:
+			/* assuming DH3 but could be 3-DH3 (556) */
+			max_length = 187;
+			break;
+		case PACKET_TYPE_DM5:
+			/* assuming DM5 but could be 2-DH5 (683) */
+			max_length = 228;
+			break;
+		case PACKET_TYPE_DH5:
+			/* assuming DH5 but could be 3-DH5 (1025) */
+			max_length = 343;
+			break;
+	}
+	pkt->payload_length = MIN(pkt->payload_length, max_length);
 	pkt->payload_llid = air_to_host8(&pkt->payload_header[0], 2);
 	pkt->payload_flow = air_to_host8(&pkt->payload_header[2], 1);
 	pkt->payload_header_length = header_bytes;
@@ -875,7 +911,7 @@ int DM(int clock, btbb_packet* pkt)
 
 	switch(pkt->packet_type)
 	{
-		case(8): /* DV */
+		case PACKET_TYPE_DV:
 			/* skip 80 voice bits, then treat the rest like a DM1 */
 			stream += 80;
 			size -= 80;
@@ -887,14 +923,14 @@ int DM(int clock, btbb_packet* pkt)
 			 */
 			max_length = 12;
 			break;
-		case(3): /* DM1 */
+		case PACKET_TYPE_DM1:
 			header_bytes = 1;
 			max_length = 20;
 			break;
-		case(10): /* DM3 */
+		case PACKET_TYPE_DM3:
 			max_length = 125;
 			break;
-		case(14): /* DM5 */
+		case PACKET_TYPE_DM5:
 			max_length = 228;
 			break;
 		default: /* not a DM1/3/5 or DV */
@@ -939,15 +975,15 @@ int DH(int clock, btbb_packet* pkt)
 	
 	switch(pkt->packet_type)
 	{
-		case(9): /* AUX1 */
-		case(4): /* DH1 */
+		case PACKET_TYPE_AUX1:
+		case PACKET_TYPE_DH1:
 			header_bytes = 1;
 			max_length = 30;
 			break;
-		case(11): /* DH3 */
+		case PACKET_TYPE_DH3:
 			max_length = 187;
 			break;
-		case(15): /* DH5 */
+		case PACKET_TYPE_DH5:
 			max_length = 343;
 			break;
 		default: /* not a DH1/3/5 */
@@ -1108,32 +1144,32 @@ int HV(int clock, btbb_packet* pkt)
 	}
 
 	switch (pkt->packet_type) {
-	case 5:/* HV1 */
-		{
-		char corrected[80];
-		if (!unfec13(stream, corrected, 80))
-			return 0;
-		pkt->payload_length = 10;
-		btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 1);
-		unwhiten(corrected, pkt->payload, clock, pkt->payload_length*8, 18, pkt);
-		}
-		break;
-	case 6:/* HV2 */
-		{
-		char *corrected = unfec23(stream, 160);
-		if (!corrected)
-			return 0;
-		pkt->payload_length = 20;
-		btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 1);
-		unwhiten(corrected, pkt->payload, clock, pkt->payload_length*8, 18, pkt);
-		free(corrected);
-		}
-		break;
-	case 7:/* HV3 */
-		pkt->payload_length = 30;
-		btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 1);
-		unwhiten(stream, pkt->payload, clock, pkt->payload_length*8, 18, pkt);
-		break;
+		case PACKET_TYPE_HV1:
+			{
+			char corrected[80];
+			if (!unfec13(stream, corrected, 80))
+				return 0;
+			pkt->payload_length = 10;
+			btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 1);
+			unwhiten(corrected, pkt->payload, clock, pkt->payload_length*8, 18, pkt);
+			}
+			break;
+		case PACKET_TYPE_HV2:
+			{
+			char *corrected = unfec23(stream, 160);
+			if (!corrected)
+				return 0;
+			pkt->payload_length = 20;
+			btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 1);
+			unwhiten(corrected, pkt->payload, clock, pkt->payload_length*8, 18, pkt);
+			free(corrected);
+			}
+			break;
+		case PACKET_TYPE_HV3:
+			pkt->payload_length = 30;
+			btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 1);
+			unwhiten(stream, pkt->payload, clock, pkt->payload_length*8, 18, pkt);
+			break;
 	}
 
 	return 2;
@@ -1193,66 +1229,66 @@ int btbb_decode_payload(btbb_packet* pkt)
 
 	switch(pkt->packet_type)
 	{
-		case 0: /* NULL */
+		case PACKET_TYPE_NULL:
 			/* no payload to decode */
 			pkt->payload_length = 0;
 			rv = 1;
 			break;
-		case 1: /* POLL */
+		case PACKET_TYPE_POLL:
 			/* no payload to decode */
 			pkt->payload_length = 0;
 			rv = 1;
 			break;
-		case 2: /* FHS */
+		case PACKET_TYPE_FHS:
 			rv = fhs(pkt->clock, pkt);
 			break;
-		case 3: /* DM1 */
+		case PACKET_TYPE_DM1:
 			rv = DM(pkt->clock, pkt);
 			break;
-		case 4: /* DH1 */
+		case PACKET_TYPE_DH1:
 			/* assuming DH1 but could be 2-DH1 */
 			rv = DH(pkt->clock, pkt);
 			break;
-		case 5: /* HV1 */
+		case PACKET_TYPE_HV1:
 			rv = HV(pkt->clock, pkt);
 			break;
-		case 6: /* HV2 */
+		case PACKET_TYPE_HV2:
 			rv = HV(pkt->clock, pkt);
 			break;
-		case 7: /* HV3/EV3/3-EV3 */
+		case PACKET_TYPE_HV3: /* HV3/EV3/3-EV3 */
 			/* decode as EV3 if CRC checks out */
 			if ((rv = EV3(pkt->clock, pkt)) <= 1)
 				/* otherwise assume HV3 */
 				rv = HV(pkt->clock, pkt);
 			/* don't know how to decode 3-EV3 */
 			break;
-		case 8: /* DV */
+		case PACKET_TYPE_DV:
 			/* assuming DV but could be 3-DH1 */
 			rv = DM(pkt->clock, pkt);
 			break;
-		case 9: /* AUX1 */
+		case PACKET_TYPE_AUX1:
 			rv = DH(pkt->clock, pkt);
 			break;
-		case 10: /* DM3 */
+		case PACKET_TYPE_DM3:
 			/* assuming DM3 but could be 2-DH3 */
 			rv = DM(pkt->clock, pkt);
 			break;
-		case 11: /* DH3 */
+		case PACKET_TYPE_DH3:
 			/* assuming DH3 but could be 3-DH3 */
 			rv = DH(pkt->clock, pkt);
 			break;
-		case 12: /* EV4 */
+		case PACKET_TYPE_EV4:
 			/* assuming EV4 but could be 2-EV5 */
 			rv = EV4(pkt->clock, pkt);
 			break;
-		case 13: /* EV5 */
+		case PACKET_TYPE_EV5:
 			/* assuming EV5 but could be 3-EV5 */
 			rv = EV5(pkt->clock, pkt);
-		case 14: /* DM5 */
+		case PACKET_TYPE_DM5:
 			/* assuming DM5 but could be 2-DH5 */
 			rv = DM(pkt->clock, pkt);
 			break;
-		case 15: /* DH5 */
+		case PACKET_TYPE_DH5:
 			/* assuming DH5 but could be 3-DH5 */
 			rv = DH(pkt->clock, pkt);
 			break;

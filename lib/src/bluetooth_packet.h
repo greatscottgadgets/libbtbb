@@ -32,6 +32,23 @@
 /* minimum header bit errors to indicate that this is an ID packet */
 #define ID_THRESHOLD 5
 
+#define PACKET_TYPE_NULL 0
+#define PACKET_TYPE_POLL 1
+#define PACKET_TYPE_FHS 2
+#define PACKET_TYPE_DM1 3
+#define PACKET_TYPE_DH1 4
+#define PACKET_TYPE_HV1 5
+#define PACKET_TYPE_HV2 6
+#define PACKET_TYPE_HV3 7
+#define PACKET_TYPE_DV 8
+#define PACKET_TYPE_AUX1 9
+#define PACKET_TYPE_DM3 10
+#define PACKET_TYPE_DH3 11
+#define PACKET_TYPE_EV4 12
+#define PACKET_TYPE_EV5 13
+#define PACKET_TYPE_DM5 14
+#define PACKET_TYPE_DH5 15
+
 struct btbb_packet {
 
 	uint32_t refcount;
