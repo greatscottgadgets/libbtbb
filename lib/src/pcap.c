@@ -20,6 +20,7 @@
  * Boston, MA 02110-1301, USA.
  */
 #include "bluetooth_le_packet.h"
+#include "bluetooth_packet.h"
 #include "btbb.h"
 #include "pcap-common.h"
 
@@ -160,8 +161,8 @@ btbb_pcap_append_packet(btbb_pcap_handle * h, const uint64_t ns,
 					      sigdbm,
 					      noisedbm,
 					      btbb_packet_get_ac_errors(pkt),
-					      BREDR_TRANSPORT_ANY,
-					      BREDR_GFSK, /* currently only supported */
+						  btbb_packet_get_transport(pkt),
+						  btbb_packet_get_modulation(pkt),
 					      0, /* TODO: corrected header bits */
 					      0, /* TODO: corrected payload bits */
 					      btbb_packet_get_lap(pkt),

@@ -60,6 +60,8 @@ struct btbb_packet {
 	uint16_t NAP;    /* non-significant address part */
 	uint32_t LAP;    /* lower address part found in access code */
 	
+	uint8_t modulation; 
+	uint8_t transport;
 	uint8_t packet_type;
 	uint8_t packet_lt_addr; /* LLID field of payload header (2 bits) */
 	uint8_t packet_flags; /* Flags - FLOW/ARQN/SQEN */

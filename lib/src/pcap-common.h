@@ -80,15 +80,6 @@ typedef struct __attribute__((packed)) _pcap_bluetooth_bredr_bb_header {
         uint8_t  br_edr_payload[0];
 } pcap_bluetooth_bredr_bb_header;
 
-#define BREDR_GFSK              0x00
-#define BREDR_PI_OVER_2_DQPSK   0x01
-#define BREDR_8DPSK             0x02
-#define BREDR_TRANSPORT_ANY     0x00
-#define BREDR_TRANSPORT_SCO     0x01
-#define BREDR_TRANSPORT_ESCO    0x02
-#define BREDR_TRANSPORT_ACL     0x03
-#define BREDR_TRANSPORT_CSB     0x04
-
 #define BREDR_DEWHITENED        0x0001
 #define BREDR_SIGPOWER_VALID    0x0002
 #define BREDR_NOISEPOWER_VALID  0x0004

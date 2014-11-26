@@ -41,6 +41,19 @@
 #define BTBB_IS_ALIASED        13
 #define BTBB_FOLLOWING         14
 
+/* Payload modulation */
+#define BTBB_MOD_UNKNOWN           0x00
+#define BTBB_MOD_GFSK              0x01
+#define BTBB_MOD_PI_OVER_2_DQPSK   0x02
+#define BTBB_MOD_8DPSK             0x03
+
+/* Transport types */
+#define BTBB_TRANSPORT_ANY     0x00
+#define BTBB_TRANSPORT_SCO     0x01
+#define BTBB_TRANSPORT_ESCO    0x02
+#define BTBB_TRANSPORT_ACL     0x03
+#define BTBB_TRANSPORT_CSB     0x04
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -90,6 +103,9 @@ uint32_t btbb_packet_get_lap(const btbb_packet *pkt);
 void btbb_packet_set_uap(btbb_packet *pkt, uint8_t uap);
 uint8_t btbb_packet_get_uap(const btbb_packet *pkt);
 uint16_t btbb_packet_get_nap(const btbb_packet *pkt);
+
+void btbb_packet_set_modulation(btbb_packet *pkt, uint8_t modulation);
+void btbb_packet_set_transport(btbb_packet *pkt, uint8_t transport);
 
 uint8_t btbb_packet_get_channel(const btbb_packet *pkt);
 uint8_t btbb_packet_get_ac_errors(const btbb_packet *pkt);

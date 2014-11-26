@@ -22,6 +22,7 @@
 
 #include "btbb.h"
 #include "bluetooth_le_packet.h"
+#include "bluetooth_packet.h"
 #include "pcapng-bt.h"
 #include <stdlib.h>
 #include <string.h>
@@ -245,8 +246,8 @@ int btbb_pcapng_append_packet(btbb_pcapng_handle * h, const uint64_t ns,
 				      sigdbm,
 				      noisedbm,
 				      btbb_packet_get_ac_errors(pkt),
-				      BREDR_TRANSPORT_ANY,
-				      BREDR_GFSK, /* currently only supported */
+				      btbb_packet_get_transport(pkt),
+				      btbb_packet_get_modulation(pkt),
 				      0, /* TODO: corrected header bits */
 				      0, /* TODO: corrected payload bits */
 				      btbb_packet_get_lap(pkt),
