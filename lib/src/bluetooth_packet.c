@@ -263,10 +263,14 @@ static void host_to_air(const uint8_t host_order, char *air_order, const int bit
 /* count the number of 1 bits in a uint64_t */
 static uint8_t count_bits(uint64_t n)
 {
+#ifdef __GNUC__
+	return (uint8_t) __builtin_popcountll (n);
+#else
 	uint8_t i = 0;
 	for (i = 0; n != 0; i++)
 		n &= n - 1;
 	return i;
+#endif
 }
 
 #ifndef RELEASE
