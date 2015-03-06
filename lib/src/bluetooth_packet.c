@@ -306,7 +306,8 @@ btbb_packet *
 btbb_packet_new(void)
 {
 	btbb_packet *pkt = (btbb_packet *)calloc(1, sizeof(btbb_packet));
-	pkt->refcount = 1;
+	if(pkt)
+		pkt->refcount = 1;
 	return pkt;
 }
 
