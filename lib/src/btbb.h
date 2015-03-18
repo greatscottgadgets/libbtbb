@@ -106,6 +106,8 @@ uint16_t btbb_packet_get_nap(const btbb_packet *pkt);
 
 void btbb_packet_set_modulation(btbb_packet *pkt, uint8_t modulation);
 void btbb_packet_set_transport(btbb_packet *pkt, uint8_t transport);
+uint8_t btbb_packet_get_modulation(const btbb_packet *pkt);
+uint8_t btbb_packet_get_transport(const btbb_packet *pkt);
 
 uint8_t btbb_packet_get_channel(const btbb_packet *pkt);
 uint8_t btbb_packet_get_ac_errors(const btbb_packet *pkt);
