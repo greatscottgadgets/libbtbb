@@ -65,13 +65,20 @@ endif()
 
 set_target_properties(btbb PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
-# Conditional libpcap support
-find_package(PCAP)
-if( ${PCAP_FOUND} )
-	include_directories(${PCAP_INCLUDE_DIRS})
-	target_link_libraries(btbb ${PCAP_LIBRARIES})
-	add_definitions( -DUSE_PCAP )
-endif( ${PCAP_FOUND} )
+if( (NOT DEFINED USE_PCAP) OR USE_PCAP )
+	find_package(PCAP)
+
+	if( USE_PCAP AND NOT ${PCAP_FOUND} )
+		message( FATAL_ERROR
+			"Cannot find libpcap, which is required for USE_PCAP")
+	endif()
+
+	if( ${PCAP_FOUND} )
+		include_directories(${PCAP_INCLUDE_DIRS})
+		target_link_libraries(btbb ${PCAP_LIBRARIES})
+		add_definitions( -DUSE_PCAP )
+	endif( ${PCAP_FOUND} )
+endif( (NOT DEFINED USE_PCAP) OR USE_PCAP )
 
 if( ${UNIX} )
    install(TARGETS btbb
