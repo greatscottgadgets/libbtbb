@@ -308,6 +308,8 @@ btbb_packet_new(void)
 	btbb_packet *pkt = (btbb_packet *)calloc(1, sizeof(btbb_packet));
 	if(pkt)
 		pkt->refcount = 1;
+	else
+		fprintf(stderr, "Unable to allocate packet");
 	return pkt;
 }
 
