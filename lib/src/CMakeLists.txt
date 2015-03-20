@@ -42,7 +42,7 @@ set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
               ${CMAKE_CURRENT_SOURCE_DIR}/pcapng-bt.c
 			  ${CMAKE_CURRENT_BINARY_DIR}/version.c
 			  CACHE INTERNAL "List of C sources")
-set(c_headers ${CMAKE_CURRENT_SOURCE_DIR}/btbb.h
+set(c_headers ${CMAKE_CURRENT_BINARY_DIR}/btbb.h
 			  CACHE INTERNAL "List of C headers")
 
 # For cygwin just force UNIX OFF and WIN32 ON
@@ -65,6 +65,8 @@ endif()
 
 set_target_properties(btbb PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
+# PCAP Support
+set( ENABLE_PCAP 0 )
 if( (NOT DEFINED USE_PCAP) OR USE_PCAP )
 	find_package(PCAP)
 
@@ -76,9 +78,14 @@ if( (NOT DEFINED USE_PCAP) OR USE_PCAP )
 	if( ${PCAP_FOUND} )
 		include_directories(${PCAP_INCLUDE_DIRS})
 		target_link_libraries(btbb ${PCAP_LIBRARIES})
-		add_definitions( -DUSE_PCAP )
+		set( ENABLE_PCAP 1 )
 	endif( ${PCAP_FOUND} )
 endif( (NOT DEFINED USE_PCAP) OR USE_PCAP )
+
+# Do a really hacky thing to disable pcap in btbb.h (so that Ubertooth works)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/btbb.h.in"
+               "${CMAKE_CURRENT_BINARY_DIR}/btbb.h"
+               @ONLY)
 
 if( ${UNIX} )
    install(TARGETS btbb

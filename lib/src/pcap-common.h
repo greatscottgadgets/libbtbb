@@ -23,10 +23,10 @@
 #define PCAP_COMMON_DOT_H
 
 /* pull definitions for BT DLTs and pseudoheaders from libpcap, if possible */
-#if defined(USE_PCAP)
+#if (BTBB_PCAP_ENABLED)
 #include <pcap/pcap.h>
 #include <pcap/bluetooth.h>
-#endif
+#endif /* BTBB_PCAP_ENABLED */
 
 #if defined( __APPLE__ )
 #include <CoreServices/CoreServices.h>
