@@ -253,8 +253,6 @@ int lell_pcapng_close(lell_pcapng_handle *h);
 
 
 /* PCAP Support */
-#define BTBB_PCAP_ENABLED @ENABLE_PCAP@
-
 #if (BTBB_PCAP_ENABLED)
 typedef struct btbb_pcap_handle btbb_pcap_handle;
 /* create a PCAP file for BREDR captures with LINKTYPE_BLUETOOTH_BREDR_BB */
