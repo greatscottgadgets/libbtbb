@@ -34,7 +34,7 @@ typedef enum {
 	PCAP_NO_MEMORY,
 } PCAP_RESULT;
 
-#if (BTBB_PCAP_ENABLED)
+#if defined(ENABLE_PCAP)
 
 /* BT BR/EDR support */
 
@@ -419,4 +419,4 @@ lell_pcap_close(lell_pcap_handle *h)
 	return -PCAP_INVALID_HANDLE;
 }
 
-#endif /* BTBB_PCAP_ENABLED */
+#endif /* ENABLE_PCAP */

@@ -66,7 +66,6 @@ endif()
 set_target_properties(btbb PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
 # PCAP Support
-set( BTBB_PCAP_ENABLED 0 )
 if( (NOT DEFINED USE_PCAP) OR USE_PCAP )
 	find_package(PCAP)
 
@@ -78,7 +77,7 @@ if( (NOT DEFINED USE_PCAP) OR USE_PCAP )
 	if( ${PCAP_FOUND} )
 		include_directories(${PCAP_INCLUDE_DIRS})
 		target_link_libraries(btbb ${PCAP_LIBRARIES})
-		set( BTBB_PCAP_ENABLED 1 )
+		add_definitions( -DENABLE_PCAP )
 	endif( ${PCAP_FOUND} )
 endif( (NOT DEFINED USE_PCAP) OR USE_PCAP )
 

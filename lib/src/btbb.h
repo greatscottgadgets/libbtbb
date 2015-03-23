@@ -253,7 +253,7 @@ int lell_pcapng_close(lell_pcapng_handle *h);
 
 
 /* PCAP Support */
-#if (BTBB_PCAP_ENABLED)
+#if defined(ENABLE_PCAP)
 typedef struct btbb_pcap_handle btbb_pcap_handle;
 /* create a PCAP file for BREDR captures with LINKTYPE_BLUETOOTH_BREDR_BB */
 int btbb_pcap_create_file(const char *filename, btbb_pcap_handle ** ph);
@@ -279,7 +279,7 @@ int lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
                                 const int8_t rssi_avg, const uint8_t rssi_count,
                                 const lell_packet *pkt);
 int lell_pcap_close(lell_pcap_handle *h);
-#endif
+#endif // ENABLE_PCAP
 
 #ifdef __cplusplus
 } // __cplusplus defined.
