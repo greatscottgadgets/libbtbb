@@ -19,6 +19,8 @@
 # Boston, MA 02110-1301, USA.
 #
 
+include(GNUInstallDirs)
+
 # Based heavily upon the hackrf cmake setup.
 
 project(libbtbb C)
