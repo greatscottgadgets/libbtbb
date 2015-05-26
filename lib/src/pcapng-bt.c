@@ -29,6 +29,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <assert.h>
 
 /* generic section options indicating libbtbb */
 const struct {
@@ -426,6 +427,8 @@ assemble_pcapng_le_packet( pcapng_le_packet * pkt,
 {
 	uint32_t pcapng_caplen = sizeof(pcap_bluetooth_le_ll_header)+caplen;
 	uint32_t block_length  = 4*((36+pcapng_caplen+3)/4);
+
+	assert(caplen <= LE_MAX_PAYLOAD);
 
 	pkt->blk_header.block_type = BLOCK_TYPE_ENHANCED_PACKET;
 	pkt->blk_header.block_total_length = block_length;
