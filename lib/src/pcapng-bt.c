@@ -29,6 +29,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <assert.h>
 
 /* generic section options indicating libbtbb */
 const struct {
@@ -411,6 +412,11 @@ append_le_packet( PCAPNG_HANDLE * handle,
 	return pcapng_append_packet( handle, ( const enhanced_packet_block *) pkt );
 }
 
+/* Size of a PCAPNG enhanced packet block with no packet data.
+   NOTE: The pcap_bluetooth_le_ll_header is part of the packet data of
+   the enhanced block. */
+#define PCAPNG_ENHANCED_BLK_SZ 36
+
 static void
 assemble_pcapng_le_packet( pcapng_le_packet * pkt,
 			   const uint32_t interface_id,
@@ -425,7 +431,9 @@ assemble_pcapng_le_packet( pcapng_le_packet * pkt,
 			   const uint8_t * lepkt )
 {
 	uint32_t pcapng_caplen = sizeof(pcap_bluetooth_le_ll_header)+caplen;
-	uint32_t block_length  = 4*((36+pcapng_caplen+3)/4);
+	uint32_t block_length  = 4*((PCAPNG_ENHANCED_BLK_SZ+pcapng_caplen+3)/4);
+
+	assert(caplen <= LE_MAX_PAYLOAD);
 
 	pkt->blk_header.block_type = BLOCK_TYPE_ENHANCED_PACKET;
 	pkt->blk_header.block_total_length = block_length;
@@ -455,6 +463,11 @@ lell_pcapng_append_packet(lell_pcapng_handle * h, const uint64_t ns,
 		((noisedbm < sigdbm) ? LE_NOISEPOWER_VALID : 0) |
 		(lell_packet_is_data(pkt) ? 0 : LE_REF_AA_VALID);
 	pcapng_le_packet pcapng_pkt;
+
+	/* The extra 9 bytes added to the packet length are for:
+	   4 bytes for Access Address
+	   2 bytes for PDU header
+	   3 bytes for CRC */
 	assemble_pcapng_le_packet( &pcapng_pkt,
 				   0,
 				   ns,

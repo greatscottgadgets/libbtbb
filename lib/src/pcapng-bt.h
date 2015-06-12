@@ -79,6 +79,15 @@ typedef struct __attribute__((packed)) {
   enhanced_packet_block blk_header;
   pcap_bluetooth_le_ll_header le_ll_header;
   uint8_t le_packet[LE_MAX_PAYLOAD];
+
+  /* Force 32 bit alignment for options and blk_tot_length. */
+  uint8_t pad[2];
+
+  /* Add space for OPTIONS and BLOCK_TOTAL_LENGTH at end of
+     block. These won't be at this position in the structure unless
+     the LE PDU is the full 39 bytes. */
+  uint32_t options;
+  uint32_t blk_tot_length;
 } pcapng_le_packet;
 
 typedef struct __attribute__((packed)) {
