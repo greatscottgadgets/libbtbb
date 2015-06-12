@@ -291,50 +291,54 @@ int fast_perm(int z, int p_high, int p_low)
 /* generate the complete hopping sequence */
 static void gen_hops(btbb_piconet *pn)
 {
-	// /* a, b, c, d, e, f, x, y1, y2 are variable names used in section 2.6 of the spec */
-	// /* b is already defined */
-	// /* e is already defined */
-	// int a, c, d, f, x;
-	// int h, i, j, k, c_flipped, perm_in, perm_out;
+	/* a, b, c, d, e, f, x, y1, y2 are variable names used in section 2.6 of the spec */
+	/* b is already defined */
+	/* e is already defined */
+	int a, c, d, x;
+	uint32_t base_f, f, f_dash;
+	int h, i, j, k, c_flipped, perm_in, perm_out;
 
-	// /* sequence index = clock >> 1 */
-	// /* (hops only happen at every other clock value) */
-	// int index = 0;
-	// f = 0;
+	/* sequence index = clock >> 1 */
+	/* (hops only happen at every other clock value) */
+	int index = 0;
+	base_f = 0;
+	f = 0;
+	f_dash = 0;
 
-	// /* nested loops for optimization (not recalculating every variable with every clock tick) */
-	// for (h = 0; h < 0x04; h++) { /* clock bits 26-27 */
-	// 	for (i = 0; i < 0x20; i++) { /* clock bits 21-25 */
-	// 		a = pn->a1 ^ i;
-	// 		for (j = 0; j < 0x20; j++) { /* clock bits 16-20 */
-	// 			c = pn->c1 ^ j;
-	// 			c_flipped = c ^ 0x1f;
-	// 			for (k = 0; k < 0x200; k++) { /* clock bits 7-15 */
-	// 				d = pn->d1 ^ k;
-	// 				for (x = 0; x < 0x20; x++) { /* clock bits 2-6 */
-	// 					perm_in = ((x + a) % 32) ^ pn->b;
-	// 					/* y1 (clock bit 1) = 0, y2 = 0 */
-	// 					perm_out = fast_perm(perm_in, c, d);
-	// 					pn->sequence[index] = pn->bank[(perm_out + pn->e + f) % BT_NUM_CHANNELS];
-	// 					if (btbb_piconet_get_flag(pn, BTBB_IS_AFH)) {
-	// 						pn->sequence[index + 1] = pn->sequence[index];
-	// 					} else {
-	// 						/* y1 (clock bit 1) = 1, y2 = 32 */
-	// 						perm_out = fast_perm(perm_in, c_flipped, d);
-	// 						pn->sequence[index + 1] = pn->bank[(perm_out + pn->e + f + 32) % BT_NUM_CHANNELS];
-	// 					}
-	// 					index += 2;
-	// 				}
-	// 				f += 16;
-	// 			}
-	// 		}
-	// 	}
-	// }
+	/* nested loops for optimization (not recalculating every variable with every clock tick) */
+	for (h = 0; h < 0x04; h++) { /* clock bits 26-27 */
+		for (i = 0; i < 0x20; i++) { /* clock bits 21-25 */
+			a = pn->a1 ^ i;
+			for (j = 0; j < 0x20; j++) { /* clock bits 16-20 */
+				c = pn->c1 ^ j;
+				c_flipped = c ^ 0x1f;
+				for (k = 0; k < 0x200; k++) { /* clock bits 7-15 */
+					d = pn->d1 ^ k;
+					for (x = 0; x < 0x20; x++) { /* clock bits 2-6 */
+						perm_in = ((x + a) % 32) ^ pn->b;
 
-	int i; // FIXME implement optimization for AFH
+						/* y1 (clock bit 1) = 0, y2 = 0 */
+						perm_out = fast_perm(perm_in, c, d);
+						if (btbb_piconet_get_flag(pn, BTBB_IS_AFH))
+							pn->sequence[index] = pn->bank[(perm_out + pn->e + f_dash) % pn->used_channels];
+						else
+							pn->sequence[index] = pn->bank[(perm_out + pn->e + f) % BT_NUM_CHANNELS];
 
-	for(i=0;i<SEQUENCE_LENGTH;i++) {
-		pn->sequence[i] = single_hop(i, pn);
+						/* y1 (clock bit 1) = 1, y2 = 32 */
+						perm_out = fast_perm(perm_in, c_flipped, d);
+						if (btbb_piconet_get_flag(pn, BTBB_IS_AFH))
+							pn->sequence[index + 1] = pn->bank[(perm_out + pn->e + f_dash + 32) % pn->used_channels];
+						else
+							pn->sequence[index + 1] = pn->bank[(perm_out + pn->e + f + 32) % BT_NUM_CHANNELS];
+
+						index += 2;
+					}
+					base_f += 16;
+					f = base_f % BT_NUM_CHANNELS;
+					f_dash = f % pn->used_channels;
+				}
+			}
+		}
 	}
 }
 
