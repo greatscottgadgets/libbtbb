@@ -139,14 +139,26 @@ uint8_t *btbb_piconet_get_afh_map(btbb_piconet *pn) {
 	return pn->afh_map;
 }
 
-void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel)
+uint8_t btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel)
 {
 	if(!(pn->afh_map[channel/8] & 0x1 << (channel % 8))) {
 		pn->afh_map[channel/8] |= 0x1 << (channel % 8);
 		pn->used_channels++;
 		if(btbb_piconet_get_flag(pn, BTBB_UAP_VALID) && !survey_mode)
 			get_hop_pattern(pn);
+		return 1;
 	}
+	return 0;
+}
+
+uint8_t btbb_piconet_clear_channel_seen(btbb_piconet *pn, uint8_t channel)
+{
+	if((pn->afh_map[channel/8] & 0x1 << (channel % 8))) {
+		pn->afh_map[channel/8] &= ~(0x1 << (channel % 8));
+		pn->used_channels--;
+		return 1;
+	}
+	return 0;
 }
 
 uint8_t btbb_piconet_get_channel_seen(btbb_piconet *pn, uint8_t channel)
@@ -367,8 +379,8 @@ void gen_hop_pattern(btbb_piconet *pn)
 
 /* Container for hopping pattern */
 typedef struct {
-    uint64_t key; /* afh flag + address */
-    char *sequence;             
+    char key[14]; /* afh channel map + address */
+    char *sequence;
     UT_hash_handle hh;
 } hopping_struct;
 
@@ -377,20 +389,27 @@ static hopping_struct *hopping_map = NULL;
 /* Function to fetch piconet hopping patterns */
 void get_hop_pattern(btbb_piconet *pn)
 {
-	hopping_struct *s;
-	uint64_t key;
- 
-	/* Two stages to avoid "left shift count >= width of type" warning */
-	key = btbb_piconet_get_flag(pn, BTBB_IS_AFH);
-	key = (key<<39) | ((uint64_t)pn->used_channels<<32) | (pn->UAP<<24) | pn->LAP;
-	HASH_FIND(hh, hopping_map, &key, 4, s);
-	
+	hopping_struct* s = NULL;
+	char key[14];
+	int i;
+
+	for(i=0;i<10;i++)
+		if(btbb_piconet_get_flag(pn, BTBB_IS_AFH))
+			key[i+4] = pn->afh_map[i];
+		else
+			key[i+4] = 0xff;
+	key[3] = pn->UAP;
+	key[2] = (pn->LAP >> 16) & 0xff;
+	key[1] = (pn->LAP >> 8) & 0xff;
+	key[0] = (pn->LAP) & 0xff;
+	HASH_FIND(hh,hopping_map,key,14,s);
+
 	if (s == NULL) {
 		gen_hop_pattern(pn);
-		s = malloc(sizeof(hopping_struct));
-		s->key = key;
+		s = (hopping_struct*)malloc(sizeof(hopping_struct));
+		memcpy(s->key, key, 14);
 		s->sequence = pn->sequence;
-		HASH_ADD(hh, hopping_map, key, 4, s);
+		HASH_ADD(hh,hopping_map,key[0],14,s);
 	} else {
 		printf("\nFound hopping sequence in cache.\n");
 		pn->sequence = s->sequence;
@@ -471,6 +490,8 @@ int btbb_init_hop_reversal(int aliased, btbb_piconet *pn)
 
 	if(aliased)
 		max_candidates = (SEQUENCE_LENGTH / ALIASED_CHANNELS) / 32;
+	else if (btbb_piconet_get_flag(pn, BTBB_IS_AFH))
+		max_candidates = (SEQUENCE_LENGTH / pn->used_channels) / 32;
 	else
 		max_candidates = (SEQUENCE_LENGTH / BT_NUM_CHANNELS) / 32;
 	/* this can hold twice the approximate number of initial candidates */
@@ -540,7 +561,7 @@ static void reset(btbb_piconet *pn)
 
 	if(btbb_piconet_get_flag(pn, BTBB_HOP_REVERSAL_INIT)) {
 		free(pn->clock_candidates);
-		pn->sequence = NULL;
+		// pn->sequence = NULL;
 	}
 	btbb_piconet_set_flag(pn, BTBB_GOT_FIRST_PACKET, 0);
 	btbb_piconet_set_flag(pn, BTBB_HOP_REVERSAL_INIT, 0);
@@ -592,9 +613,9 @@ static int channel_winnow(int offset, char channel, btbb_piconet *pn)
 	else if (new_count == 0) {
 		reset(pn);
 	}
-	//else {
-	//printf("%d CLK1-27 candidates remaining (channel=%d)\n", new_count, channel);
-	//}
+	else {
+		printf("%d CLK1-27 candidates remaining (channel=%d)\n", new_count, channel);
+	}
 
 	return new_count;
 }
@@ -927,7 +948,7 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 			btbb_packet_set_uap(pkt, btbb_piconet_get_uap(pn));
 			btbb_packet_set_flag(pkt, BTBB_CLK6_VALID, 1);
 			btbb_packet_set_flag(pkt, BTBB_CLK27_VALID, 1);
-			
+
 			if(btbb_decode(pkt, pn))
 				btbb_print_packet(pkt);
 			else
@@ -943,7 +964,7 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 				return -1;
 			}
 		}
-		
+
 		/* Have LAP, need UAP. */
 		else {
 			btbb_uap_from_header(pkt, pn);
