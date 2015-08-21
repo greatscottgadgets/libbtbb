@@ -1307,6 +1307,7 @@ int btbb_decode_payload(btbb_packet* pkt)
 		case PACKET_TYPE_EV5:
 			/* assuming EV5 but could be 3-EV5 */
 			rv = EV5(pkt->clock, pkt);
+			break;
 		case PACKET_TYPE_DM5:
 			/* assuming DM5 but could be 2-DH5 */
 			rv = DM(pkt->clock, pkt);
