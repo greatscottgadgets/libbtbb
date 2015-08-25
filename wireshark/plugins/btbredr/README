@@ -6,7 +6,9 @@ level dissector.
 To build this on Debian/Ubuntu/BackTrack linux distributions:
   sudo apt-get install wireshark-dev wireshark
   cd libbtbb/wireshark/plugins/btbredr/
-  cmake .
+  mkdir build
+  cd build
+  cmake ..
   make
   make install
 
