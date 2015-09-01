@@ -41,6 +41,9 @@ struct btbb_piconet {
 	/* AFH channel map - either read or derived from observed packets */
 	uint8_t afh_map[10];
 
+	/* Number of used channel derived from AFH channel map */
+	uint8_t used_channels;
+
 	/* lower address part (of master's BD_ADDR) */
 	uint32_t LAP;
 
@@ -122,5 +125,7 @@ char single_hop(int clock, btbb_piconet *pnet);
 char hop(int clock, btbb_piconet *pnet);
 
 void try_hop(btbb_packet *pkt, btbb_piconet *pn);
+
+void get_hop_pattern(btbb_piconet *pn);
 
 #endif /* INCLUDED_BLUETOOTH_PICONET_H */
