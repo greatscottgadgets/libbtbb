@@ -8,7 +8,6 @@ addons:
   apt:
     packages:
       - libpcap-dev 
-  artifacts: true
 
 before_script:
   - mkdir build
