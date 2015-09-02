@@ -4,8 +4,10 @@ cache: apt
 
 sudo: false
 
-before_install:
-  - sudo apt-get install -y libpcap-dev
+addons:
+  apt:
+    packages:
+    - libpcap-dev 
 
 before_script:
   - mkdir build
