@@ -31,6 +31,8 @@
 #include <epan/packet.h>
 #include <epan/prefs.h>
 
+#include <stdio.h>
+
 /* function prototypes */
 void proto_reg_handoff_btbredr(void);
 
@@ -188,14 +190,17 @@ dissect_payload_header1(proto_tree *tree, tvbuff_t *tvb, int offset)
 }
 
 void
-dissect_fhs(proto_tree *tree, tvbuff_t *tvb, int offset)
+dissect_fhs(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 {
 	proto_item *fhs_item, *psmode_item;
 	proto_tree *fhs_tree;
     const gchar *description;
 	guint8 psmode;
 
-	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) == 20);
+	if(tvb_length_remaining(tvb, offset) != 20) {
+		col_add_str(pinfo->cinfo, COL_INFO, "Encrypted or malformed payload data");
+		return;
+	}
 
 	fhs_item = proto_tree_add_item(tree, hf_btbredr_payload, tvb, offset, -1, ENC_NA);
 	fhs_tree = proto_item_add_subtree(fhs_item, ett_btbredr_payload);
@@ -255,7 +260,10 @@ dissect_dm1(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 	 */
 	guint16 fake_acl_data;
 
-	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) >= 3);
+	if(tvb_length_remaining(tvb, offset) < 3) {
+		col_add_str(pinfo->cinfo, COL_INFO, "Encrypted or malformed payload data");
+		return;
+	}
 
 	dm1_item = proto_tree_add_item(tree, hf_btbredr_payload, tvb, offset, -1, ENC_NA);
 	dm1_tree = proto_item_add_subtree(dm1_item, ett_btbredr_payload);
@@ -264,8 +272,11 @@ dissect_dm1(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 	llid = tvb_get_guint8(tvb, offset) & 0x3;
 	offset += 1;
 
-	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) == len + 2);
-
+	if(tvb_length_remaining(tvb, offset) < len + 2) {
+		col_add_str(pinfo->cinfo, COL_INFO, "Encrypted or malformed payload data");
+		return;
+	}
+	
 	if (llid == 3 && btlmp_handle) {
 		/* LMP */
 		pld_tvb = tvb_new_subset(tvb, offset, len, len);
@@ -315,7 +326,7 @@ dissect_btbredr(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
 	if (tvb_length(tvb) == 0) {
 		info = "ID";
 	} else {
-		type = (tvb_get_guint8(tvb, 6) >> 3) & 0x0f;
+		type = (tvb_get_guint8(tvb, 16) >> 3) & 0x0f;
 		info = val_to_str(type, packet_types, "Unknown type: 0x%x");
 	}
 
@@ -383,7 +394,7 @@ dissect_btbredr(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data 
 		case 0x1: /* POLL */
 			break;
 		case 0x2: /* FHS */
-			dissect_fhs(btbredr_tree, tvb, offset);
+			dissect_fhs(btbredr_tree, tvb, pinfo, offset);
 			break;
 		case 0x3: /* DM1 */
 			dissect_dm1(btbredr_tree, tvb, pinfo, offset);
