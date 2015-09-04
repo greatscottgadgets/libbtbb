@@ -898,7 +898,6 @@ btbb_piconet *btbb_next_survey_result() {
 }
 
 int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
-	btbb_piconet_set_channel_seen(pn, pkt->channel);
 	if (survey_mode) {
 		pn = get_piconet(btbb_packet_get_lap(pkt));
 		btbb_piconet_set_channel_seen(pn, pkt->channel);
@@ -906,6 +905,10 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 			btbb_uap_from_header(pkt, pn);
 		return 0;
 	}
+	
+	if(pn)
+		btbb_piconet_set_channel_seen(pn, pkt->channel);
+
 	/* If piconet structure is given, a LAP is given, and packet
 	 * header is readable, do further analysis. If UAP has not yet
 	 * been determined, attempt to calculate it from headers. Once
