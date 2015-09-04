@@ -45,7 +45,8 @@ PCAPNG_RESULT pcapng_create( PCAPNG_HANDLE * handle,
 {
 	PCAPNG_RESULT retval = PCAPNG_OK;
 	int PGSZ = getpagesize( );
-	size_t zeroes = 0, result = -1;
+	size_t zeroes = 0;
+	ssize_t result = -1;
 
 	handle->section_header = NULL;
 	handle->interface_description = NULL;
