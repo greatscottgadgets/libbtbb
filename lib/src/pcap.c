@@ -38,10 +38,10 @@ typedef enum {
 
 /* BT BR/EDR support */
 
-typedef struct btbb_pcap_handle {
+struct btbb_pcap_handle {
 	pcap_t *        pcap;
 	pcap_dumper_t * dumper;
-} btbb_pcap_handle;
+};
 
 int 
 btbb_pcap_create_file(const char *filename, btbb_pcap_handle ** ph)
@@ -91,7 +91,7 @@ typedef struct {
 
 static void
 assemble_pcapng_bredr_packet( pcap_bredr_packet * pkt,
-			      const uint32_t interface_id,
+			      const uint32_t interface_id __attribute__((unused)),
 			      const uint64_t ns,
 			      const uint32_t caplen,
 			      const uint8_t rf_channel,
@@ -195,12 +195,12 @@ btbb_pcap_close(btbb_pcap_handle * h)
 
 /* BTLE support */
 
-typedef struct lell_pcap_handle {
+struct lell_pcap_handle {
 	pcap_t * pcap;
 	pcap_dumper_t * dumper;
 	int dlt;
 	uint8_t btle_ppi_version;
-} lell_pcap_handle;
+};
 
 static int
 lell_pcap_create_file_dlt(const char *filename, int dlt, lell_pcap_handle ** ph)
@@ -267,7 +267,7 @@ typedef struct {
 
 static void
 assemble_pcapng_le_packet( pcap_le_packet * pkt,
-			   const uint32_t interface_id,
+			   const uint32_t interface_id __attribute__((unused)),
 			   const uint64_t ns,
 			   const uint32_t caplen,
 			   const uint8_t rf_channel,
