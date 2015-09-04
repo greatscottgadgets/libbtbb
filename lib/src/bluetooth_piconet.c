@@ -124,7 +124,8 @@ void btbb_piconet_set_afh_map(btbb_piconet *pn, uint8_t *afh_map) {
 		pn->afh_map[i] = afh_map[i];
 		pn->used_channels += count_bits(pn->afh_map[i]);
 	}
-	get_hop_pattern(pn);
+	if(btbb_piconet_get_flag(pn, BTBB_UAP_VALID))
+		get_hop_pattern(pn);
 }
 
 uint8_t *btbb_piconet_get_afh_map(btbb_piconet *pn) {
@@ -136,7 +137,8 @@ void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel)
 	if(!(pn->afh_map[channel/8] & 0x1 << (channel % 8))) {
 		pn->afh_map[channel/8] |= 0x1 << (channel % 8);
 		pn->used_channels++;
-		get_hop_pattern(pn);
+		if(btbb_piconet_get_flag(pn, BTBB_UAP_VALID))
+			get_hop_pattern(pn);
 	}
 }
 
@@ -508,7 +510,6 @@ void try_hop(btbb_packet *pkt, btbb_piconet *pn)
 		} else {
 			if (btbb_uap_from_header(pkt, pn)) {
 				if (filter_uap == pn->UAP) {
-					printf("got CLK1-6\n");
 					btbb_init_hop_reversal(0, pn);
 					btbb_winnow(pn);
 				} else {
@@ -712,10 +713,10 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 	if (remaining == 1) {
 		pn->clk_offset = (first_clock - (pn->first_pkt_time & 0x3f)) & 0x3f;
 		if (!btbb_piconet_get_flag(pn, BTBB_UAP_VALID))
-			printf("We have a winner! UAP = 0x%x found after %d total packets.\n",
+			printf("UAP = 0x%x found after %d total packets.\n",
 				pn->clock6_candidates[first_clock], pn->total_packets_observed);
 		else
-			printf("We have a winner! CLK6 = 0x%x found after %d total packets.\n",
+			printf("CLK6 = 0x%x found after %d total packets.\n",
 				pn->clk_offset, pn->total_packets_observed);
 		pn->UAP = pn->clock6_candidates[first_clock];
 		btbb_piconet_set_flag(pn, BTBB_CLK6_VALID, 1);
