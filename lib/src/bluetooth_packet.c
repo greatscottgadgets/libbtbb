@@ -253,13 +253,14 @@ static uint64_t air_to_host64(const char *air_order, const int bits)
 	return host_order;
 }
 
-/* Convert some number of bits in a host order integer to an air order array */
-static void host_to_air(const uint8_t host_order, char *air_order, const int bits)
-{
-    int i;
-    for (i = 0; i < bits; i++)
-        air_order[i] = (host_order >> i) & 0x01;
-}
+///* Convert some number of bits in a host order integer to an air order array */
+//static void host_to_air(const uint8_t host_order, char *air_order, const int bits)
+//{
+//    int i;
+//    for (i = 0; i < bits; i++)
+//        air_order[i] = (host_order >> i) & 0x01;
+//}
+
 /* count the number of 1 bits in a uint64_t */
 static uint8_t count_bits(uint64_t n)
 {
@@ -376,8 +377,9 @@ uint8_t btbb_packet_get_ac_errors(const btbb_packet *pkt) {
 	return pkt->ac_errors;
 }
 
-int promiscuous_packet_search(char *stream, int search_length, uint32_t *lap, int max_ac_errors, uint8_t *ac_errors) {
-	uint64_t syncword, codeword, syndrome, corrected_barker, ac;
+int promiscuous_packet_search(char *stream, int search_length, uint32_t *lap,
+							  int max_ac_errors, uint8_t *ac_errors) {
+	uint64_t syncword, codeword, syndrome, corrected_barker;
 	syndrome_struct *errors;
 	char *symbols;
 	int count, offset = -1;
@@ -430,9 +432,9 @@ int promiscuous_packet_search(char *stream, int search_length, uint32_t *lap, in
 }
 
 /* Matching a specific LAP */
-int find_known_lap(char *stream, int search_length, uint32_t lap, int max_ac_errors, uint8_t *ac_errors) {
-	uint64_t syncword, codeword, syndrome, corrected_barker, ac;
-	syndrome_struct *errors;
+int find_known_lap(char *stream, int search_length, uint32_t lap,
+				   int max_ac_errors, uint8_t *ac_errors) {
+	uint64_t syncword, ac;
 	char *symbols;
 	int count, offset = -1;
 	
@@ -444,7 +446,6 @@ int find_known_lap(char *stream, int search_length, uint32_t lap, int max_ac_err
 
 		if (*ac_errors <= max_ac_errors) {
 			offset = count;
-			//printf("Offset = %d\n", offset);
 			break;
 		}
 	}
@@ -452,7 +453,8 @@ int find_known_lap(char *stream, int search_length, uint32_t lap, int max_ac_err
 }
 
 /* Looks for an AC in the stream */
-int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_errors, btbb_packet **pkt_ptr) {
+int btbb_find_ac(char *stream, int search_length, uint32_t lap,
+				 int max_ac_errors, btbb_packet **pkt_ptr) {
 	int offset;
 	uint8_t ac_errors;
 
@@ -474,7 +476,8 @@ int btbb_find_ac(char *stream, int search_length, uint32_t lap, int max_ac_error
 }
 
 /* Copy data (symbols) into packet and set rx data. */
-void btbb_packet_set_data(btbb_packet *pkt, char *data, int length, uint8_t channel, uint32_t clkn)
+void btbb_packet_set_data(btbb_packet *pkt, char *data, int length,
+						  uint8_t channel, uint32_t clkn)
 {
 	int i;
 
@@ -548,22 +551,6 @@ uint8_t btbb_packet_get_hec(const btbb_packet* pkt)
 uint32_t btbb_packet_get_header_packed(const btbb_packet* pkt)
 {
 	return air_to_host32(&pkt->packet_header[0], 18);
-}
-
-/* Compare stream with sync word
- * Unused, but useful to correct >3 bit errors with known LAP
- */
-static int check_syncword(uint64_t streamword, uint64_t syncword)
-{
-	uint8_t biterrors;
-
-	//FIXME do error correction instead of detection
-	biterrors = count_bits(streamword ^ syncword);
-
-	if (biterrors >= 5)
-		return 0;
-
-	return 1;
 }
 
 /* Reverse the bits in a byte */

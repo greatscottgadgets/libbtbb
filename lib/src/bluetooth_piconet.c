@@ -732,40 +732,44 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 	return 0;
 }
 
-/* add a packet to the queue */
-static void enqueue(btbb_packet *pkt, btbb_piconet *pn)
-{
-	pkt_queue *head;
-	//pkt_queue item;
-
-	btbb_packet_ref(pkt);
-	pkt_queue item = {pkt, NULL};
-	head = pn->queue;
-	
-	if (head == NULL) {
-		pn->queue = &item;
-	} else {
-		for(; head->next != NULL; head = head->next)
-		  ;
-		head->next = &item;
-	}
-}
-
-/* pull the first packet from the queue (FIFO) */
-static btbb_packet *dequeue(btbb_piconet *pn)
-{
-	btbb_packet *pkt;
-
-	if (pn->queue == NULL) {
-		pkt = NULL;
-	} else {
-		pkt = pn->queue->pkt;
-		pn->queue = pn->queue->next;
-		btbb_packet_unref(pkt);
-	}
-
-	return pkt;
-}
+/* FIXME: comment out enqueue and dequeue because they are
+ * never used.  Try to find out what tey were meant to be
+ * used for before the next release.
+ */
+///* add a packet to the queue */
+//static void enqueue(btbb_packet *pkt, btbb_piconet *pn)
+//{
+//	pkt_queue *head;
+//	//pkt_queue item;
+//
+//	btbb_packet_ref(pkt);
+//	pkt_queue item = {pkt, NULL};
+//	head = pn->queue;
+//	
+//	if (head == NULL) {
+//		pn->queue = &item;
+//	} else {
+//		for(; head->next != NULL; head = head->next)
+//		  ;
+//		head->next = &item;
+//	}
+//}
+//
+///* pull the first packet from the queue (FIFO) */
+//static btbb_packet *dequeue(btbb_piconet *pn)
+//{
+//	btbb_packet *pkt;
+//
+//	if (pn->queue == NULL) {
+//		pkt = NULL;
+//	} else {
+//		pkt = pn->queue->pkt;
+//		pn->queue = pn->queue->next;
+//		btbb_packet_unref(pkt);
+//	}
+//
+//	return pkt;
+//}
 
 /* decode the whole packet */
 int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)

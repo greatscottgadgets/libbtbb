@@ -363,9 +363,9 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 			    const int8_t rssi_avg, const uint8_t rssi_count,
 			    const lell_packet *pkt)
 {
-	const ppi_packet_header_sz = sizeof(ppi_packet_header_t);
-	const ppi_fieldheader_sz = sizeof(ppi_fieldheader_t);
-	const le_ll_ppi_header_sz = sizeof(ppi_btle_t);
+	const uint16_t ppi_packet_header_sz = sizeof(ppi_packet_header_t);
+	const uint16_t ppi_fieldheader_sz = sizeof(ppi_fieldheader_t);
+	const uint16_t le_ll_ppi_header_sz = sizeof(ppi_btle_t);
 
 	if (h && h->dumper && 
 	    (h->dlt == DLT_PPI)) {
