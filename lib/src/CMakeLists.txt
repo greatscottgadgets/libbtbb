@@ -20,14 +20,20 @@
 
 # FIXME Set static release version here to avoid pulling from git
 set(RELEASE "")
+set(DIRTY_FLAG "")
 
 if ( "${RELEASE}" STREQUAL "" )
 	# automatic git version when working out of git
 	include(GetGitRevisionDescription)
 	get_git_head_revision(GIT_REFSPEC RELEASE)
+
+	set(DIRTY $(shell git status -s --untracked-files=no))
+	if ( NOT "${DIRTY}" STREQUAL "" )
+		set(DIRTY_FLAG "*")
+	endif()
 endif()
 
-add_definitions( -DRELEASE="${RELEASE}" )
+add_definitions( -DRELEASE="${RELEASE}${DIRTY_FLAG}" )
 
 # Source
 set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
