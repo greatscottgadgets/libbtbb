@@ -28,7 +28,6 @@ if ( "${RELEASE}" STREQUAL "" )
 	get_git_head_revision(GIT_REFSPEC RELEASE)
 
 	execute_process(COMMAND git status -s --untracked-files=no OUTPUT_VARIABLE DIRTY)
-	message(STATUS "|${DIRTY}|")
 	if ( NOT "${DIRTY}" STREQUAL "" )
 		set(DIRTY_FLAG "*")
 	endif()
