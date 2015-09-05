@@ -144,7 +144,7 @@ void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel)
 
 uint8_t btbb_piconet_get_channel_seen(btbb_piconet *pn, uint8_t channel)
 {
-	if(channel < BT_NUM_CHANNELS && channel >= 0)
+	if(channel < BT_NUM_CHANNELS)
 		return ( pn->afh_map[channel/8] & (1 << (channel % 8)) ) != 0;
 	else
 		return 1;
