@@ -26,7 +26,6 @@
 #include "bluetooth_packet.h"
 #include "uthash.h"
 #include "sw_check_tables.h"
-#include "version.h"
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
