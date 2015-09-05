@@ -29,7 +29,7 @@ if ( "${RELEASE}" STREQUAL "" )
 
 	execute_process(COMMAND git status -s --untracked-files=no OUTPUT_VARIABLE DIRTY)
 	message(STATUS "|${DIRTY}|")
-	if ( NOT "${DIRTY}" STREQUAL "\n" )
+	if ( NOT "${DIRTY}" STREQUAL "" )
 		set(DIRTY_FLAG "*")
 	endif()
 endif()
