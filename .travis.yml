@@ -12,6 +12,6 @@ addons:
 before_script:
   - mkdir build
   - cd build
-  - CFLAGS="-g -Wall -Wextra -Werror" cmake ..
+  - CFLAGS="-g -Wall -Wextra -Werror -Wno-zero-length-array" cmake ..
 
 script: make
