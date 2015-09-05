@@ -9,6 +9,10 @@ addons:
     packages:
       - libpcap-dev 
 
+compiler:
+  - clang
+  - gcc
+
 before_script:
   - mkdir build
   - cd build
