@@ -782,17 +782,19 @@ static int payload_crc(btbb_packet* pkt)
 
 int fhs(int clock, btbb_packet* pkt)
 {
+	char *stream, *corrected;
+	int size;
 	/* skip the access code and packet header */
-	char *stream = pkt->symbols + 122;
+	stream = pkt->symbols + 122;
 	/* number of symbols remaining after access code and packet header */
-	int size = pkt->length - 122;
+	size = pkt->length - 122;
 
 	pkt->payload_length = 20;
 
 	if (size < pkt->payload_length * 12)
 		return 1; //FIXME should throw exception
 
-	char *corrected = unfec23(stream, pkt->payload_length * 8);
+	corrected = unfec23(stream, pkt->payload_length * 8);
 	if (!corrected)
 		return 0;
 
@@ -820,6 +822,8 @@ int fhs(int clock, btbb_packet* pkt)
 /* decode payload header, return value indicates success */
 static int decode_payload_header(char *stream, int clock, int header_bytes, int size, int fec, btbb_packet* pkt)
 {
+	char *corrected;
+	int max_length;
 	if(header_bytes == 2)
 	{
 		if(size < 16)
@@ -827,7 +831,7 @@ static int decode_payload_header(char *stream, int clock, int header_bytes, int 
 		if(fec) {
 			if(size < 30)
 				return 0; //FIXME should throw exception
-			char *corrected = unfec23(stream, 16);
+			corrected = unfec23(stream, 16);
 			if (!corrected)
 				return 0;
 			unwhiten(corrected, pkt->payload_header, clock, 16, 18, pkt);
@@ -843,7 +847,7 @@ static int decode_payload_header(char *stream, int clock, int header_bytes, int 
 		if(fec) {
 			if(size < 15)
 				return 0; //FIXME should throw exception
-			char *corrected = unfec23(stream, 8);
+			corrected = unfec23(stream, 8);
 			if (!corrected)
 				return 0;
 			unwhiten(corrected, pkt->payload_header, clock, 8, 18, pkt);
@@ -857,7 +861,7 @@ static int decode_payload_header(char *stream, int clock, int header_bytes, int 
 	/* Try to set the max payload length to a sensible value,
 	 * especially when using strange data
 	 */
-	int max_length = 0;
+	max_length = 0;
 	switch(pkt->packet_type) {
 		case PACKET_TYPE_DM1:
 			max_length = 20;
@@ -897,15 +901,14 @@ static int decode_payload_header(char *stream, int clock, int header_bytes, int 
 /* DM 1/3/5 packet (and DV)*/
 int DM(int clock, btbb_packet* pkt)
 {
-	int bitlength;
+	char *corrected, *stream;
+	int bitlength, header_bytes, max_length, size;
 	/* number of bytes in the payload header */
-	int header_bytes = 2;
-	/* maximum payload length */
-	int max_length;
+	header_bytes = 2;
 	/* skip the access code and packet header */
-	char *stream = pkt->symbols + 122;
+	stream = pkt->symbols + 122;
 	/* number of symbols remaining after access code and packet header */
-	int size = pkt->length - 122;
+	size = pkt->length - 122;
 
 	switch(pkt->packet_type)
 	{
@@ -944,7 +947,7 @@ int DM(int clock, btbb_packet* pkt)
 	if(bitlength > size)
 		return 1; //FIXME should throw exception
 
-	char *corrected = unfec23(stream, bitlength);
+	corrected = unfec23(stream, bitlength);
 	if (!corrected)
 		return 0;
 	unwhiten(corrected, pkt->payload, clock, bitlength, 18, pkt);
@@ -1182,12 +1185,14 @@ uint8_t try_clock(int clock, btbb_packet* pkt)
 	/* 18 bit packet header */
 	char header[18];
 	char unwhitened[18];
+	uint16_t hdr_data;
+	uint8_t hec;
 
 	if (!unfec13(stream, header, 18))
 		return 0;
 	unwhiten(header, unwhitened, clock, 18, 0, pkt);
-	uint16_t hdr_data = air_to_host16(unwhitened, 10);
-	uint8_t hec = air_to_host8(&unwhitened[10], 8);
+	hdr_data = air_to_host16(unwhitened, 10);
+	hec = air_to_host8(&unwhitened[10], 8);
 	pkt->UAP = uap_from_hec(hdr_data, hec);
 	pkt->packet_type = air_to_host8(&unwhitened[3], 4);
 
@@ -1201,12 +1206,13 @@ int btbb_decode_header(btbb_packet* pkt)
 	char *stream = pkt->symbols + 68;
 	/* 18 bit packet header */
 	char header[18];
-	uint8_t UAP;
+	uint16_t hdr_data;
+	uint8_t UAP, hec;
 
 	if (btbb_packet_get_flag(pkt, BTBB_CLK6_VALID) && unfec13(stream, header, 18)) {
 		unwhiten(header, pkt->packet_header, pkt->clock, 18, 0, pkt);
-		uint16_t hdr_data = air_to_host16(pkt->packet_header, 10);
-		uint8_t hec = air_to_host8(&pkt->packet_header[10], 8);
+		hdr_data = air_to_host16(pkt->packet_header, 10);
+		hec = air_to_host8(&pkt->packet_header[10], 8);
 		UAP = uap_from_hec(hdr_data, hec);
 		if (UAP == pkt->UAP) {
 			pkt->packet_lt_addr = air_to_host8(&pkt->packet_header[0], 3);
@@ -1299,6 +1305,7 @@ int btbb_decode_payload(btbb_packet* pkt)
 /* print packet information */
 void btbb_print_packet(const btbb_packet* pkt)
 {
+	int i;
 	if (btbb_packet_get_flag(pkt, BTBB_HAS_PAYLOAD)) {
 		printf("  Type: %s\n", TYPE_NAMES[pkt->packet_type]);
 		if (pkt->payload_header_length > 0) {
@@ -1309,7 +1316,6 @@ void btbb_print_packet(const btbb_packet* pkt)
 		}
 		if (pkt->payload_length) {
 			printf("  Data: ");
-			int i;
 			for(i=0; i<pkt->payload_length; i++)
 				printf(" %02x", air_to_host8(pkt->payload + 8*i, 8));
 			printf("\n");

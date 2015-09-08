@@ -774,9 +774,9 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 /* decode the whole packet */
 int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)
 {
-	btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 0);
 	uint8_t clk6, i, best_clk;
 	int rv = 0, max_rv = 0;
+	btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 0);
 	if (btbb_piconet_get_flag(pn, BTBB_CLK27_VALID)) {
 		/* Removing this section until we can more reliably handle AFH */
 		//if(pn->sequence == NULL)

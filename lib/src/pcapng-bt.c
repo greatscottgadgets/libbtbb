@@ -236,9 +236,9 @@ int btbb_pcapng_append_packet(btbb_pcapng_handle * h, const uint64_t ns,
 		((refuap != UAP_ANY) ? BREDR_REFUAP_VALID : 0);
 	int caplen = btbb_packet_get_payload_length(pkt);
 	char payload_bytes[caplen];
+	pcapng_bredr_packet pcapng_pkt;
 	btbb_get_payload_packed( pkt, &payload_bytes[0] );
 	caplen = MIN(BREDR_MAX_PAYLOAD, caplen);
-	pcapng_bredr_packet pcapng_pkt;
 	assemble_pcapng_bredr_packet( &pcapng_pkt,
 				      0,
 				      ns,
@@ -463,6 +463,7 @@ lell_pcapng_append_packet(lell_pcapng_handle * h, const uint64_t ns,
 		((noisedbm < sigdbm) ? LE_NOISEPOWER_VALID : 0) |
 		(lell_packet_is_data(pkt) ? 0 : LE_REF_AA_VALID);
 	pcapng_le_packet pcapng_pkt;
+	int retval;
 
 	/* The extra 9 bytes added to the packet length are for:
 	   4 bytes for Access Address
@@ -479,7 +480,7 @@ lell_pcapng_append_packet(lell_pcapng_handle * h, const uint64_t ns,
 				   refAA,
 				   flags,
 				   &pkt->symbols[0] );
-	int retval = -append_le_packet( (PCAPNG_HANDLE *) h, &pcapng_pkt );
+	retval = -append_le_packet( (PCAPNG_HANDLE *) h, &pcapng_pkt );
 	if ((retval == 0) && !lell_packet_is_data(pkt) && (pkt->adv_type == CONNECT_REQ)) {
 		(void) lell_pcapng_record_connect_req(h, ns, &pkt->symbols[0]);
 	}

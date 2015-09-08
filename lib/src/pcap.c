@@ -143,16 +143,17 @@ btbb_pcap_append_packet(btbb_pcap_handle * h, const uint64_t ns,
 			const uint32_t reflap, const uint8_t refuap, 
 			const btbb_packet *pkt)
 {
+	uint32_t caplen = (uint32_t) btbb_packet_get_payload_length(pkt);
+	uint16_t flags;
+	uint8_t payload_bytes[caplen];
+	pcap_bredr_packet pcap_pkt;
 	if (h && h->dumper) {
-		uint16_t flags = BREDR_DEWHITENED | BREDR_SIGPOWER_VALID |
+		flags = BREDR_DEWHITENED | BREDR_SIGPOWER_VALID |
 			((noisedbm < sigdbm) ? BREDR_NOISEPOWER_VALID : 0) |
 			((reflap != LAP_ANY) ? BREDR_REFLAP_VALID : 0) |
 			((refuap != UAP_ANY) ? BREDR_REFUAP_VALID : 0);
-		uint32_t caplen = (uint32_t) btbb_packet_get_payload_length(pkt);
-		uint8_t payload_bytes[caplen];
 		btbb_get_payload_packed( pkt, (char *) &payload_bytes[0] );
 		caplen = MIN(BREDR_MAX_PAYLOAD, caplen);
-		pcap_bredr_packet pcap_pkt;
 		assemble_pcapng_bredr_packet( &pcap_pkt,
 					      0,
 					      ns,

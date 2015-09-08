@@ -128,6 +128,13 @@ static int aa_data_channel_offenses(const uint32_t aa) {
 		2, 2, 4, 2, 4, 4, 4, 2, 2, 2, 4, 2, 2, 2, 2, 0
 	};
 
+	const uint8_t AA_MSB6_ALLOWED[64] = {
+		0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+		0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0
+	};
+
 	transitions += (odd ? EIGHT_BIT_TRANSITIONS_ODD[aab0] : EIGHT_BIT_TRANSITIONS_EVEN[aab0] );
 	odd = (unsigned) (aab0 & 0x80);
 	aab1 = (uint8_t) (aa >> 8);
@@ -143,13 +150,6 @@ static int aa_data_channel_offenses(const uint32_t aa) {
 	if (transitions > 24) {
 		retval += (transitions - 24);
 	}
-
-	const uint8_t AA_MSB6_ALLOWED[64] = {
-		0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0,
-		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-		0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-		0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0
-	};
 
 	/* consider excessive transitions in the 6 MSBs as an offense */
 	retval += (1 - AA_MSB6_ALLOWED[aab3>>2]);
@@ -489,6 +489,30 @@ print128:
 	}
 }
 
+static const char *opcode_str[] = {
+	"LL_CONNECTION_UPDATE_REQ",
+	"LL_CHANNEL_MAP_REQ",
+	"LL_TERMINATE_IND",
+	"LL_ENC_REQ",
+	"LL_ENC_RSP",
+	"LL_START_ENC_REQ",
+	"LL_START_ENC_RSP",
+	"LL_UNKNOWN_RSP",
+	"LL_FEATURE_REQ",
+	"LL_FEATURE_RSP",
+	"LL_PAUSE_ENC_REQ",
+	"LL_PAUSE_ENC_RSP",
+	"LL_VERSION_IND",
+	"LL_REJECT_IND",
+	"LL_SLAVE_FEATURE_REQ",
+	"LL_CONNECTION_PARAM_REQ",
+	"LL_CONNECTION_PARAM_RSP",
+	"LL_REJECT_IND_EXT",
+	"LL_PING_REQ",
+	"LL_PING_RSP",
+	"Reserved for Future Use",
+};
+			
 void lell_print(const lell_packet *pkt)
 {
 	int i, opcode;
@@ -512,29 +536,6 @@ void lell_print(const lell_packet *pkt)
 		switch (llid) {
 		case 3: // LL Control PDU
 			opcode = pkt->symbols[6];
-			static const char *opcode_str[] = {
-				"LL_CONNECTION_UPDATE_REQ",
-				"LL_CHANNEL_MAP_REQ",
-				"LL_TERMINATE_IND",
-				"LL_ENC_REQ",
-				"LL_ENC_RSP",
-				"LL_START_ENC_REQ",
-				"LL_START_ENC_RSP",
-				"LL_UNKNOWN_RSP",
-				"LL_FEATURE_REQ",
-				"LL_FEATURE_RSP",
-				"LL_PAUSE_ENC_REQ",
-				"LL_PAUSE_ENC_RSP",
-				"LL_VERSION_IND",
-				"LL_REJECT_IND",
-				"LL_SLAVE_FEATURE_REQ",
-				"LL_CONNECTION_PARAM_REQ",
-				"LL_CONNECTION_PARAM_RSP",
-				"LL_REJECT_IND_EXT",
-				"LL_PING_REQ",
-				"LL_PING_RSP",
-				"Reserved for Future Use",
-			};
 			printf("    Opcode: %d / %s\n", opcode, opcode_str[(opcode<0x14)?opcode:0x14]);
 			break;
 		default:
