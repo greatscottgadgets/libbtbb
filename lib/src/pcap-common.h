@@ -28,35 +28,7 @@
 #include <pcap/bluetooth.h>
 #endif /* ENABLE_PCAP */
 
-#if defined( __APPLE__ )
-#include <CoreServices/CoreServices.h>
-#define htobe32 EndianU32_NtoB
-#define be32toh EndianU32_BtoN
-#define le32toh EndianU32_LtoN
-#define htobe64 EndianU64_NtoB
-#define be64toh EndianU64_BtoN
-#define htole16 EndianU16_NtoL
-#define htole32 EndianU32_NtoL
-#else
-#include <endian.h>
-#endif
-
-#if !defined( htole16 ) /* will be defined under Linux when endian.h already included */
-#if defined( __GNUC__ )
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-inline uint16_t htole16(uint16_t host_16bits) { return host_16bits; }
-inline uint16_t le16toh(uint16_t little_endian_16bits) { return little_endian_16bits; }
-inline uint32_t htole32(uint32_t host_32bits) { return host_32bits; }
-inline uint32_t le32toh(uint32_t little_endian_32bits) { return little_endian_32bits; }
-inline uint64_t htole64(uint64_t host_64bits) { return host_64bits; }
-inline uint64_t le64toh(uint64_t little_endian_64bits) { return little_endian_64bits; }
-#else
-#error "FIXME: need to support big-endian under GNU"
-#endif /* __BYTE_ORDER__ */
-#else /* not GNU C */
-#error "FIXME: need to support non-GNU compiler"
-#endif /* __GNUC__ */
-#endif /* htole16 */
+#include "portable_endian.h"
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
