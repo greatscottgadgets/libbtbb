@@ -630,8 +630,8 @@ proto_register_btbredr(void)
 
 	/* register the protocol name and description */
 	proto_btbredr = proto_register_protocol(
-		"Bluetooth Baseband",	/* full name */
-		"BT Baseband",			/* short name */
+		"Bluetooth BR/EDR Baseband",	/* full name */
+		"BT BR/EDR Baseband",			/* short name */
 		"btbredr"			/* abbreviation (e.g. for filters) */
 		);
 

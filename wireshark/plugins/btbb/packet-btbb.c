@@ -137,7 +137,7 @@ static gint ett_btbb_payload = -1;
 static gint ett_btbb_pldhdr = -1;
 
 /* subdissectors */
-static dissector_handle_t btlmp_handle = NULL;
+static dissector_handle_t btbrlmp_handle = NULL;
 static dissector_handle_t btl2cap_handle = NULL;
 
 /* packet header flags */
@@ -247,10 +247,10 @@ dissect_dm1(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo, int offset)
 
 	DISSECTOR_ASSERT(tvb_length_remaining(tvb, offset) == len + 2);
 
-	if (llid == 3 && btlmp_handle) {
+	if (llid == 3 && btbrlmp_handle) {
 		/* LMP */
 		pld_tvb = tvb_new_subset(tvb, offset, len, len);
-		call_dissector(btlmp_handle, pld_tvb, pinfo, dm1_tree);
+		call_dissector(btbrlmp_handle, pld_tvb, pinfo, dm1_tree);
 	} else if (llid == 2 && btl2cap_handle) {
 		/* unfragmented L2CAP or start of fragment */
 		l2len = tvb_get_letohs(tvb, offset);
@@ -575,7 +575,7 @@ proto_reg_handoff_btbb(void)
 	dissector_add_uint("ethertype", 0xFFF0, btbb_handle);
 	/* dissector_add_uint("wtap_encap", WTAP_ENCAP_BLUETOOTH_BASEBAND, btbb_handle); */
 
-	btlmp_handle = find_dissector("btlmp");
+	btbrlmp_handle = find_dissector("btbrlmp");
 	btl2cap_handle = find_dissector("btl2cap");
 }
 
