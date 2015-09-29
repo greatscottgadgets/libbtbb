@@ -22,7 +22,7 @@ $ mkdir build
 $ cd build
 $ cmake ..
 $ make
-$ make install
+$ sudo make install
 ```
 
 This will install the library to /usr/local/lib and the headers to 
