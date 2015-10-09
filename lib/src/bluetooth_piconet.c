@@ -60,6 +60,13 @@ btbb_piconet_unref(btbb_piconet *pn)
 		free(pn);
 }
 
+/* A bit of a hack? to set survey mode */
+static int survey_mode = 0;
+int btbb_init_survey() {
+	survey_mode = 1;
+	return 0;
+}
+
 void btbb_init_piconet(btbb_piconet *pn, uint32_t lap)
 {
 	pn->LAP = lap;
@@ -137,7 +144,7 @@ void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel)
 	if(!(pn->afh_map[channel/8] & 0x1 << (channel % 8))) {
 		pn->afh_map[channel/8] |= 0x1 << (channel % 8);
 		pn->used_channels++;
-		if(btbb_piconet_get_flag(pn, BTBB_UAP_VALID))
+		if(btbb_piconet_get_flag(pn, BTBB_UAP_VALID) && !survey_mode)
 			get_hop_pattern(pn);
 	}
 }
@@ -859,13 +866,6 @@ typedef struct {
 } survey_hash;
 
 static survey_hash *piconet_survey = NULL;
-
-/* A bit of a hack? to set survey mode */
-static int survey_mode = 0;
-int btbb_init_survey() {
-	survey_mode = 1;
-	return 0;
-}
 
 /* Check for existing piconets in survey results */
 btbb_piconet *get_piconet(uint32_t lap)
