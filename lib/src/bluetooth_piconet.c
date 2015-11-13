@@ -1,19 +1,19 @@
 /* -*- c -*- */
 /*
  * Copyright 2007 - 2013 Dominic Spill, Michael Ossmann, Will Code
- * 
+ *
  * This file is part of libbtbb
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with libbtbb; see the file COPYING.  If not, write to
  * the Free Software Foundation, Inc., 51 Franklin Street,
@@ -139,14 +139,24 @@ uint8_t *btbb_piconet_get_afh_map(btbb_piconet *pn) {
 	return pn->afh_map;
 }
 
-void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel)
+uint8_t btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel)
 {
 	if(!(pn->afh_map[channel/8] & 0x1 << (channel % 8))) {
 		pn->afh_map[channel/8] |= 0x1 << (channel % 8);
 		pn->used_channels++;
-		if(btbb_piconet_get_flag(pn, BTBB_UAP_VALID) && !survey_mode)
-			get_hop_pattern(pn);
+		return 1;
 	}
+	return 0;
+}
+
+uint8_t btbb_piconet_clear_channel_seen(btbb_piconet *pn, uint8_t channel)
+{
+	if((pn->afh_map[channel/8] & 0x1 << (channel % 8))) {
+		pn->afh_map[channel/8] &= ~(0x1 << (channel % 8));
+		pn->used_channels--;
+		return 1;
+	}
+	return 0;
 }
 
 uint8_t btbb_piconet_get_channel_seen(btbb_piconet *pn, uint8_t channel)
@@ -172,7 +182,7 @@ void precalc(btbb_piconet *pn)
 			chan = (i * 2) % BT_NUM_CHANNELS;
 			if(btbb_piconet_get_channel_seen(pn, chan))
 				pn->bank[j++] = chan;
-		} 
+		}
 
 		/* all channels are used */
 		else {
@@ -368,7 +378,7 @@ void gen_hop_pattern(btbb_piconet *pn)
 /* Container for hopping pattern */
 typedef struct {
     uint64_t key; /* afh flag + address */
-    char *sequence;             
+    char *sequence;
     UT_hash_handle hh;
 } hopping_struct;
 
@@ -379,12 +389,12 @@ void get_hop_pattern(btbb_piconet *pn)
 {
 	hopping_struct *s;
 	uint64_t key;
- 
+
 	/* Two stages to avoid "left shift count >= width of type" warning */
 	key = btbb_piconet_get_flag(pn, BTBB_IS_AFH);
 	key = (key<<39) | ((uint64_t)pn->used_channels<<32) | (pn->UAP<<24) | pn->LAP;
 	HASH_FIND(hh, hopping_map, &key, 4, s);
-	
+
 	if (s == NULL) {
 		gen_hop_pattern(pn);
 		s = malloc(sizeof(hopping_struct));
@@ -466,7 +476,7 @@ int btbb_init_hop_reversal(int aliased, btbb_piconet *pn)
 {
 	int max_candidates;
 	uint32_t clock;
-	
+
 	get_hop_pattern(pn);
 
 	if(aliased)
@@ -630,7 +640,7 @@ int btbb_winnow(btbb_piconet *pn)
 			}
 		}
 	}
-	
+
 	return new_count;
 }
 
@@ -752,7 +762,7 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 //	btbb_packet_ref(pkt);
 //	pkt_queue item = {pkt, NULL};
 //	head = pn->queue;
-//	
+//
 //	if (head == NULL) {
 //		pn->queue = &item;
 //	} else {
@@ -861,7 +871,7 @@ void btbb_print_afh_map(btbb_piconet *pn) {
 /* Container for survey piconets */
 typedef struct {
     uint32_t key; /* LAP */
-    btbb_piconet *pn;             
+    btbb_piconet *pn;
     UT_hash_handle hh;
 } survey_hash;
 
@@ -910,7 +920,7 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 			btbb_uap_from_header(pkt, pn);
 		return 0;
 	}
-	
+
 	if(pn)
 		btbb_piconet_set_channel_seen(pn, pkt->channel);
 
@@ -927,7 +937,7 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 			btbb_packet_set_uap(pkt, btbb_piconet_get_uap(pn));
 			btbb_packet_set_flag(pkt, BTBB_CLK6_VALID, 1);
 			btbb_packet_set_flag(pkt, BTBB_CLK27_VALID, 1);
-			
+
 			if(btbb_decode(pkt, pn))
 				btbb_print_packet(pkt);
 			else
@@ -943,7 +953,7 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 				return -1;
 			}
 		}
-		
+
 		/* Have LAP, need UAP. */
 		else {
 			btbb_uap_from_header(pkt, pn);

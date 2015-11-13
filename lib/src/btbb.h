@@ -180,7 +180,9 @@ void btbb_piconet_set_clk_offset(btbb_piconet *pn, int clk_offset);
 void btbb_piconet_set_flag(btbb_piconet *pn, int flag, int val);
 int btbb_piconet_get_flag(const btbb_piconet *pn, int flag);
 
-void btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel);
+uint8_t btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel);
+uint8_t btbb_piconet_clear_channel_seen(btbb_piconet *pn, uint8_t channel);
+uint8_t btbb_piconet_get_channel_seen(btbb_piconet *pn, uint8_t channel);
 void btbb_piconet_set_afh_map(btbb_piconet *pn, uint8_t *afh_map);
 uint8_t *btbb_piconet_get_afh_map(btbb_piconet *pn);
 
