@@ -1,19 +1,19 @@
 /* -*- c -*- */
 /*
  * Copyright 2007 - 2013 Dominic Spill, Michael Ossmann, Will Code
- * 
+ *
  * This file is part of libbtbb
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with libbtbb; see the file COPYING.  If not, write to
  * the Free Software Foundation, Inc., 51 Franklin Street,
@@ -144,8 +144,6 @@ uint8_t btbb_piconet_set_channel_seen(btbb_piconet *pn, uint8_t channel)
 	if(!(pn->afh_map[channel/8] & 0x1 << (channel % 8))) {
 		pn->afh_map[channel/8] |= 0x1 << (channel % 8);
 		pn->used_channels++;
-		if(btbb_piconet_get_flag(pn, BTBB_UAP_VALID) && !survey_mode)
-			get_hop_pattern(pn);
 		return 1;
 	}
 	return 0;
@@ -184,7 +182,7 @@ void precalc(btbb_piconet *pn)
 			chan = (i * 2) % BT_NUM_CHANNELS;
 			if(btbb_piconet_get_channel_seen(pn, chan))
 				pn->bank[j++] = chan;
-		} 
+		}
 
 		/* all channels are used */
 		else {
@@ -379,7 +377,7 @@ void gen_hop_pattern(btbb_piconet *pn)
 
 /* Container for hopping pattern */
 typedef struct {
-    char key[14]; /* afh channel map + address */
+    uint64_t key; /* afh flag + address */
     char *sequence;
     UT_hash_handle hh;
 } hopping_struct;
@@ -389,27 +387,20 @@ static hopping_struct *hopping_map = NULL;
 /* Function to fetch piconet hopping patterns */
 void get_hop_pattern(btbb_piconet *pn)
 {
-	hopping_struct* s = NULL;
-	char key[14];
-	int i;
+	hopping_struct *s;
+	uint64_t key;
 
-	for(i=0;i<10;i++)
-		if(btbb_piconet_get_flag(pn, BTBB_IS_AFH))
-			key[i+4] = pn->afh_map[i];
-		else
-			key[i+4] = 0xff;
-	key[3] = pn->UAP;
-	key[2] = (pn->LAP >> 16) & 0xff;
-	key[1] = (pn->LAP >> 8) & 0xff;
-	key[0] = (pn->LAP) & 0xff;
-	HASH_FIND(hh,hopping_map,key,14,s);
+	/* Two stages to avoid "left shift count >= width of type" warning */
+	key = btbb_piconet_get_flag(pn, BTBB_IS_AFH);
+	key = (key<<39) | ((uint64_t)pn->used_channels<<32) | (pn->UAP<<24) | pn->LAP;
+	HASH_FIND(hh, hopping_map, &key, 4, s);
 
 	if (s == NULL) {
 		gen_hop_pattern(pn);
-		s = (hopping_struct*)malloc(sizeof(hopping_struct));
-		memcpy(s->key, key, 14);
+		s = malloc(sizeof(hopping_struct));
+		s->key = key;
 		s->sequence = pn->sequence;
-		HASH_ADD(hh,hopping_map,key[0],14,s);
+		HASH_ADD(hh, hopping_map, key, 4, s);
 	} else {
 		printf("\nFound hopping sequence in cache.\n");
 		pn->sequence = s->sequence;
@@ -485,13 +476,11 @@ int btbb_init_hop_reversal(int aliased, btbb_piconet *pn)
 {
 	int max_candidates;
 	uint32_t clock;
-	
+
 	get_hop_pattern(pn);
 
 	if(aliased)
 		max_candidates = (SEQUENCE_LENGTH / ALIASED_CHANNELS) / 32;
-	else if (btbb_piconet_get_flag(pn, BTBB_IS_AFH))
-		max_candidates = (SEQUENCE_LENGTH / pn->used_channels) / 32;
 	else
 		max_candidates = (SEQUENCE_LENGTH / BT_NUM_CHANNELS) / 32;
 	/* this can hold twice the approximate number of initial candidates */
@@ -561,7 +550,7 @@ static void reset(btbb_piconet *pn)
 
 	if(btbb_piconet_get_flag(pn, BTBB_HOP_REVERSAL_INIT)) {
 		free(pn->clock_candidates);
-		// pn->sequence = NULL;
+		pn->sequence = NULL;
 	}
 	btbb_piconet_set_flag(pn, BTBB_GOT_FIRST_PACKET, 0);
 	btbb_piconet_set_flag(pn, BTBB_HOP_REVERSAL_INIT, 0);
@@ -613,9 +602,9 @@ static int channel_winnow(int offset, char channel, btbb_piconet *pn)
 	else if (new_count == 0) {
 		reset(pn);
 	}
-	else {
-		printf("%d CLK1-27 candidates remaining (channel=%d)\n", new_count, channel);
-	}
+	//else {
+	//printf("%d CLK1-27 candidates remaining (channel=%d)\n", new_count, channel);
+	//}
 
 	return new_count;
 }
@@ -651,7 +640,7 @@ int btbb_winnow(btbb_piconet *pn)
 			}
 		}
 	}
-	
+
 	return new_count;
 }
 
@@ -773,7 +762,7 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 //	btbb_packet_ref(pkt);
 //	pkt_queue item = {pkt, NULL};
 //	head = pn->queue;
-//	
+//
 //	if (head == NULL) {
 //		pn->queue = &item;
 //	} else {
@@ -882,7 +871,7 @@ void btbb_print_afh_map(btbb_piconet *pn) {
 /* Container for survey piconets */
 typedef struct {
     uint32_t key; /* LAP */
-    btbb_piconet *pn;             
+    btbb_piconet *pn;
     UT_hash_handle hh;
 } survey_hash;
 
@@ -931,7 +920,7 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 			btbb_uap_from_header(pkt, pn);
 		return 0;
 	}
-	
+
 	if(pn)
 		btbb_piconet_set_channel_seen(pn, pkt->channel);
 
