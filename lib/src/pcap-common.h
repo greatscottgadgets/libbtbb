@@ -24,8 +24,10 @@
 
 /* pull definitions for BT DLTs and pseudoheaders from libpcap, if possible */
 #if defined(ENABLE_PCAP)
-#include <pcap/pcap.h>
-#include <pcap/bluetooth.h>
+// #include <pcap/pcap.h>
+// #include <pcap/bluetooth.h>
+#define DLT_PPI 192
+#define DLT_USER0 147
 #endif /* ENABLE_PCAP */
 
 #if defined( __APPLE__ )
