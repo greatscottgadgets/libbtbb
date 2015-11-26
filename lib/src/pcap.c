@@ -37,11 +37,39 @@ typedef enum {
 
 #if defined(ENABLE_PCAP)
 
+typedef struct __attribute__((packed)) pcap_hdr_s {
+	uint32_t magic_number;   /* magic number */
+	uint16_t version_major;  /* major version number */
+	uint16_t version_minor;  /* minor version number */
+	int32_t  thiszone;       /* GMT to local correction */
+	uint32_t sigfigs;        /* accuracy of timestamps */
+	uint32_t snaplen;        /* max length of captured packets, in octets */
+	uint32_t network;        /* data link type */
+} pcap_hdr_t;
+
+FILE *btbb_pcap_open(const char *filename, uint32_t dlt, uint32_t snaplen) {
+	pcap_hdr_t pcap_header = {
+		.magic_number = 0xa1b2c3d4,
+		.version_major = 2,
+		.version_minor = 4,
+		.thiszone = 0,
+		.sigfigs = 0,
+		.snaplen = snaplen,
+		.network = dlt,
+	};
+
+	FILE *pcap_file = fopen(filename, "w");
+	if (pcap_file == NULL) return NULL;
+
+	fwrite(&pcap_header, sizeof(pcap_header), 1, pcap_file);
+
+	return pcap_file;
+}
+
 /* BT BR/EDR support */
 
 struct btbb_pcap_handle {
-	pcap_t *        pcap;
-	pcap_dumper_t * dumper;
+	FILE *pcap_file;
 };
 
 int 
@@ -51,26 +79,14 @@ btbb_pcap_create_file(const char *filename, btbb_pcap_handle ** ph)
 	btbb_pcap_handle * handle = malloc( sizeof(btbb_pcap_handle) );
 	if (handle) {
 		memset(handle, 0, sizeof(*handle));
-#ifdef PCAP_TSTAMP_PRECISION_NANO
-		handle->pcap = pcap_open_dead_with_tstamp_precision(DLT_BLUETOOTH_BREDR_BB,
-								    BREDR_MAX_PAYLOAD,
-								    PCAP_TSTAMP_PRECISION_NANO);
-#else
-                handle->pcap = pcap_open_dead(DLT_BLUETOOTH_BREDR_BB, BREDR_MAX_PAYLOAD);
-#endif
-		if (handle->pcap) {
-			handle->dumper = pcap_dump_open(handle->pcap, filename);
-			if (handle->dumper) {
-				*ph = handle;
-			}
-			else {
-				pcap_perror(handle->pcap, "PCAP error:");
-				retval = -PCAP_FILE_NOT_ALLOWED;
-				goto fail;
-			}
+		handle->pcap_file = btbb_pcap_open(filename, DLT_BLUETOOTH_BREDR_BB,
+											BREDR_MAX_PAYLOAD);
+		if (handle->pcap_file) {
+			*ph = handle;
 		}
 		else {
-			retval = -PCAP_INVALID_HANDLE;
+			perror("PCAP error:");
+			retval = -PCAP_FILE_NOT_ALLOWED;
 			goto fail;
 		}
 	}
@@ -84,11 +100,24 @@ fail:
 	return retval;
 }
 
+typedef struct __attribute__((packed)) pcaprec_hdr_s {
+	uint32 ts_sec;         /* timestamp seconds */
+	uint32 ts_usec;        /* timestamp microseconds */
+	uint32 incl_len;       /* number of octets of packet saved in file */
+	uint32 orig_len;       /* actual length of packet */
+} pcaprec_hdr_t;
+
 typedef struct {
-	struct pcap_pkthdr pcap_header;
+	pcaprec_hdr_t pcap_header;
 	pcap_bluetooth_bredr_bb_header bredr_bb_header;
 	uint8_t bredr_payload[BREDR_MAX_PAYLOAD];
 } pcap_bredr_packet;
+
+void btbb_pcap_dump(FILE *file, pcaprec_hdr_t *pcap_header, u_char *data) {
+	fwrite(pcap_header, sizeof(*pcap_header), 1, file);
+	fwrite(data, pcap_header->incl_len, 1, file);
+	fflush(file);
+}
 
 static void
 assemble_pcapng_bredr_packet( pcap_bredr_packet * pkt,
@@ -113,10 +142,10 @@ assemble_pcapng_bredr_packet( pcap_bredr_packet * pkt,
 	uint32_t pcap_caplen = sizeof(pcap_bluetooth_bredr_bb_header)+caplen;
 	uint32_t reflapuap = (ref_lap&0xffffff) | (ref_uap<<24);
 
-	pkt->pcap_header.ts.tv_sec  = ns / 1000000000ull;
-	pkt->pcap_header.ts.tv_usec = ns % 1000000000ull;
-	pkt->pcap_header.caplen = pcap_caplen;
-	pkt->pcap_header.len = pcap_caplen;
+	pkt->pcap_header.ts_sec  = ns / 1000000000ull;
+	pkt->pcap_header.ts_usec = ns % 1000000000ull;
+	pkt->pcap_header.incl_len = pcap_caplen;
+	pkt->pcap_header.orig_len = pcap_caplen;
 
 	pkt->bredr_bb_header.rf_channel = rf_channel;
 	pkt->bredr_bb_header.signal_power = signal_power;
@@ -145,7 +174,7 @@ btbb_pcap_append_packet(btbb_pcap_handle * h, const uint64_t ns,
 			const uint32_t reflap, const uint8_t refuap, 
 			const btbb_packet *pkt)
 {
-	if (h && h->dumper) {
+	if (h && h->pcap_file) {
 		uint16_t flags = BREDR_DEWHITENED | BREDR_SIGPOWER_VALID |
 			((noisedbm < sigdbm) ? BREDR_NOISEPOWER_VALID : 0) |
 			((reflap != LAP_ANY) ? BREDR_REFLAP_VALID : 0) |
@@ -173,7 +202,7 @@ btbb_pcap_append_packet(btbb_pcap_handle * h, const uint64_t ns,
 					      btbb_packet_get_header_packed(pkt),
 					      flags,
 					      payload_bytes );
-		pcap_dump((u_char *)h->dumper, &pcap_pkt.pcap_header, (u_char *)&pcap_pkt.bredr_bb_header);
+		btbb_pcap_dump(h->pcap_file, &pcap_pkt.pcap_header, (u_char *)&pcap_pkt.bredr_bb_header);
 		return 0;
 	}
 	return -PCAP_INVALID_HANDLE;
@@ -182,11 +211,8 @@ btbb_pcap_append_packet(btbb_pcap_handle * h, const uint64_t ns,
 int 
 btbb_pcap_close(btbb_pcap_handle * h)
 {
-	if (h && h->dumper) {
-		pcap_dump_close(h->dumper);
-	}
-	if (h && h->pcap) {
-		pcap_close(h->pcap);
+	if (h && h->pcap_file) {
+		fclose(h->pcap_file);
 	}
 	if (h) {
 		free(h);
@@ -198,8 +224,7 @@ btbb_pcap_close(btbb_pcap_handle * h)
 /* BTLE support */
 
 struct lell_pcap_handle {
-	pcap_t * pcap;
-	pcap_dumper_t * dumper;
+	FILE *pcap_file;
 	int dlt;
 	uint8_t btle_ppi_version;
 };
@@ -211,26 +236,13 @@ lell_pcap_create_file_dlt(const char *filename, int dlt, lell_pcap_handle ** ph)
 	lell_pcap_handle * handle = malloc( sizeof(lell_pcap_handle) );
 	if (handle) {
 		memset(handle, 0, sizeof(*handle));
-#ifdef PCAP_TSTAMP_PRECISION_NANO
-		handle->pcap = pcap_open_dead_with_tstamp_precision(dlt,
-								    BREDR_MAX_PAYLOAD,
-								    PCAP_TSTAMP_PRECISION_NANO);
-#else
-                handle->pcap = pcap_open_dead(dlt, BREDR_MAX_PAYLOAD);
-#endif
-		if (handle->pcap) {
-			handle->dumper = pcap_dump_open(handle->pcap, filename);
-			if (handle->dumper) {
-				handle->dlt = dlt;
-				*ph = handle;
-			}
-			else {
-				retval = -PCAP_FILE_NOT_ALLOWED;
-				goto fail;
-			}
+		handle->pcap_file = btbb_pcap_open(filename, dlt, BREDR_MAX_PAYLOAD);
+		if (handle->pcap_file) {
+			handle->dlt = dlt;
+			*ph = handle;
 		}
 		else {
-			retval = -PCAP_INVALID_HANDLE; 
+			retval = -PCAP_FILE_NOT_ALLOWED;
 			goto fail;
 		}
 	}
@@ -262,7 +274,7 @@ lell_pcap_ppi_create_file(const char *filename, int btle_ppi_version,
 }
 
 typedef struct {
-	struct pcap_pkthdr pcap_header;
+	pcaprec_hdr_t pcap_header;
 	pcap_bluetooth_le_ll_header le_ll_header;
 	uint8_t le_packet[LE_MAX_PAYLOAD];
 } pcap_le_packet;
@@ -282,10 +294,10 @@ assemble_pcapng_le_packet( pcap_le_packet * pkt,
 {
 	uint32_t incl_len = MIN(LE_MAX_PAYLOAD, caplen);
 
-	pkt->pcap_header.ts.tv_sec  = ns / 1000000000ull;
-	pkt->pcap_header.ts.tv_usec = ns % 1000000000ull;
-	pkt->pcap_header.len    = sizeof(pcap_bluetooth_le_ll_header)+caplen;
-	pkt->pcap_header.caplen = sizeof(pcap_bluetooth_le_ll_header)+incl_len;
+	pkt->pcap_header.ts_sec  = ns / 1000000000ull;
+	pkt->pcap_header.ts_usec = ns % 1000000000ull;
+	pkt->pcap_header.incl_len = sizeof(pcap_bluetooth_le_ll_header)+caplen;
+	pkt->pcap_header.orig_len = sizeof(pcap_bluetooth_le_ll_header)+incl_len;
 
 	pkt->le_ll_header.rf_channel = rf_channel;
 	pkt->le_ll_header.signal_power = signal_power;
@@ -301,7 +313,7 @@ lell_pcap_append_packet(lell_pcap_handle * h, const uint64_t ns,
 			const int8_t sigdbm, const int8_t noisedbm,
 			const uint32_t refAA, const lell_packet *pkt)
 {
-	if (h && h->dumper &&
+	if (h && h->pcap_file &&
 	    (h->dlt == DLT_BLUETOOTH_LE_LL_WITH_PHDR)) {
 		uint16_t flags = LE_DEWHITENED | LE_AA_OFFENSES_VALID |
 			LE_SIGPOWER_VALID |
@@ -319,7 +331,7 @@ lell_pcap_append_packet(lell_pcap_handle * h, const uint64_t ns,
 					   refAA,
 					   flags,
 					   &pkt->symbols[0] );
-		pcap_dump((u_char *)h->dumper, &pcap_pkt.pcap_header, (u_char *)&pcap_pkt.le_ll_header);
+		btbb_pcap_dump(h->pcap_file, &pcap_pkt.pcap_header, (u_char *)&pcap_pkt.le_ll_header);
 		return 0;
 	}
 	return -PCAP_INVALID_HANDLE;
@@ -351,7 +363,7 @@ typedef struct __attribute__((packed)) {
 } ppi_btle_t;
 
 typedef struct __attribute__((packed)) {
-	struct pcap_pkthdr pcap_header;
+	pcaprec_hdr_t pcap_header;
         ppi_packet_header_t ppi_packet_header;
 	ppi_fieldheader_t ppi_fieldheader;
 	ppi_btle_t le_ll_ppi_header;
@@ -365,7 +377,7 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 			    const int8_t rssi_avg, const uint8_t rssi_count,
 			    const lell_packet *pkt)
 {
-	if (h && h->dumper && 
+	if (h && h->pcap_file &&
 	    (h->dlt == DLT_PPI)) {
 		pcap_ppi_le_packet pcap_pkt;
 		const uint16_t pcap_headerlen =
@@ -376,10 +388,10 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 		unsigned packet_len = pkt->length + 4 + 2 + 3; // AA + header + CRC
 		unsigned incl_len   = MIN(LE_MAX_PAYLOAD, packet_len);
 
-		pcap_pkt.pcap_header.ts.tv_sec  = ns / 1000000000ull;
-		pcap_pkt.pcap_header.ts.tv_usec = ns % 1000000000ull;
-		pcap_pkt.pcap_header.caplen = pcap_headerlen + incl_len;
-		pcap_pkt.pcap_header.len    = pcap_headerlen + packet_len;
+		pcap_pkt.pcap_header.ts_sec  = ns / 1000000000ull;
+		pcap_pkt.pcap_header.ts_usec = ns % 1000000000ull;
+		pcap_pkt.pcap_header.incl_len = pcap_headerlen + incl_len;
+		pcap_pkt.pcap_header.orig_len = pcap_headerlen + packet_len;
 
 		pcap_pkt.ppi_packet_header.pph_version = 0;
 		pcap_pkt.ppi_packet_header.pph_flags = 0;
@@ -398,8 +410,7 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 		pcap_pkt.le_ll_ppi_header.rssi_avg = rssi_avg;
 		pcap_pkt.le_ll_ppi_header.rssi_count = rssi_count;
 		(void) memcpy( &pcap_pkt.le_packet[0], &pkt->symbols[0], incl_len);
-		pcap_dump((u_char *)h->dumper, &pcap_pkt.pcap_header, (u_char *)&pcap_pkt.ppi_packet_header);
-		pcap_dump_flush(h->dumper);
+		btbb_pcap_dump(h->pcap_file, &pcap_pkt.pcap_header, (u_char *)&pcap_pkt.ppi_packet_header);
 		return 0;
 	}
 	return -PCAP_INVALID_HANDLE;
@@ -408,11 +419,8 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 int 
 lell_pcap_close(lell_pcap_handle *h)
 {
-	if (h && h->dumper) {
-		pcap_dump_close(h->dumper);
-	}
-	if (h && h->pcap) {
-		pcap_close(h->pcap);
+	if (h && h->pcap_file) {
+		fclose(h->pcap_file);
 	}
 	if (h) {
 		free(h);
