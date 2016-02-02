@@ -46,25 +46,33 @@ set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
 set(c_headers ${CMAKE_CURRENT_SOURCE_DIR}/btbb.h
 			  CACHE INTERNAL "List of C headers")
 
-# For cygwin just force UNIX OFF and WIN32 ON
-if( ${CYGWIN} )
-	SET(UNIX OFF)
-	SET(WIN32 ON)
-endif( ${CYGWIN} )
+# Defaults: BUILD_SHARED=ON, BUILD_STATIC=OFF
+if( NOT DEFINED BUILD_SHARED )
+	set(BUILD_SHARED ON)
+endif( NOT DEFINED BUILD_SHARED )
+if( NOT DEFINED BUILD_STATIC )
+	set(BUILD_STATIC OFF)
+endif( NOT DEFINED BUILD_STATIC )
 
-# FIXME: This may be a hack
-# perhaps there should be separate libbtbb and libbtbb-static targets?
-if( ${WIN32} )
-	# Static library
-	add_library(btbb STATIC ${c_sources})
-	set_target_properties(btbb PROPERTIES OUTPUT_NAME "btbb_static")
-else()
-	# Dynamic library
+if( NOT ${BUILD_SHARED} AND NOT ${BUILD_STATIC} )
+	message( FATAL_ERROR "Not building static or shared library - at least one must be built")
+endif( NOT ${BUILD_SHARED} AND NOT ${BUILD_STATIC} )
+
+if( ${BUILD_SHARED} )
+	# Shared library
+	message(STATUS "Building shared library")
 	add_library(btbb SHARED ${c_sources})
 	set_target_properties(btbb PROPERTIES VERSION ${MAJOR_VERSION}.${MINOR_VERSION} SOVERSION 0)
-endif()
+	set_target_properties(btbb PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+endif( ${BUILD_SHARED} )
 
-set_target_properties(btbb PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+if( ${BUILD_STATIC} )
+	# Static library
+	message(STATUS "Building static library")
+	add_library(btbb-static STATIC ${c_sources})
+	set_target_properties(btbb-static PROPERTIES OUTPUT_NAME "btbb")
+	set_target_properties(btbb-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+endif( ${BUILD_STATIC} )
 
 # PCAP Support
 if( (NOT DEFINED USE_PCAP) OR USE_PCAP )
@@ -77,29 +85,31 @@ if( (NOT DEFINED USE_PCAP) OR USE_PCAP )
 
 	if( ${PCAP_FOUND} )
 		include_directories(${PCAP_INCLUDE_DIRS})
-		target_link_libraries(btbb ${PCAP_LIBRARIES})
+		if( ${BUILD_SHARED} )
+			target_link_libraries(btbb ${PCAP_LIBRARIES})
+		endif( ${BUILD_SHARED} )
+		if( ${BUILD_STATIC} )
+			target_link_libraries(btbb-static ${PCAP_LIBRARIES})
+		endif( ${BUILD_STATIC} )
 		add_definitions( -DENABLE_PCAP )
 	endif( ${PCAP_FOUND} )
 endif( (NOT DEFINED USE_PCAP) OR USE_PCAP )
 
-if( ${UNIX} )
+if( ${BUILD_SHARED} )
    install(TARGETS btbb
            LIBRARY DESTINATION lib${LIB_SUFFIX}
            COMPONENT sharedlibs
            )
-   install(FILES ${c_headers}
-           DESTINATION include
-           COMPONENT headers
-           )
-endif( ${UNIX} )
+endif( ${BUILD_SHARED} )
 
-if( ${WIN32} )
-   install(TARGETS btbb
+if( ${BUILD_STATIC} )
+   install(TARGETS btbb-static
            DESTINATION bin
            COMPONENT staticlibs
            )
-   install(FILES ${c_headers}
-           DESTINATION include
-           COMPONENT headers
-           )
-endif( ${WIN32} )
+endif( ${BUILD_STATIC} )
+
+install(FILES ${c_headers}
+        DESTINATION include
+        COMPONENT headers
+        )
