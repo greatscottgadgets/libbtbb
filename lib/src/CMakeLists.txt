@@ -104,7 +104,7 @@ endif( ${BUILD_SHARED} )
 
 if( ${BUILD_STATIC} )
    install(TARGETS btbb-static
-           DESTINATION bin
+           DESTINATION lib${LIB_SUFFIX}
            COMPONENT staticlibs
            )
 endif( ${BUILD_STATIC} )
