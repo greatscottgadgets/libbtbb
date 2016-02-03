@@ -2,7 +2,7 @@ CMake Settings
 ==============
 The following are flags that may be of use when configuing this project.
 
- * DISABLE_PYTHON
+ * ENABLE_PYTHON
   * A boolean flag for building and installing btaptap python tool.
 
  * USE_PCAP

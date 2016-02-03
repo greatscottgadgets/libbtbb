@@ -28,14 +28,18 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 
 set(INSTALL_DEFAULT_BINDIR "bin" CACHE STRING "Appended to CMAKE_INSTALL_PREFIX")
 
+set(BUILD_SHARED_LIB ON CACHE BOOL "Build shared library")
+set(BUILD_STATIC_LIB OFF CACHE BOOL "Build static library")
+set(ENABLE_PYTHON ON CACHE BOOL "Build python tools")
+
 set( VERSION ${MAJOR_VERSION}.${MINOR_VERSION} )
 add_definitions( -DVERSION="${VERSION}" )
 
 # Comment the following out for releases.
-set(CMAKE_C_FLAGS "$ENV{CFLAGS}")
+set(CMAKE_C_FLAGS "$ENV{CFLAGS}" CACHE STRING "C Flags")
 
 add_subdirectory(lib)
-if(NOT DISABLE_PYTHON)
+if(ENABLE_PYTHON)
 	add_subdirectory(python)
 endif()
 

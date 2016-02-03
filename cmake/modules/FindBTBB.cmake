@@ -30,12 +30,12 @@ else (LIBBTBB_INCLUDE_DIR AND LIBBTBB_LIBRARIES)
     ${LIBBTBB_INCLUDE_DIR}
   )
 
-  set(libbtbb_library_names btbb)
+  set(libbtbb_library_names btbb btbb-static)
 
   FIND_LIBRARY(LIBBTBB_LIBRARIES
     NAMES ${libbtbb_library_names}
-    HINTS $ENV{LIBBTBB_DIR}/lib ${PC_LIBBTBB_LIBDIR}
-    PATHS /usr/local/lib /usr/lib /opt/local/lib ${PC_LIBBTBB_LIBDIR}
+    HINTS $ENV{LIBBTBB_DIR}/lib${LIB_SUFFIX} ${PC_LIBBTBB_LIBDIR}
+    PATHS /usr/local/lib${LIB_SUFFIX} /usr/lib${LIB_SUFFIX} /opt/local/lib${LIB_SUFFIX} ${PC_LIBBTBB_LIBDIR}
     ${PC_LIBBTBB_LIBRARY_DIRS} ${CMAKE_SOURCE_DIR}/../libbtbb/src
   )
 
@@ -53,3 +53,6 @@ else (LIBBTBB_INCLUDE_DIR AND LIBBTBB_LIBRARIES)
   MARK_AS_ADVANCED(LIBBTBB_INCLUDE_DIR LIBBTBB_LIBRARIES)
 
 endif (LIBBTBB_INCLUDE_DIR AND LIBBTBB_LIBRARIES)
+
+INCLUDE(CheckFunctionExists)
+CHECK_FUNCTION_EXISTS("btbb_pcap_create_file" HAVE_BTBB_PCAP)
