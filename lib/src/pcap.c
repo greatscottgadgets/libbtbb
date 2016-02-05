@@ -130,6 +130,7 @@ assemble_pcapng_bredr_packet( pcap_bredr_packet * pkt,
 	pkt->bredr_bb_header.bt_header = htole16( bt_header );
 	pkt->bredr_bb_header.flags = htole16( flags );
 	if (caplen) {
+		assert(caplen <= sizeof(pkt->bredr_payload)); // caller ensures this, but to be safe..
 		(void) memcpy( &pkt->bredr_payload[0], payload, caplen );
 	}
 	else {
@@ -278,12 +279,12 @@ assemble_pcapng_le_packet( pcap_le_packet * pkt,
 			   const uint16_t flags,
 			   const uint8_t * lepkt )
 {
-	uint32_t pcap_caplen = sizeof(pcap_bluetooth_le_ll_header)+caplen;
+	uint32_t incl_len = MIN(LE_MAX_PAYLOAD, caplen);
 
 	pkt->pcap_header.ts.tv_sec  = ns / 1000000000ull;
 	pkt->pcap_header.ts.tv_usec = ns % 1000000000ull;
-	pkt->pcap_header.caplen = pcap_caplen;
-	pkt->pcap_header.len = pcap_caplen;
+	pkt->pcap_header.len    = sizeof(pcap_bluetooth_le_ll_header)+caplen;
+	pkt->pcap_header.caplen = sizeof(pcap_bluetooth_le_ll_header)+incl_len;
 
 	pkt->le_ll_header.rf_channel = rf_channel;
 	pkt->le_ll_header.signal_power = signal_power;
@@ -291,7 +292,7 @@ assemble_pcapng_le_packet( pcap_le_packet * pkt,
 	pkt->le_ll_header.access_address_offenses = access_address_offenses;
 	pkt->le_ll_header.ref_access_address = htole32( ref_access_address );
 	pkt->le_ll_header.flags = htole16( flags );
-	(void) memcpy( &pkt->le_packet[0], lepkt, caplen );
+	(void) memcpy( &pkt->le_packet[0], lepkt, incl_len );
 }
 
 int 
@@ -309,7 +310,7 @@ lell_pcap_append_packet(lell_pcap_handle * h, const uint64_t ns,
 		assemble_pcapng_le_packet( &pcap_pkt,
 					   0,
 					   ns,
-					   9+pkt->length,
+					   pkt->length + 4 + 2 + 3, // AA + header + CRC
 					   pkt->channel_k,
 					   sigdbm,
 					   noisedbm,
@@ -363,29 +364,29 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 			    const int8_t rssi_avg, const uint8_t rssi_count,
 			    const lell_packet *pkt)
 {
-	const uint16_t ppi_packet_header_sz = sizeof(ppi_packet_header_t);
-	const uint16_t ppi_fieldheader_sz = sizeof(ppi_fieldheader_t);
-	const uint16_t le_ll_ppi_header_sz = sizeof(ppi_btle_t);
-
 	if (h && h->dumper && 
 	    (h->dlt == DLT_PPI)) {
 		pcap_ppi_le_packet pcap_pkt;
-		uint32_t pcap_caplen = 
-			ppi_packet_header_sz+ppi_fieldheader_sz+le_ll_ppi_header_sz+pkt->length+9;
+		const uint16_t pcap_headerlen =
+			sizeof(ppi_packet_header_t) +
+			sizeof(ppi_fieldheader_t) +
+			sizeof(ppi_btle_t);
 		uint16_t MHz = 2402 + 2*lell_get_channel_k(pkt);
+		unsigned packet_len = pkt->length + 4 + 2 + 3; // AA + header + CRC
+		unsigned incl_len   = MIN(LE_MAX_PAYLOAD, packet_len);
 
 		pcap_pkt.pcap_header.ts.tv_sec  = ns / 1000000000ull;
 		pcap_pkt.pcap_header.ts.tv_usec = ns % 1000000000ull;
-		pcap_pkt.pcap_header.caplen = pcap_caplen;
-		pcap_pkt.pcap_header.len = pcap_caplen;
+		pcap_pkt.pcap_header.caplen = pcap_headerlen + incl_len;
+		pcap_pkt.pcap_header.len    = pcap_headerlen + packet_len;
 
 		pcap_pkt.ppi_packet_header.pph_version = 0;
 		pcap_pkt.ppi_packet_header.pph_flags = 0;
-		pcap_pkt.ppi_packet_header.pph_len = htole16(ppi_packet_header_sz+ppi_fieldheader_sz+le_ll_ppi_header_sz);
+		pcap_pkt.ppi_packet_header.pph_len = htole16(pcap_headerlen);
 		pcap_pkt.ppi_packet_header.pph_dlt = htole32(DLT_USER0);
 
 		pcap_pkt.ppi_fieldheader.pfh_type = htole16(PPI_BTLE);
-		pcap_pkt.ppi_fieldheader.pfh_datalen = htole16(le_ll_ppi_header_sz);
+		pcap_pkt.ppi_fieldheader.pfh_datalen = htole16(sizeof(ppi_btle_t));
 	
 		pcap_pkt.le_ll_ppi_header.btle_version = h->btle_ppi_version;
 		pcap_pkt.le_ll_ppi_header.btle_channel = htole16(MHz);
@@ -395,7 +396,7 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 		pcap_pkt.le_ll_ppi_header.rssi_min = rssi_min;
 		pcap_pkt.le_ll_ppi_header.rssi_avg = rssi_avg;
 		pcap_pkt.le_ll_ppi_header.rssi_count = rssi_count;
-		(void) memcpy( &pcap_pkt.le_packet[0], &pkt->symbols[0], pkt->length + 9 ); // FIXME where does the 9 come from?
+		(void) memcpy( &pcap_pkt.le_packet[0], &pkt->symbols[0], incl_len);
 		pcap_dump((u_char *)h->dumper, &pcap_pkt.pcap_header, (u_char *)&pcap_pkt.ppi_packet_header);
 		pcap_dump_flush(h->dumper);
 		return 0;
