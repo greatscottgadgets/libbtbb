@@ -26,6 +26,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 typedef enum {
 	PCAP_OK = 0,
