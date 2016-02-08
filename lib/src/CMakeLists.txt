@@ -39,9 +39,6 @@ add_definitions( -DRELEASE="${RELEASE}${DIRTY_FLAG}" )
 set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
               ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_piconet.c
               ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_le_packet.c
-              ${CMAKE_CURRENT_SOURCE_DIR}/pcap.c
-              ${CMAKE_CURRENT_SOURCE_DIR}/pcapng.c
-              ${CMAKE_CURRENT_SOURCE_DIR}/pcapng-bt.c
 			  CACHE INTERNAL "List of C sources")
 set(c_headers ${CMAKE_CURRENT_SOURCE_DIR}/btbb.h
 			  CACHE INTERNAL "List of C headers")
@@ -84,6 +81,11 @@ if( (NOT DEFINED USE_PCAP) OR USE_PCAP )
 			target_link_libraries(btbb-static ${PCAP_LIBRARIES})
 		endif( ${BUILD_STATIC_LIB} )
 		add_definitions( -DENABLE_PCAP )
+        list(APPEND c_sources
+            ${CMAKE_CURRENT_SOURCE_DIR}/pcap.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/pcapng.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/pcapng-bt.c
+        )
 	endif( ${PCAP_FOUND} )
 endif( (NOT DEFINED USE_PCAP) OR USE_PCAP )
 
