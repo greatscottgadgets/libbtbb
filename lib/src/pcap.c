@@ -99,10 +99,10 @@ fail:
 }
 
 typedef struct __attribute__((packed)) pcaprec_hdr_s {
-	uint32 ts_sec;         /* timestamp seconds */
-	uint32 ts_usec;        /* timestamp microseconds */
-	uint32 incl_len;       /* number of octets of packet saved in file */
-	uint32 orig_len;       /* actual length of packet */
+	uint32_t ts_sec;         /* timestamp seconds */
+	uint32_t ts_usec;        /* timestamp microseconds */
+	uint32_t incl_len;       /* number of octets of packet saved in file */
+	uint32_t orig_len;       /* actual length of packet */
 } pcaprec_hdr_t;
 
 typedef struct {
