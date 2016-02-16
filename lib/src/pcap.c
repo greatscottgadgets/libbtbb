@@ -35,8 +35,6 @@ typedef enum {
 	PCAP_NO_MEMORY,
 } PCAP_RESULT;
 
-#if defined(ENABLE_PCAP)
-
 typedef struct __attribute__((packed)) pcap_hdr_s {
 	uint32_t magic_number;   /* magic number */
 	uint16_t version_major;  /* major version number */
@@ -428,5 +426,3 @@ lell_pcap_close(lell_pcap_handle *h)
 	}
 	return -PCAP_INVALID_HANDLE;
 }
-
-#endif /* ENABLE_PCAP */

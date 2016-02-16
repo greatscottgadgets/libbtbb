@@ -22,13 +22,10 @@
 #ifndef PCAP_COMMON_DOT_H
 #define PCAP_COMMON_DOT_H
 
-/* pull definitions for BT DLTs and pseudoheaders from libpcap, if possible */
-#if defined(ENABLE_PCAP)
-// #include <pcap/pcap.h>
-// #include <pcap/bluetooth.h>
+// since we no longer rely on or assume the existence of libpcap,
+// hardcode these DLTs
 #define DLT_PPI 192
 #define DLT_USER0 147
-#endif /* ENABLE_PCAP */
 
 #if defined( __APPLE__ )
 #include <CoreServices/CoreServices.h>

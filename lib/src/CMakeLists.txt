@@ -66,27 +66,6 @@ if( ${BUILD_STATIC_LIB} )
 	set_target_properties(btbb-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 endif( ${BUILD_STATIC_LIB} )
 
-# PCAP Support
-if( (NOT DEFINED USE_PCAP) OR USE_PCAP )
-	find_package(PCAP)
-
-	if( USE_PCAP AND NOT ${PCAP_FOUND} )
-		message( FATAL_ERROR
-			"Cannot find libpcap, which is required for USE_PCAP")
-	endif()
-
-	if( ${PCAP_FOUND} )
-		include_directories(${PCAP_INCLUDE_DIRS})
-		if( ${BUILD_SHARED_LIB} )
-			target_link_libraries(btbb ${PCAP_LIBRARIES})
-		endif( ${BUILD_SHARED_LIB} )
-		if( ${BUILD_STATIC_LIB} )
-			target_link_libraries(btbb-static ${PCAP_LIBRARIES})
-		endif( ${BUILD_STATIC_LIB} )
-		add_definitions( -DENABLE_PCAP )
-	endif( ${PCAP_FOUND} )
-endif( (NOT DEFINED USE_PCAP) OR USE_PCAP )
-
 if( ${BUILD_SHARED_LIB} )
    install(TARGETS btbb
            LIBRARY DESTINATION lib${LIB_SUFFIX}
