@@ -22,7 +22,7 @@
 
 cmake_minimum_required(VERSION 2.8)
 set(MAJOR_VERSION 0)
-set(MINOR_VERSION 3)
+set(MINOR_VERSION 4)
 project(libbtbb_all)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 
