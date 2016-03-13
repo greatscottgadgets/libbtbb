@@ -441,12 +441,12 @@ proto_register_btbredr(void)
 		},
 		{ &hf_btbredr_signal,
 			{ "Signal", "btbredr.signal",
-			FT_UINT8, BASE_DEC, NULL, 0x0,
+			FT_INT8, BASE_DEC, NULL, 0x0,
 			"Signal Power", HFILL }
 		},
 		{ &hf_btbredr_noise,
 			{ "Noise", "btbredr.noise",
-			FT_UINT8, BASE_DEC, NULL, 0x0,
+			FT_INT8, BASE_DEC, NULL, 0x0,
 			"Noise Power", HFILL }
 		},
 		{ &hf_btbredr_ac_offenses,
