@@ -136,7 +136,9 @@ assemble_pcapng_bredr_packet( pcap_bredr_packet * pkt,
 			      const uint16_t flags,
 			      const uint8_t * payload )
 {
-	uint32_t pcap_caplen = sizeof(pcap_bluetooth_bredr_bb_header)+caplen;
+	uint32_t pcap_caplen = sizeof(pcap_bluetooth_bredr_bb_header) -
+				sizeof(pkt->bredr_bb_header.bredr_payload) 
+				+ caplen;
 	uint32_t reflapuap = (ref_lap&0xffffff) | (ref_uap<<24);
 
 	pkt->pcap_header.ts_sec  = ns / 1000000000ull;
@@ -159,6 +161,7 @@ assemble_pcapng_bredr_packet( pcap_bredr_packet * pkt,
 	if (caplen) {
 		assert(caplen <= sizeof(pkt->bredr_bb_header.bredr_payload)); // caller ensures this, but to be safe..
 		(void) memcpy( &pkt->bredr_bb_header.bredr_payload[0], payload, caplen );
+		pkt->bredr_bb_header.flags |= htole16( BREDR_PAYLOAD_PRESENT );
 	}
 	else {
 		pkt->bredr_bb_header.flags &= htole16( ~BREDR_PAYLOAD_PRESENT );
