@@ -161,6 +161,7 @@ assemble_pcapng_bredr_packet( pcap_bredr_packet * pkt,
 	if (caplen) {
 		assert(caplen <= sizeof(pkt->bredr_bb_header.bredr_payload)); // caller ensures this, but to be safe..
 		(void) memcpy( &pkt->bredr_bb_header.bredr_payload[0], payload, caplen );
+		pkt->bredr_bb_header.flags &= htole16( BREDR_PAYLOAD_PRESENT );
 	}
 	else {
 		pkt->bredr_bb_header.flags &= htole16( ~BREDR_PAYLOAD_PRESENT );
