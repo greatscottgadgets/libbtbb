@@ -108,7 +108,6 @@ typedef struct __attribute__((packed)) pcaprec_hdr_s {
 typedef struct {
 	pcaprec_hdr_t pcap_header;
 	pcap_bluetooth_bredr_bb_header bredr_bb_header;
-	uint8_t bredr_payload[BREDR_MAX_PAYLOAD];
 } pcap_bredr_packet;
 
 void btbb_pcap_dump(FILE *file, pcaprec_hdr_t *pcap_header, u_char *data) {
@@ -151,15 +150,15 @@ assemble_pcapng_bredr_packet( pcap_bredr_packet * pkt,
 	pkt->bredr_bb_header.access_code_offenses = access_code_offenses;
 	pkt->bredr_bb_header.payload_transport_rate =
 		(payload_transport << 4) | payload_rate;
-	pkt->bredr_bb_header.corrected_header_bits = corrected_header_bits;
+	pkt->bredr_bb_header.corrected_header_bits = corrected_header_bits; 
 	pkt->bredr_bb_header.corrected_payload_bits = htole16( corrected_payload_bits );
 	pkt->bredr_bb_header.lap = htole32( lap );
 	pkt->bredr_bb_header.ref_lap_uap = htole32( reflapuap );
-	pkt->bredr_bb_header.bt_header = htole16( bt_header );
+	pkt->bredr_bb_header.bt_header = htole32( bt_header ); 
 	pkt->bredr_bb_header.flags = htole16( flags );
 	if (caplen) {
-		assert(caplen <= sizeof(pkt->bredr_payload)); // caller ensures this, but to be safe..
-		(void) memcpy( &pkt->bredr_payload[0], payload, caplen );
+		assert(caplen <= sizeof(pkt->bredr_bb_header.bredr_payload)); // caller ensures this, but to be safe..
+		(void) memcpy( &pkt->bredr_bb_header.bredr_payload[0], payload, caplen );
 	}
 	else {
 		pkt->bredr_bb_header.flags &= htole16( ~BREDR_PAYLOAD_PRESENT );

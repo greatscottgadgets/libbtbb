@@ -61,23 +61,6 @@ inline uint64_t le64toh(uint64_t little_endian_64bits) { return little_endian_64
 
 /* --------------------------------- BR/EDR ----------------------------- */
 
-#if !defined( DLT_BLUETOOTH_BREDR_BB )
-#define DLT_BLUETOOTH_BREDR_BB 255
-#endif
-typedef struct __attribute__((packed)) _pcap_bluetooth_bredr_bb_header {
-        uint8_t rf_channel;
-        int8_t signal_power;
-        int8_t noise_power;
-        uint8_t access_code_offenses;
-        uint8_t payload_transport_rate;
-        uint8_t corrected_header_bits;
-        int16_t corrected_payload_bits;
-        uint32_t lap;
-        uint32_t ref_lap_uap;
-        uint32_t bt_header;
-        uint16_t flags;
-        uint8_t  br_edr_payload[0];
-} pcap_bluetooth_bredr_bb_header;
 
 #define BREDR_DEWHITENED        0x0001
 #define BREDR_SIGPOWER_VALID    0x0002
@@ -95,6 +78,24 @@ typedef struct __attribute__((packed)) _pcap_bluetooth_bredr_bb_header {
 #define BREDR_MIC_VALID         0x2000
 
 #define BREDR_MAX_PAYLOAD       400
+#if !defined( DLT_BLUETOOTH_BREDR_BB )
+#define DLT_BLUETOOTH_BREDR_BB 255
+#endif
+
+typedef struct __attribute__((packed)) _pcap_bluetooth_bredr_bb_header {
+        uint8_t rf_channel;
+        int8_t signal_power;
+        int8_t noise_power;
+        uint8_t access_code_offenses;
+        uint8_t payload_transport_rate;
+        uint8_t corrected_header_bits;
+        int16_t corrected_payload_bits;
+        uint32_t lap;
+        uint32_t ref_lap_uap;
+        uint32_t bt_header;
+        uint16_t flags;
+	uint8_t bredr_payload[BREDR_MAX_PAYLOAD];
+} pcap_bluetooth_bredr_bb_header;
 
 /* --------------------------------- Low Energy ---------------------------- */
 
