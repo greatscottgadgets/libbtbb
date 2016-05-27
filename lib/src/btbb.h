@@ -42,10 +42,9 @@
 #define BTBB_FOLLOWING         14
 
 /* Payload modulation */
-#define BTBB_MOD_UNKNOWN           0x00
-#define BTBB_MOD_GFSK              0x01
-#define BTBB_MOD_PI_OVER_2_DQPSK   0x02
-#define BTBB_MOD_8DPSK             0x03
+#define BTBB_MOD_GFSK              0x00
+#define BTBB_MOD_PI_OVER_2_DQPSK   0x01
+#define BTBB_MOD_8DPSK             0x02
 
 /* Transport types */
 #define BTBB_TRANSPORT_ANY     0x00
