@@ -4,14 +4,24 @@ cache: apt
 
 sudo: false
 
-addons:
-  apt:
-    packages:
-      - libpcap-dev 
+#addons:
+#  apt:
+#    packages:
+#      - libpcap-dev 
+
+os:
+  - linux
+  - osx
 
 compiler:
   - clang
   - gcc
+
+matrix:
+  exclude:
+    # /usr/bin/gcc on OS X is clang, so it's not meaningful to build against both.
+    - os: osx
+      compiler: gcc
 
 before_script:
   - mkdir build
