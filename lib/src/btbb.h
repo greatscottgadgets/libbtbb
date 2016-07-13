@@ -195,7 +195,7 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn);
 void btbb_print_afh_map(btbb_piconet *pn);
 
 /* decode a whole packet from the given piconet */
-int btbb_decode(btbb_packet* pkt, btbb_piconet *pn);
+int btbb_decode(btbb_packet* pkt);
 
 
 /* initialize the hop reversal process */
