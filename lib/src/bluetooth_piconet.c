@@ -798,10 +798,10 @@ int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)
 		/* Removing this section until we can more reliably handle AFH */
 		//if(pn->sequence == NULL)
 		//	get_hop_pattern(pn);
-		//clk6 = pkt->clock & 0x3f;
+		//clk6 = pkt->clkn & 0x3f;
 		//for(i=0; i<64; i++) {
-		//	pkt->clock = (pkt->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
-		//	if ((pn->sequence[pkt->clock] == pkt->channel) && (btbb_decode_header(pkt))) {
+		//	pkt->clkn = (pkt->clkn & 0xffffffc0) | ((clk6 + i) & 0x3f);
+		//	if ((pn->sequence[pkt->clkn] == pkt->channel) && (btbb_decode_header(pkt))) {
 		//		rv =  btbb_decode_payload(pkt);
 		//		if(rv > max_rv) {
 		//			max_rv = rv;
@@ -812,13 +812,13 @@ int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)
 
 		// If we found nothing, try again, ignoring channel
 		if(max_rv <= 1) {
-			clk6 = pkt->clock & 0x3f;
+			clk6 = pkt->clkn & 0x3f;
 			for(i=0; i<64; i++) {
-				pkt->clock = (pkt->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
+				pkt->clkn = (pkt->clkn & 0xffffffc0) | ((clk6 + i) & 0x3f);
 				if (btbb_decode_header(pkt)) {
 					rv =  btbb_decode_payload(pkt);
 					if(rv > max_rv) {
-						//printf("Packet decoded with clock 0x%07x (rv=%d)\n", pkt->clock, rv);
+						//printf("Packet decoded with clock 0x%07x (rv=%d)\n", pkt->clkn, rv);
 						//btbb_print_packet(pkt);
 						max_rv = rv;
 						best_clk = (clk6 + i) & 0x3f;
@@ -829,7 +829,7 @@ int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)
 	} else
 		if (btbb_decode_header(pkt)) {
 			for(i=0; i<64; i++) {
-				pkt->clock = (pkt->clock & 0xffffffc0) | (i & 0x3f);
+				pkt->clkn = (pkt->clkn & 0xffffffc0) | (i & 0x3f);
 				if (btbb_decode_header(pkt)) {
 					rv =  btbb_decode_payload(pkt);
 					if(rv > max_rv) {
@@ -843,7 +843,7 @@ int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)
 		}
 	/* If we were successful, print the packet */
 	if(max_rv > 0) {
-		pkt->clock = (pkt->clock & 0xffffffc0) | (best_clk & 0x3f);
+		pkt->clkn = (pkt->clkn & 0xffffffc0) | (best_clk & 0x3f);
 		btbb_decode_payload(pkt);
 		printf("Packet decoded with clock 0x%02x (rv=%d)\n", i, rv);
 		btbb_print_packet(pkt);

@@ -99,8 +99,7 @@ struct btbb_packet {
 	char payload[MAX_PAYLOAD_LENGTH];
 
 	uint16_t crc;
-	uint32_t clock; /* CLK1-27 of master */
-	uint32_t clkn;  /* native (local) clock, CLK0-27 */
+	uint32_t clkn;     /* CLK1-27 of the packet */
 	uint8_t ac_errors; /* Number of bit errors in the AC */
 
 	/* the raw symbol stream (less the preamble), one bit per char */

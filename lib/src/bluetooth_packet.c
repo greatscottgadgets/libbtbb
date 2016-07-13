@@ -1204,7 +1204,7 @@ int btbb_decode_header(btbb_packet* pkt)
 	uint8_t UAP;
 
 	if (btbb_packet_get_flag(pkt, BTBB_CLK6_VALID) && unfec13(stream, header, 18)) {
-		unwhiten(header, pkt->packet_header, pkt->clock, 18, 0, pkt);
+		unwhiten(header, pkt->packet_header, pkt->clkn, 18, 0, pkt);
 		uint16_t hdr_data = air_to_host16(pkt->packet_header, 10);
 		uint8_t hec = air_to_host8(&pkt->packet_header[10], 8);
 		UAP = uap_from_hec(hdr_data, hec);
@@ -1238,58 +1238,58 @@ int btbb_decode_payload(btbb_packet* pkt)
 			rv = 1;
 			break;
 		case PACKET_TYPE_FHS:
-			rv = fhs(pkt->clock, pkt);
+			rv = fhs(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DM1:
-			rv = DM(pkt->clock, pkt);
+			rv = DM(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DH1:
 			/* assuming DH1 but could be 2-DH1 */
-			rv = DH(pkt->clock, pkt);
+			rv = DH(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_HV1:
-			rv = HV(pkt->clock, pkt);
+			rv = HV(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_HV2:
-			rv = HV(pkt->clock, pkt);
+			rv = HV(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_HV3: /* HV3/EV3/3-EV3 */
 			/* decode as EV3 if CRC checks out */
-			if ((rv = EV3(pkt->clock, pkt)) <= 1)
+			if ((rv = EV3(pkt->clkn, pkt)) <= 1)
 				/* otherwise assume HV3 */
-				rv = HV(pkt->clock, pkt);
+				rv = HV(pkt->clkn, pkt);
 			/* don't know how to decode 3-EV3 */
 			break;
 		case PACKET_TYPE_DV:
 			/* assuming DV but could be 3-DH1 */
-			rv = DM(pkt->clock, pkt);
+			rv = DM(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_AUX1:
-			rv = DH(pkt->clock, pkt);
+			rv = DH(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DM3:
 			/* assuming DM3 but could be 2-DH3 */
-			rv = DM(pkt->clock, pkt);
+			rv = DM(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DH3:
 			/* assuming DH3 but could be 3-DH3 */
-			rv = DH(pkt->clock, pkt);
+			rv = DH(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_EV4:
 			/* assuming EV4 but could be 2-EV5 */
-			rv = EV4(pkt->clock, pkt);
+			rv = EV4(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_EV5:
 			/* assuming EV5 but could be 3-EV5 */
-			rv = EV5(pkt->clock, pkt);
+			rv = EV5(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DM5:
 			/* assuming DM5 but could be 2-DH5 */
-			rv = DM(pkt->clock, pkt);
+			rv = DM(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DH5:
 			/* assuming DH5 but could be 3-DH5 */
-			rv = DH(pkt->clock, pkt);
+			rv = DH(pkt->clkn, pkt);
 			break;
 	}
 	btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 1);
@@ -1325,10 +1325,10 @@ char *tun_format(btbb_packet* pkt)
 	int i;
 
 	/* meta data */
-	tun_format[0] = pkt->clock & 0xff;
-	tun_format[1] = (pkt->clock >> 8) & 0xff;
-	tun_format[2] = (pkt->clock >> 16) & 0xff;
-	tun_format[3] = (pkt->clock >> 24) & 0xff;
+	tun_format[0] = pkt->clkn & 0xff;
+	tun_format[1] = (pkt->clkn >> 8) & 0xff;
+	tun_format[2] = (pkt->clkn >> 16) & 0xff;
+	tun_format[3] = (pkt->clkn >> 24) & 0xff;
 	tun_format[4] = pkt->channel;
 	tun_format[5] = btbb_packet_get_flag(pkt, BTBB_CLK27_VALID) |
 		(btbb_packet_get_flag(pkt, BTBB_NAP_VALID) << 1);
