@@ -1296,6 +1296,26 @@ int btbb_decode_payload(btbb_packet* pkt)
 	return rv;
 }
 
+/* decode the whole packet */
+int btbb_decode(btbb_packet* pkt)
+{
+	int rv = 0;
+
+	btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 0);
+
+	if (btbb_decode_header(pkt)) {
+		rv =  btbb_decode_payload(pkt);
+	}
+
+	/* If we were successful, print the packet */
+	if(rv > 0) {
+		printf("Packet decoded with clock 0x%02x (rv=%d)\n", pkt->clkn & 0x3f, rv);
+		btbb_print_packet(pkt);
+	}
+
+	return rv;
+}
+
 /* print packet information */
 void btbb_print_packet(const btbb_packet* pkt)
 {

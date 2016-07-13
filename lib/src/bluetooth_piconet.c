@@ -788,26 +788,6 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 //	return pkt;
 //}
 
-/* decode the whole packet */
-int btbb_decode(btbb_packet* pkt)
-{
-	int rv = 0;
-
-	btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 0);
-
-	if (btbb_decode_header(pkt)) {
-		rv =  btbb_decode_payload(pkt);
-	}
-
-	/* If we were successful, print the packet */
-	if(rv > 0) {
-		printf("Packet decoded with clock 0x%02x (rv=%d)\n", pkt->clkn & 0x3f, rv);
-		btbb_print_packet(pkt);
-	}
-
-	return rv;
-}
-
 /* Print AFH map from observed packets */
 void btbb_print_afh_map(btbb_piconet *pn) {
 	uint8_t *afh_map;
