@@ -1,19 +1,19 @@
 /* -*- c -*- */
 /*
  * Copyright 2007 - 2013 Dominic Spill, Michael Ossmann, Will Code
- * 
+ *
  * This file is part of libbtbb
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with libbtbb; see the file COPYING.  If not, write to
  * the Free Software Foundation, Inc., 51 Franklin Street,
@@ -215,7 +215,7 @@ int btbb_pcapng_create_file(const char *filename, const char *interface_desc, bt
 /* save a BREDR packet to PCAPNG capture file */
 int btbb_pcapng_append_packet(btbb_pcapng_handle * h, const uint64_t ns,
                               const int8_t sigdbm, const int8_t noisedbm,
-                              const uint32_t reflap, const uint8_t refuap, 
+                              const uint32_t reflap, const uint8_t refuap,
                               const btbb_packet *pkt);
 /* record a BDADDR to PCAPNG capture file */
 int btbb_pcapng_record_bdaddr(btbb_pcapng_handle * h, const uint64_t bdaddr,
@@ -258,9 +258,9 @@ typedef struct btbb_pcap_handle btbb_pcap_handle;
 /* create a PCAP file for BREDR captures with LINKTYPE_BLUETOOTH_BREDR_BB */
 int btbb_pcap_create_file(const char *filename, btbb_pcap_handle ** ph);
 /* write a BREDR packet to PCAP file */
-int btbb_pcap_append_packet(btbb_pcap_handle * h, const uint64_t ns, 
+int btbb_pcap_append_packet(btbb_pcap_handle * h, const uint64_t ns,
                             const int8_t sigdbm, const int8_t noisedbm,
-                            const uint32_t reflap, const uint8_t refuap, 
+                            const uint32_t reflap, const uint8_t refuap,
                             const btbb_packet *pkt);
 int btbb_pcap_close(btbb_pcap_handle * h);
 
