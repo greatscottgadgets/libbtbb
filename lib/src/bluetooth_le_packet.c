@@ -30,6 +30,9 @@
 #include <ctype.h>
 #include <string.h>
 
+/* company identifier lookup */
+const char *bt_compidtostr(uint16_t compid);
+
 /* string representations of advertising packet type */
 static const char *ADV_TYPE_NAMES[] = {
 	"ADV_IND", "ADV_DIRECT_IND", "ADV_NONCONN_IND", "SCAN_REQ",
@@ -485,6 +488,22 @@ print128:
 						for (i = 3; i < sublen; ++i)
 							printf(" %02x", buf[pos+i]);
 					}
+					printf("\n");
+				}
+				else {
+					printf("Wrong length (%d, should be >= 2)\n", sublen-1);
+				}
+				break;
+			case 0xff:
+				printf(" (Manufacturer Specific Data)\n");
+				printf("           ");
+				if (sublen - 1 >= 2) {
+					uint16_t company = (buf[pos+2] << 8) | buf[pos+1];
+					printf("Company: %s\n", bt_compidtostr(company));
+					printf("           ");
+					printf("Data:");
+					for (i = 3; i < sublen; ++i)
+						printf(" %02x", buf[pos+i]);
 					printf("\n");
 				}
 				else {

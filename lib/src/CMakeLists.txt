@@ -39,6 +39,7 @@ add_definitions( -DRELEASE="${RELEASE}${DIRTY_FLAG}" )
 set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
               ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_piconet.c
               ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_le_packet.c
+              ${CMAKE_CURRENT_SOURCE_DIR}/companies.c
               ${CMAKE_CURRENT_SOURCE_DIR}/pcap.c
               ${CMAKE_CURRENT_SOURCE_DIR}/pcapng.c
               ${CMAKE_CURRENT_SOURCE_DIR}/pcapng-bt.c
