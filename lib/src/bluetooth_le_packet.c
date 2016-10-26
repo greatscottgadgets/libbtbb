@@ -562,6 +562,8 @@ void lell_print(const lell_packet *pkt)
 
 		switch(pkt->adv_type) {
 			case ADV_IND:
+			case ADV_NONCONN_IND:
+			case ADV_SCAN_IND:
 				_dump_addr("AdvA:  ", pkt->symbols, 6, pkt->adv_tx_add);
 				if (pkt->length-6 > 0) {
 					printf("    AdvData:");
@@ -570,6 +572,10 @@ void lell_print(const lell_packet *pkt)
 					printf("\n");
 					_dump_scan_rsp_data(&pkt->symbols[12], pkt->length-6);
 				}
+				break;
+			case ADV_DIRECT_IND:
+				_dump_addr("AdvA:  ", pkt->symbols, 6, pkt->adv_tx_add);
+				_dump_addr("InitA: ", pkt->symbols, 12, pkt->adv_rx_add);
 				break;
 			case SCAN_REQ:
 				_dump_addr("ScanA: ", pkt->symbols, 6, pkt->adv_tx_add);
