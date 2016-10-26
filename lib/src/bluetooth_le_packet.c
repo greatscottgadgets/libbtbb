@@ -46,6 +46,15 @@ static const char *CONNECT_SCA[] = {
 	"21 ppm to 30 ppm", "0 ppm to 20 ppm",
 };
 
+/* flags */
+static const char *FLAGS[] = {
+	"LE Limited Discoverable Mode", "LE General Discoverable Mode",
+	"BR/EDR Not Supported",
+	"Simultaneous LE and BR/EDR to Same Device Capable (Controller)",
+	"Simultaneous LE and BR/EDR to Same Device Capable (Host)",
+	"Reserved", "Reserved", "Reserved",
+};
+
 // count of objects in an array, shamelessly stolen from Chrome
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 
@@ -411,6 +420,13 @@ static void _dump_scan_rsp_data(const uint8_t *buf, int len) {
 				printf("           ");
 				for (i = 0; i < 8; ++i)
 					printf("%d", buf[pos+1] & (1 << (7-i)) ? 1 : 0);
+				printf("\n");
+				for (i = 0; i < 8; ++i) {
+					if (buf[pos+1] & (1 << i)) {
+						printf("               ");
+						printf("%s\n", FLAGS[i]);
+					}
+				}
 				printf("\n");
 				break;
 			case 0x02:
