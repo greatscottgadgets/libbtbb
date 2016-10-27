@@ -1405,7 +1405,7 @@ uint8_t uap_from_fhs(btbb_packet* pkt)
 uint16_t nap_from_fhs(btbb_packet* pkt)
 {
 	/* caller should check got_payload() and get_type() */
-	return air_to_host8(&pkt->payload[72], 16);
+	return air_to_host16(&pkt->payload[72], 16);
 }
 
 /* extract clock from FHS payload */
