@@ -110,7 +110,7 @@ uint16_t btbb_piconet_get_nap(const btbb_piconet *pn)
 
 uint64_t btbb_piconet_get_bdaddr(const btbb_piconet *pn)
 {
-	return ((uint64_t) pn->NAP) << 32 | pn->UAP << 24 | pn->LAP;
+	return ((uint64_t) pn->NAP) << 32 | ((uint32_t) pn->UAP) << 24 | pn->LAP;
 }
 
 int btbb_piconet_get_clk_offset(const btbb_piconet *pn)
@@ -392,7 +392,7 @@ void get_hop_pattern(btbb_piconet *pn)
 
 	/* Two stages to avoid "left shift count >= width of type" warning */
 	key = btbb_piconet_get_flag(pn, BTBB_IS_AFH);
-	key = (key<<39) | ((uint64_t)pn->used_channels<<32) | (pn->UAP<<24) | pn->LAP;
+	key = (key<<39) | ((uint64_t)pn->used_channels<<32) | ((uint32_t)pn->UAP<<24) | pn->LAP;
 	HASH_FIND(hh, hopping_map, &key, 4, s);
 
 	if (s == NULL) {
