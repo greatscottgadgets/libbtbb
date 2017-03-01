@@ -47,7 +47,7 @@ typedef struct __attribute__((packed)) pcap_hdr_s {
 
 FILE *btbb_pcap_open(const char *filename, uint32_t dlt, uint32_t snaplen) {
 	pcap_hdr_t pcap_header = {
-		.magic_number = 0xa1b2c3d4,
+		.magic_number = 0xa1b23c4d,
 		.version_major = 2,
 		.version_minor = 4,
 		.thiszone = 0,
