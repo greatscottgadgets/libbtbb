@@ -24,8 +24,8 @@ include(GNUInstallDirs)
 # Based heavily upon the hackrf cmake setup.
 
 project(libbtbb C)
-set(MAJOR_VERSION 0)
-set(MINOR_VERSION 5)
+set(MAJOR_VERSION 1)
+set(MINOR_VERSION 0)
 set(PACKAGE libbtbb)
 set(VERSION ${MAJOR_VERSION}.${MINOR_VERSION})
 add_definitions( -DVERSION="${VERSION}" )
