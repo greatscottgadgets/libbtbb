@@ -72,8 +72,8 @@ typedef struct btbb_packet btbb_packet;
  * reasonable. */
 int btbb_init(int max_ac_errors);
 
-char *btbb_get_release(void);
-char *btbb_get_version(void);
+const char* btbb_get_release(void);
+const char* btbb_get_version(void);
 
 btbb_packet *btbb_packet_new(void);
 void btbb_packet_ref(btbb_packet *pkt);

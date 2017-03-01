@@ -265,14 +265,14 @@ static uint8_t count_bits(uint64_t n)
 #ifndef RELEASE
 #define RELEASE "unknown"
 #endif
-char *btbb_get_release(void) {
+const char* btbb_get_release(void) {
 	return RELEASE;
 }
 
 #ifndef VERSION
 #define VERSION "unknown"
 #endif
-char *btbb_get_version(void) {
+const char* btbb_get_version(void) {
 	return VERSION;
 }
 

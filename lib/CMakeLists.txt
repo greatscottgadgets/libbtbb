@@ -24,7 +24,16 @@ include(GNUInstallDirs)
 # Based heavily upon the hackrf cmake setup.
 
 project(libbtbb C)
+set(MAJOR_VERSION 0)
+set(MINOR_VERSION 5)
 set(PACKAGE libbtbb)
+set(VERSION ${MAJOR_VERSION}.${MINOR_VERSION})
+add_definitions( -DVERSION="${VERSION}" )
+
+if(NOT MSVC)
+	add_definitions(-Wall)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu90")
+endif()
 
 add_subdirectory(src)
 
