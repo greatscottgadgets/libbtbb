@@ -1,19 +1,19 @@
 /* -*- c -*- */
 /*
  * Copyright 2007 - 2013 Dominic Spill, Michael Ossmann, Will Code
- * 
+ *
  * This file is part of libbtbb
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with libbtbb; see the file COPYING.  If not, write to
  * the Free Software Foundation, Inc., 51 Franklin Street,
@@ -120,7 +120,7 @@ static const uint16_t fec23_gen_matrix[] = {
 
 typedef struct {
     uint64_t syndrome; /* key */
-    uint64_t error;             
+    uint64_t error;
     UT_hash_handle hh;
 } syndrome_struct;
 
@@ -132,7 +132,7 @@ static void add_syndrome(uint64_t syndrome, uint64_t error)
 	s = malloc(sizeof(syndrome_struct));
 	s->syndrome = syndrome;
 	s->error = error;
-	
+
     HASH_ADD(hh, syndrome_map, syndrome, 8, s);
 }
 
@@ -140,7 +140,7 @@ static syndrome_struct *find_syndrome(uint64_t syndrome)
 {
     syndrome_struct *s;
 
-    HASH_FIND(hh, syndrome_map, &syndrome, 8, s);  
+    HASH_FIND(hh, syndrome_map, &syndrome, 8, s);
     return s;
 }
 
@@ -189,12 +189,12 @@ uint64_t btbb_gen_syncword(const int LAP)
 {
 	int i;
 	uint64_t codeword = DEFAULT_CODEWORD;
-	
+
 	/* the sync word generated is in host order, not air order */
 	for (i = 0; i < 24; i++)
 		if (LAP & (0x800000 >> i))
 			codeword ^= sw_matrix[i];
-	
+
 	return codeword;
 }
 
@@ -371,7 +371,7 @@ int promiscuous_packet_search(char *stream, int search_length, uint32_t *lap,
 	syndrome_struct *errors;
 	char *symbols;
 	int count, offset = -1;
-	
+
 	/* Barker code at end of sync word (includes
 	 * MSB of LAP) is used as a rough filter.
 	 */
@@ -385,11 +385,11 @@ int promiscuous_packet_search(char *stream, int search_length, uint32_t *lap,
 		if (BARKER_DISTANCE[barker] <= MAX_BARKER_ERRORS) {
 			// Error correction
 			syncword = air_to_host64(symbols, 64);
-			
+
 			/* correct the barker code with a simple comparison */
 			corrected_barker = barker_correct[(uint8_t)(syncword >> 57)];
 			syncword = (syncword & 0x01ffffffffffffffULL) | corrected_barker;
-			
+
 			codeword = syncword ^ pn;
 
 			/* Zero syndrome -> good codeword. */
@@ -408,7 +408,7 @@ int promiscuous_packet_search(char *stream, int search_length, uint32_t *lap,
 					*ac_errors = 0xff;  // fail
 				}
 			}
-			
+
 			if (*ac_errors <= max_ac_errors) {
 				*lap = (syncword >> 34) & 0xffffff;
 				offset = count;
@@ -425,7 +425,7 @@ int find_known_lap(char *stream, int search_length, uint32_t lap,
 	uint64_t syncword, ac;
 	char *symbols;
 	int count, offset = -1;
-	
+
 	ac = btbb_gen_syncword(lap);
 	for (count = 0; count < search_length; count++) {
 		symbols = &stream[count];
@@ -472,7 +472,7 @@ void btbb_packet_set_data(btbb_packet *pkt, char *data, int length,
 	if (length > MAX_SYMBOLS)
 		length = MAX_SYMBOLS;
 	for (i = 0; i < length; i++)
-		pkt->symbols[i] = data[i]; 
+		pkt->symbols[i] = data[i];
 
 	pkt->length = length;
 	pkt->channel = channel;
@@ -743,7 +743,7 @@ int crc_check(int clock, btbb_packet* pkt)
 		case PACKET_TYPE_EV5:
 			retval = EV5(clock, pkt);
 			break;
-		
+
 		case PACKET_TYPE_HV1:
 			retval = HV(clock, pkt);
 			break;
@@ -970,7 +970,7 @@ int DH(int clock, btbb_packet* pkt)
 	char *stream = pkt->symbols + 122;
 	/* number of symbols remaining after access code and packet header */
 	int size = pkt->length - 122;
-	
+
 	switch(pkt->packet_type)
 	{
 		case PACKET_TYPE_AUX1:
@@ -998,7 +998,7 @@ int DH(int clock, btbb_packet* pkt)
 		return 1; //FIXME should throw exception
 
 	unwhiten(stream, pkt->payload, clock, bitlength, 18, pkt);
-	
+
 	/* AUX1 has no CRC */
 	if (pkt->packet_type == 9)
 		return 2;
@@ -1204,7 +1204,7 @@ int btbb_decode_header(btbb_packet* pkt)
 	uint8_t UAP;
 
 	if (btbb_packet_get_flag(pkt, BTBB_CLK6_VALID) && unfec13(stream, header, 18)) {
-		unwhiten(header, pkt->packet_header, pkt->clock, 18, 0, pkt);
+		unwhiten(header, pkt->packet_header, pkt->clkn, 18, 0, pkt);
 		uint16_t hdr_data = air_to_host16(pkt->packet_header, 10);
 		uint8_t hec = air_to_host8(&pkt->packet_header[10], 8);
 		UAP = uap_from_hec(hdr_data, hec);
@@ -1216,7 +1216,7 @@ int btbb_decode_header(btbb_packet* pkt)
 			return 1;
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -1238,61 +1238,81 @@ int btbb_decode_payload(btbb_packet* pkt)
 			rv = 1;
 			break;
 		case PACKET_TYPE_FHS:
-			rv = fhs(pkt->clock, pkt);
+			rv = fhs(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DM1:
-			rv = DM(pkt->clock, pkt);
+			rv = DM(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DH1:
 			/* assuming DH1 but could be 2-DH1 */
-			rv = DH(pkt->clock, pkt);
+			rv = DH(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_HV1:
-			rv = HV(pkt->clock, pkt);
+			rv = HV(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_HV2:
-			rv = HV(pkt->clock, pkt);
+			rv = HV(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_HV3: /* HV3/EV3/3-EV3 */
 			/* decode as EV3 if CRC checks out */
-			if ((rv = EV3(pkt->clock, pkt)) <= 1)
+			if ((rv = EV3(pkt->clkn, pkt)) <= 1)
 				/* otherwise assume HV3 */
-				rv = HV(pkt->clock, pkt);
+				rv = HV(pkt->clkn, pkt);
 			/* don't know how to decode 3-EV3 */
 			break;
 		case PACKET_TYPE_DV:
 			/* assuming DV but could be 3-DH1 */
-			rv = DM(pkt->clock, pkt);
+			rv = DM(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_AUX1:
-			rv = DH(pkt->clock, pkt);
+			rv = DH(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DM3:
 			/* assuming DM3 but could be 2-DH3 */
-			rv = DM(pkt->clock, pkt);
+			rv = DM(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DH3:
 			/* assuming DH3 but could be 3-DH3 */
-			rv = DH(pkt->clock, pkt);
+			rv = DH(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_EV4:
 			/* assuming EV4 but could be 2-EV5 */
-			rv = EV4(pkt->clock, pkt);
+			rv = EV4(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_EV5:
 			/* assuming EV5 but could be 3-EV5 */
-			rv = EV5(pkt->clock, pkt);
+			rv = EV5(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DM5:
 			/* assuming DM5 but could be 2-DH5 */
-			rv = DM(pkt->clock, pkt);
+			rv = DM(pkt->clkn, pkt);
 			break;
 		case PACKET_TYPE_DH5:
 			/* assuming DH5 but could be 3-DH5 */
-			rv = DH(pkt->clock, pkt);
+			rv = DH(pkt->clkn, pkt);
 			break;
 	}
 	btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 1);
+	return rv;
+}
+
+/* decode the whole packet */
+int btbb_decode(btbb_packet* pkt)
+{
+	int rv = 0;
+
+	btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 0);
+
+	if (btbb_decode_header(pkt)) {
+		rv =  btbb_decode_payload(pkt);
+	}
+
+	/* If we were successful, print the packet */
+	if(rv > 0) {
+		printf("Packet decoded with clock 0x%02x (rv=%d)\n", pkt->clkn & 0x3f, rv);
+		btbb_print_packet(pkt);
+	}
+
 	return rv;
 }
 
@@ -1325,10 +1345,10 @@ char *tun_format(btbb_packet* pkt)
 	int i;
 
 	/* meta data */
-	tun_format[0] = pkt->clock & 0xff;
-	tun_format[1] = (pkt->clock >> 8) & 0xff;
-	tun_format[2] = (pkt->clock >> 16) & 0xff;
-	tun_format[3] = (pkt->clock >> 24) & 0xff;
+	tun_format[0] = pkt->clkn & 0xff;
+	tun_format[1] = (pkt->clkn >> 8) & 0xff;
+	tun_format[2] = (pkt->clkn >> 16) & 0xff;
+	tun_format[3] = (pkt->clkn >> 24) & 0xff;
 	tun_format[4] = pkt->channel;
 	tun_format[5] = btbb_packet_get_flag(pkt, BTBB_CLK27_VALID) |
 		(btbb_packet_get_flag(pkt, BTBB_NAP_VALID) << 1);

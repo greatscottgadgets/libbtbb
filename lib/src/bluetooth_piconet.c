@@ -503,7 +503,7 @@ void try_hop(btbb_packet *pkt, btbb_piconet *pn)
 	uint8_t filter_uap = pn->UAP;
 
 	/* Decode packet - fixing clock drift in the process */
-	btbb_decode(pkt, pn);
+	btbb_decode(pkt);
 
 	if (btbb_piconet_get_flag(pn, BTBB_HOP_REVERSAL_INIT)) {
 		//pn->winnowed = 0;
@@ -788,70 +788,6 @@ int btbb_uap_from_header(btbb_packet *pkt, btbb_piconet *pn)
 //	return pkt;
 //}
 
-/* decode the whole packet */
-int btbb_decode(btbb_packet* pkt, btbb_piconet *pn)
-{
-	btbb_packet_set_flag(pkt, BTBB_HAS_PAYLOAD, 0);
-	uint8_t clk6, i, best_clk;
-	int rv = 0, max_rv = 0;
-	if (btbb_piconet_get_flag(pn, BTBB_CLK27_VALID)) {
-		/* Removing this section until we can more reliably handle AFH */
-		//if(pn->sequence == NULL)
-		//	get_hop_pattern(pn);
-		//clk6 = pkt->clock & 0x3f;
-		//for(i=0; i<64; i++) {
-		//	pkt->clock = (pkt->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
-		//	if ((pn->sequence[pkt->clock] == pkt->channel) && (btbb_decode_header(pkt))) {
-		//		rv =  btbb_decode_payload(pkt);
-		//		if(rv > max_rv) {
-		//			max_rv = rv;
-		//			best_clk = (clk6 + i) & 0x3f;
-		//		}
-		//	}
-		//}
-
-		// If we found nothing, try again, ignoring channel
-		if(max_rv <= 1) {
-			clk6 = pkt->clock & 0x3f;
-			for(i=0; i<64; i++) {
-				pkt->clock = (pkt->clock & 0xffffffc0) | ((clk6 + i) & 0x3f);
-				if (btbb_decode_header(pkt)) {
-					rv =  btbb_decode_payload(pkt);
-					if(rv > max_rv) {
-						//printf("Packet decoded with clock 0x%07x (rv=%d)\n", pkt->clock, rv);
-						//btbb_print_packet(pkt);
-						max_rv = rv;
-						best_clk = (clk6 + i) & 0x3f;
-					}
-				}
-			}
-		}
-	} else
-		if (btbb_decode_header(pkt)) {
-			for(i=0; i<64; i++) {
-				pkt->clock = (pkt->clock & 0xffffffc0) | (i & 0x3f);
-				if (btbb_decode_header(pkt)) {
-					rv =  btbb_decode_payload(pkt);
-					if(rv > max_rv) {
-						//printf("Packet decoded with clock 0x%02x (rv=%d)\n", i, rv);
-						//btbb_print_packet(pkt);
-						max_rv = rv;
-						best_clk = i & 0x3f;
-					}
-				}
-			}
-		}
-	/* If we were successful, print the packet */
-	if(max_rv > 0) {
-		pkt->clock = (pkt->clock & 0xffffffc0) | (best_clk & 0x3f);
-		btbb_decode_payload(pkt);
-		printf("Packet decoded with clock 0x%02x (rv=%d)\n", i, rv);
-		btbb_print_packet(pkt);
-	}
-
-	return max_rv;
-}
-
 /* Print AFH map from observed packets */
 void btbb_print_afh_map(btbb_piconet *pn) {
 	uint8_t *afh_map;
@@ -938,7 +874,7 @@ int btbb_process_packet(btbb_packet *pkt, btbb_piconet *pn) {
 			btbb_packet_set_flag(pkt, BTBB_CLK6_VALID, 1);
 			btbb_packet_set_flag(pkt, BTBB_CLK27_VALID, 1);
 
-			if(btbb_decode(pkt, pn))
+			if(btbb_decode(pkt))
 				btbb_print_packet(pkt);
 			else
 				printf("Failed to decode packet\n");

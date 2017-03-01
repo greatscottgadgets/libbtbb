@@ -1,19 +1,19 @@
 /* -*- c -*- */
 /*
  * Copyright 2007 - 2013 Dominic Spill, Michael Ossmann, Will Code
- * 
+ *
  * This file is part of libbtbb
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with libbtbb; see the file COPYING.  If not, write to
  * the Free Software Foundation, Inc., 51 Franklin Street,
@@ -59,25 +59,25 @@ struct btbb_packet {
 	uint8_t UAP;     /* upper address part */
 	uint16_t NAP;    /* non-significant address part */
 	uint32_t LAP;    /* lower address part found in access code */
-	
-	uint8_t modulation; 
+
+	uint8_t modulation;
 	uint8_t transport;
 	uint8_t packet_type;
 	uint8_t packet_lt_addr; /* LLID field of payload header (2 bits) */
 	uint8_t packet_flags; /* Flags - FLOW/ARQN/SQEN */
 	uint8_t packet_hec; /* Flags - FLOW/ARQN/SQEN */
-	
+
 	/* packet header, one bit per char */
 	char packet_header[18];
-	
+
 	/* number of payload header bytes: 0, 1, 2, or -1 for
 	 * unknown. payload is one bit per char. */
 	int payload_header_length;
 	char payload_header[16];
-	
+
 	/* LLID field of payload header (2 bits) */
 	uint8_t payload_llid;
-	
+
 	/* flow field of payload header (1 bit) */
 	uint8_t payload_flow;
 
@@ -89,7 +89,7 @@ struct btbb_packet {
 	* plus payload_header_length plus 2 bytes CRC (if present).
 	*/
 	int payload_length;
-	
+
 	/* The actual payload data in host format
 	* Ready for passing to wireshark
 	* 2744 is the maximum length, but most packets are shorter.
@@ -99,8 +99,7 @@ struct btbb_packet {
 	char payload[MAX_PAYLOAD_LENGTH];
 
 	uint16_t crc;
-	uint32_t clock; /* CLK1-27 of master */
-	uint32_t clkn;  /* native (local) clock, CLK0-27 */
+	uint32_t clkn;     /* CLK1-27 of the packet */
 	uint8_t ac_errors; /* Number of bit errors in the AC */
 
 	/* the raw symbol stream (less the preamble), one bit per char */
