@@ -57,7 +57,7 @@ if( ${BUILD_SHARED_LIB} )
     # Shared library
     message(STATUS "Building shared library")
     add_library(btbb SHARED ${c_sources})
-    set_target_properties(btbb PROPERTIES VERSION ${MAJOR_VERSION}.${MINOR_VERSION} SOVERSION 0)
+    set_target_properties(btbb PROPERTIES VERSION ${MAJOR_VERSION}.${MINOR_VERSION} SOVERSION 1)
     set_target_properties(btbb PROPERTIES CLEAN_DIRECT_OUTPUT 1)
     install(TARGETS btbb
             LIBRARY DESTINATION lib${LIB_SUFFIX}
