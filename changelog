@@ -1,0 +1,30 @@
+libbtbb (2017-03-R2) unstable; urgency=low
+  * Remove dependency on libpcap, simplifying build process
+  
+ -- Dominic Spill <dominicgs@gmail.com>  01 Mar 2017 10:39:00 -0700   
+ 
+ libbtbb (2015-10-R1) unstable; urgency=low
+  * This is a minor bug fix release. It includes fixes to clock
+    recovery and piconet survey mode
+  
+ -- Dominic Spill <dominicgs@gmail.com>  12 Oct 2015 03:10:00 -0700   
+ 
+ libbtbb (2015-09-R2) unstable; urgency=low
+  * New PCAP format for BR and EDR packets
+  * Wireshark dissector for BR/EDR PCAP format
+  * BLE PCAPNG support
+  * Improved support for AFH
+  * Numerous bug fixes
+  
+ -- Dominic Spill <dominicgs@gmail.com>  05 Sep 2015 05:30:00 -0700   
+
+libbtbb (2014-02-R2) unstable; urgency=low
+  * This release adds new features while including a complete rewrite of the
+    Basic Rate API.
+  * Bluetooth Low Energy support (aka Bluetooth Smart)
+  * Limited support for AFH
+  * Cleaned up Basic Rate API - btbb.h
+  * Wireshark plugins support v1.10
+  * Numerous bug fixes
+
+ -- Dominic Spill <dominicgs@gmail.com>  20 Feb 2014 06:06:00 -0700   
