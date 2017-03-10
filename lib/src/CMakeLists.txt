@@ -34,6 +34,7 @@ if ( "${RELEASE}" STREQUAL "" )
 endif()
 
 add_definitions( -DRELEASE="${RELEASE}${DIRTY_FLAG}" )
+message(STATUS "Setting version string ${RELEASE}${DIRTY_FLAG}")
 
 # Source
 set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
