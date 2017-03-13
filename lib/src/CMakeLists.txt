@@ -19,8 +19,8 @@
 # Based slightly upon the hackrf cmake setup.
 
 include(${PROJECT_SOURCE_DIR}/../cmake/set_release.cmake)
-add_definitions( -DRELEASE="${RELEASE}" )
-message(STATUS "Setting version string ${RELEASE}")
+add_definitions( -DRELEASE="${RELEASE_STRING}" )
+message(STATUS "Setting version string ${RELEASE_STRING}")
 
 # Source
 set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
