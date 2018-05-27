@@ -124,6 +124,6 @@ typedef struct __attribute__((packed)) _pcap_bluetooth_le_ll_header {
 #define LE_MIC_CHECKED       0x1000
 #define LE_MIC_VALID         0x2000
 
-#define LE_MAX_PAYLOAD       48
+#define LE_MAX_PAYLOAD       255
 
 #endif /* PCAP_COMMON_DOT_H */

@@ -437,6 +437,7 @@ assemble_pcapng_le_packet( pcapng_le_packet * pkt,
 	uint32_t pcapng_caplen = sizeof(pcap_bluetooth_le_ll_header)+caplen;
 	uint32_t block_length  = 4*((PCAPNG_ENHANCED_BLK_SZ+pcapng_caplen+3)/4);
 
+	// TODO this should never happen, but handle it if it does
 	assert(caplen <= LE_MAX_PAYLOAD);
 
 	pkt->blk_header.block_type = BLOCK_TYPE_ENHANCED_PACKET;
