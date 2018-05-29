@@ -1603,8 +1603,8 @@ dissect_accepted_ext(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 void
 dissect_not_accepted_ext(proto_tree *tree, tvbuff_t *tvb, int offset, int len)
 {
-	DISSECTOR_ASSERT(len == 4);
-	DISSECTOR_ASSERT(tvb_reported_length_remaining(tvb, offset) >= 2);
+	DISSECTOR_ASSERT(len == 5);
+	DISSECTOR_ASSERT(tvb_reported_length_remaining(tvb, offset) >= 3);
 
 	proto_tree_add_item(tree, hf_lmp_opinre, tvb, offset, 1, ENC_LITTLE_ENDIAN);
 	offset += 1;
@@ -1896,7 +1896,7 @@ dissect_btbrlmp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 		eop = tvb_get_guint8(tvb, offset + 1);
 
 		col_add_str(pinfo->cinfo, COL_INFO, val_to_str(eop,
-			opcode, "Unknown Extended Opcode (%d)"));
+			ext_opcode, "Unknown Extended Opcode (%d)"));
 	} else {
 		col_add_str(pinfo->cinfo, COL_INFO, val_to_str(op,
 			opcode, "Unknown Opcode (%d)"));
