@@ -1,3 +1,8 @@
+libbtbb (2018-06-R1) unstable; urgency=low
+  * Minor bugfix and version bump for 2018-06-R1 Ubertooth release
+
+ -- Mike Ryan <mikeryan@lacklustre.net>  26 Jun 2018 13:20:00 -0700
+
 libbtbb (2017-03-R2) unstable; urgency=low
   * Remove dependency on libpcap, simplifying build process
   
