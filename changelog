@@ -1,3 +1,8 @@
+libbtbb (2018-08-R1) unstable; urgency=low
+  * No changes, just keeping version parity with Ubertooth 2018-08-R1
+
+ -- Mike Ryan <mikeryan@lacklustre.net>  07 Aug 2018 15:36:00 -0700
+
 libbtbb (2018-06-R1) unstable; urgency=low
   * Minor bugfix and version bump for 2018-06-R1 Ubertooth release
 
