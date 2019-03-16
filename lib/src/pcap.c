@@ -396,7 +396,7 @@ lell_pcap_append_ppi_packet(lell_pcap_handle * h, const uint64_t ns,
 		pcap_pkt.ppi_packet_header.pph_version = 0;
 		pcap_pkt.ppi_packet_header.pph_flags = 0;
 		pcap_pkt.ppi_packet_header.pph_len = htole16(pcap_headerlen);
-		pcap_pkt.ppi_packet_header.pph_dlt = htole32(DLT_USER0);
+		pcap_pkt.ppi_packet_header.pph_dlt = htole32(DLT_BLUETOOTH_LE_LL);
 
 		pcap_pkt.ppi_fieldheader.pfh_type = htole16(PPI_BTLE);
 		pcap_pkt.ppi_fieldheader.pfh_datalen = htole16(sizeof(ppi_btle_t));
