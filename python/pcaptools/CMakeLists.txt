@@ -26,7 +26,7 @@ set(OUTPUT      ${CMAKE_CURRENT_BINARY_DIR}/build)
 configure_file(${SETUP_PY_IN} ${SETUP_PY})
 
 add_custom_command(OUTPUT ${OUTPUT}/timestamp
-                   COMMAND ${PYTHON_EXECUTABLE} setup.py build
+                   COMMAND ${Python3_EXECUTABLE} setup.py build
                    COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}/timestamp
                    DEPENDS ${DEPS})
 

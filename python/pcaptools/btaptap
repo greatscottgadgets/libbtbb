@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2009 Joshua Wright, Michael Ossmann
 # 
@@ -320,7 +320,7 @@ def hid2ascii(scancode, shift):
     return code
 
 def usage():
-    print >>sys.stderr, "Usage: btaptap [-r pcapfile.pcap | -e ellisysfile.csv] [-c count] [-h]\n"
+    print("Usage: btaptap [-r pcapfile.pcap | -e ellisysfile.csv] [-c count] [-h]\n", file=sys.stderr)
     sys.exit(0)
 
 def parse_l2cap_keydata(l2cappkt):
@@ -392,13 +392,13 @@ def parse_ellisys_export(exportfile):
     try:
         cap = open(exportfile, "r")
     except (OSError, IOError) as e:
-        print >>sys.stderr, "Unable to open Ellisys capture file."
+        print("Unable to open Ellisys capture file.", file=sys.stderr)
         return
 
     # Check to make sure the CSV file header matches out expectations
     hdr=cap.readline()
     if (hdr != ELLISYS_CSV_HDR):
-        print >>sys.stderr, "Invalid CSV file (does not match Ellisys export format)"
+        print("Invalid CSV file (does not match Ellisys export format)", file=sys.stderr)
         return
 
     for packetline in cap.xreadlines():
@@ -449,7 +449,7 @@ def parse_bb_keydata(packet):
     btbbpayloadhdr = ord(packet[23])
     llid = btbbpayloadhdr & (BTBBPAYLOADHDR_LLID_MASK) >> BTBBPAYLOADHDR_LLID_SHIFT
     l2clen = (btbbpayloadhdr & BTBBPAYLOADHDR_LEN_MASK) >> BTBBPAYLOADHDR_LEN_SHIFT
-    #print "Debug btbbpayloadhdr 0x%02x, llid %d, l2clen %d"%(btbbpayloadhdr, llid, l2clen)
+    #print("Debug btbbpayloadhdr 0x%02x, llid %d, l2clen %d"%(btbbpayloadhdr, llid, l2clen))
     if llid != LLID_L2CAP or l2clen < 14:
         return
 
@@ -490,7 +490,7 @@ if __name__ == '__main__':
             sys.exit(0)
 
     if (arg_ellisysfile == None and arg_pcapfile == None):
-        print >>sys.stderr, "Must specify a libpcap capture or an Ellisys CSV file"
+        print("Must specify a libpcap capture or an Ellisys CSV file", file=sys.stderr)
         usage()
         sys.exit(0)
 
@@ -508,7 +508,7 @@ if __name__ == '__main__':
                 elif cap.datalink() == DLT_BLUETOOTH_HCI_H4:
                     parse_hci_keydata(packet)
                 else:
-                    print >>sys.stderr, "Unsupported libpcap data link layer: %d\n" % cap.datalink()
+                    print("Unsupported libpcap data link layer: %d\n" % cap.datalink(), file=sys.stderr)
             except TypeError: # raised when pnext returns Null (end of capture)
                 break
     
