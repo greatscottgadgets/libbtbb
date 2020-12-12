@@ -25,7 +25,6 @@
 // since we no longer rely on or assume the existence of libpcap,
 // hardcode these DLTs
 #define DLT_PPI 192
-#define DLT_USER0 147
 
 #if defined( __APPLE__ )
 #include <CoreServices/CoreServices.h>
@@ -98,6 +97,10 @@ typedef struct __attribute__((packed)) _pcap_bluetooth_bredr_bb_header {
 } pcap_bluetooth_bredr_bb_header;
 
 /* --------------------------------- Low Energy ---------------------------- */
+
+#if !defined( DLT_BLUETOOTH_LE_LL )
+#define DLT_BLUETOOTH_LE_LL 251
+#endif
 
 #if !defined( DLT_BLUETOOTH_LE_LL_WITH_PHDR )
 #define DLT_BLUETOOTH_LE_LL_WITH_PHDR 256
