@@ -32,6 +32,9 @@ set(c_sources ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.c
               ${CMAKE_CURRENT_SOURCE_DIR}/pcapng-bt.c
 			  CACHE INTERNAL "List of C sources")
 set(c_headers ${CMAKE_CURRENT_SOURCE_DIR}/btbb.h
+              ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_piconet.h
+              ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_packet.h
+              ${CMAKE_CURRENT_SOURCE_DIR}/bluetooth_le_packet.h
 			  CACHE INTERNAL "List of C headers")
 
 if( NOT ${BUILD_SHARED_LIB} AND NOT ${BUILD_STATIC} )
