@@ -17,7 +17,7 @@ setup(
     version     = "0.8",
     description = "A reader and dump utility for Pcap files",
     author      = "Joshua Wright",
-    url         = "https://sourceforge.net/projects/libbtbb/",
+    url         = "https://github.com/greatscottgadgets/libbtbb",
     license     = "GPL",
     packages    = ['pcapdump'],
     classifiers=[

@@ -16,7 +16,7 @@ setup(
     name        = "pcapdump",
     description = "A reader and dump utility for Pcap files",
     author      = "Joshua Wright",
-    url         = "https://sourceforge.net/projects/libbtbb/",
+    url         = "https://github.com/greatscottgadgets/libbtbb",
     license     = "GPL",
     version     = '${PACKAGE_VERSION}',
     package_dir = { '': '${CMAKE_CURRENT_SOURCE_DIR}' },
