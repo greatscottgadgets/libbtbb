@@ -176,7 +176,7 @@ btbb_pcap_append_packet(btbb_pcap_handle * h, const uint64_t ns,
 			const btbb_packet *pkt)
 {
 	if (h && h->pcap_file) {
-		uint16_t flags = BREDR_DEWHITENED | BREDR_SIGPOWER_VALID |
+		uint16_t flags = BREDR_DEWHITENED | BREDR_SIGPOWER_VALID | BREDR_CRC_CHECKED | BREDR_CRC_VALID | BREDR_PAYLOAD_DECRYPTED |
 			((noisedbm < sigdbm) ? BREDR_NOISEPOWER_VALID : 0) |
 			((reflap != LAP_ANY) ? BREDR_REFLAP_VALID : 0) |
 			((refuap != UAP_ANY) ? BREDR_REFUAP_VALID : 0);
